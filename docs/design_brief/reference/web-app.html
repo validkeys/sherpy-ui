@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sherpy — web app</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<style>
+  /* Component-specific dark-mode tweaks (palette comes from the design system) */
+  :root[data-theme="dark"] .msg .role.assistant { background: var(--neutral-7); color: var(--neutral-0); }
+  :root[data-theme="dark"] .send { background: var(--neutral-7); color: var(--neutral-0); }
+  :root[data-theme="dark"] .primary-btn { background: var(--neutral-7); color: var(--neutral-0); }
+  :root[data-theme="dark"] .seg .tip { background: #0F0E0B; color: var(--neutral-7); }
+  :root[data-theme="dark"] .seg .tip::after { border-top-color: #0F0E0B; }
+
+  html, body { height: 100%; }
+  body { background: var(--bg-page); color: var(--fg-1); margin: 0; font-family: var(--font-sans); font-size: var(--fs-base); overflow: hidden; }
+  .app { display: grid; grid-template-columns: 240px 1fr; height: 100vh; min-height: 760px; position: relative; }
+
+  /* === Left rail === */
+  .rail-l { background: var(--neutral-1); border-right: 1px solid var(--border-1); padding: 16px 14px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .brand { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
+  .brand-mark { width: 22px; height: 22px; color: var(--neutral-8); }
+  .brand-word { font-size: 16px; font-weight: 500; letter-spacing: -0.02em; color: var(--fg-1); }
+  .brand-version { font-family: var(--font-mono); font-size: 10px; color: var(--fg-4); margin-left: auto; padding: 2px 6px; border: 1px solid var(--border-1); border-radius: 4px; background: var(--bg-surface); }
+  .nav-section { display: flex; flex-direction: column; gap: 2px; }
+  .nav-eyebrow { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-4); padding: 6px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: var(--radius-sm); font-size: 13px; color: var(--fg-2); cursor: pointer; }
+  .nav-item:hover { background: var(--neutral-2); color: var(--fg-1); }
+  .nav-item.active { background: var(--bg-surface); color: var(--fg-1); border: 1px solid var(--border-1); padding: 5px 7px; box-shadow: var(--shadow-xs); }
+  .nav-item svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .nav-item .count { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--fg-4); }
+  .rail-l .footer { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 8px; border-top: 1px solid var(--border-1); }
+  .avatar { width: 26px; height: 26px; border-radius: 999px; background: var(--neutral-3); display: grid; place-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--neutral-7); font-weight: 500; }
+  .who { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+  .who .n { font-size: 12px; color: var(--fg-1); }
+  .who .e { font-size: 11px; color: var(--fg-4); font-family: var(--font-mono); }
+
+  /* === Center === */
+  .center { display: flex; flex-direction: column; min-width: 0; background: var(--bg-page); position: relative; height: 100vh; min-height: 760px; }
+
+  /* Header */
+  .header { padding: 16px 32px 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-shrink: 0; }
+  .crumb { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; }
+  .crumb a { color: var(--fg-3); text-decoration: none; cursor: pointer; }
+  .crumb a:hover { color: var(--fg-1); }
+  .crumb .sep { color: var(--fg-4); }
+  .crumb .now { color: var(--fg-1); }
+  .stage-label { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); display: flex; align-items: center; gap: 8px; }
+  .stage-label .num { color: var(--fg-4); }
+  .stage-label .name { color: var(--fg-1); font-weight: 500; }
+
+  /* Mode toggle (build/review) */
+  .mode-toggle { display: inline-flex; padding: 3px; background: var(--neutral-1); border: 1px solid var(--border-1); border-radius: 999px; gap: 0; }
+  .mode-btn { font-family: var(--font-sans); font-size: 12px; color: var(--fg-3); padding: 5px 12px; border: none; background: transparent; cursor: pointer; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; letter-spacing: -0.005em; }
+  .mode-btn:hover { color: var(--fg-1); }
+  .mode-btn.active { background: var(--bg-surface); color: var(--fg-1); font-weight: 500; box-shadow: var(--shadow-xs); border: 1px solid var(--border-1); padding: 4px 11px; }
+  .mode-btn svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Spectrum bar */
+  .spectrum-wrap { padding: 28px 32px 0; flex-shrink: 0; }
+  .spectrum { display: flex; height: 5px; border-radius: 999px; overflow: hidden; gap: 2px; }
+  .seg { flex: 1; position: relative; cursor: pointer; transition: transform var(--dur-fast) var(--ease-out); }
+  .seg .fill { position: absolute; inset: 0; border-radius: 2px; opacity: 0.22; transition: opacity var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+  .seg.complete .fill { opacity: 1; }
+  .seg.now .fill { opacity: 1; box-shadow: 0 0 0 1px rgba(255,255,255,0.6) inset, 0 0 12px var(--seg-glow, rgba(0,0,0,0.25)); }
+  .seg.pending .fill { opacity: 0.18; }
+  .seg:hover .fill { opacity: 0.85; }
+  .seg.now:hover .fill { opacity: 1; }
+  .seg.s1 { --seg-color: var(--bot-1); --seg-glow: rgba(154,166,143,0.45); }
+  .seg.s2 { --seg-color: var(--bot-2); --seg-glow: rgba(138,168,154,0.5); }
+  .seg.s3 { --seg-color: var(--bot-3); --seg-glow: rgba(125,168,174,0.5); }
+  .seg.s4 { --seg-color: var(--bot-4); --seg-glow: rgba(166,184,137,0.5); }
+  .seg.s5 { --seg-color: var(--bot-5); --seg-glow: rgba(201,194,133,0.55); }
+  .seg.s6 { --seg-color: var(--bot-6); --seg-glow: rgba(224,185,122,0.55); }
+  .seg.s7 { --seg-color: var(--bot-7); --seg-glow: rgba(212,154,110,0.55); }
+  .seg.s8 { --seg-color: var(--bot-8); --seg-glow: rgba(201,124,97,0.55); }
+  .seg.s9 { --seg-color: var(--bot-9); --seg-glow: rgba(168,115,145,0.55); }
+  .seg .fill { background: var(--seg-color); }
+  .seg .tip { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%) translateY(4px); white-space: nowrap; background: var(--neutral-8); color: var(--neutral-0); padding: 6px 10px; border-radius: var(--radius-sm); font-size: 12px; letter-spacing: -0.005em; opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); z-index: 10; box-shadow: var(--shadow-md); display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .seg .tip .tip-num { font-family: var(--font-mono); font-size: 10px; color: var(--neutral-4); letter-spacing: 0.04em; }
+  .seg .tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 4px solid transparent; border-top-color: var(--neutral-8); }
+  .seg:hover .tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* === Build mode (chat) === */
+  .build { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+  .build.hidden { display: none; }
+  .thread-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 32px 0 140px; }
+  .thread-scroll::-webkit-scrollbar { width: 6px; }
+  .thread-scroll::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 999px; }
+  .thread { display: flex; flex-direction: column; gap: 28px; }
+  .msg { max-width: 720px; margin: 0 auto; width: 100%; padding: 0 32px; display: flex; gap: 14px; align-items: flex-start; box-sizing: border-box; }
+  .msg .role { width: 26px; height: 26px; border-radius: 999px; flex-shrink: 0; display: grid; place-items: center; font-family: var(--font-mono); font-size: 11px; margin-top: 2px; }
+  .msg .role.assistant { background: var(--neutral-8); color: var(--neutral-0); }
+  .msg .role.user { background: var(--bg-surface); border: 1px solid var(--border-2); color: var(--fg-1); }
+  .bubble { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .bubble .meta { font-family: var(--font-mono); font-size: 11px; color: var(--fg-4); letter-spacing: 0.04em; display: flex; gap: 10px; align-items: center; }
+  .bubble .meta .who { font-weight: 500; color: var(--fg-2); }
+  .bubble .body p { font-size: 15px; line-height: 1.55; color: var(--fg-1); margin: 0 0 8px; }
+  .bubble .body p:last-child { margin-bottom: 0; }
+  .bubble .body strong { font-weight: 500; }
+  .bubble .body code { font-family: var(--font-mono); font-size: 13px; background: var(--neutral-1); border: 1px solid var(--border-1); border-radius: 4px; padding: 1px 6px; }
+
+  .answer-card { border: 1px solid var(--border-1); border-radius: var(--radius-md); background: var(--bg-surface); padding: 14px 16px; margin-top: 4px; display: flex; flex-direction: column; gap: 10px; }
+  .answer-card .q-eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-4); }
+  .opts { display: flex; flex-direction: column; gap: 6px; }
+  .opt { display: flex; gap: 10px; padding: 9px 12px; border: 1px solid var(--border-1); border-radius: var(--radius-sm); background: var(--bg-page); font-size: 13px; color: var(--fg-1); cursor: pointer; }
+  .opt:hover { border-color: var(--neutral-7); }
+  .opt .key { font-family: var(--font-mono); font-size: 11px; color: var(--fg-4); }
+  .opt.selected { border-color: var(--neutral-8); background: var(--neutral-1); }
+
+  .artifact-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border-2); border-radius: var(--radius-sm); background: var(--bg-surface); font-family: var(--font-mono); font-size: 12px; color: var(--fg-1); cursor: pointer; box-shadow: var(--shadow-xs); margin-top: 6px; align-self: flex-start; }
+  .artifact-pill:hover { border-color: var(--neutral-7); }
+  .artifact-pill svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+  .artifact-pill .file { color: var(--fg-1); }
+  .artifact-pill .meta { color: var(--fg-4); }
+  .artifact-pill .pulse { width: 6px; height: 6px; border-radius: 999px; background: var(--accent-2); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* === Pinned composer === */
+  .composer-wrap { position: absolute; left: 0; right: 0; bottom: 0; padding: 24px 32px 22px; pointer-events: none; background: linear-gradient(to top, var(--bg-page) 55%, color-mix(in srgb, var(--bg-page) 92%, transparent) 75%, transparent); }
+  .composer { max-width: 720px; margin: 0 auto; pointer-events: auto; background: var(--bg-surface); border: 1px solid var(--border-2); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .composer:focus-within { border-color: var(--neutral-7); }
+  .composer-input { border: none; outline: none; background: transparent; font-family: var(--font-sans); font-size: 15px; color: var(--fg-1); resize: none; min-height: 22px; line-height: 1.5; padding: 4px 4px 0; width: 100%; box-sizing: border-box; }
+  .composer-input::placeholder { color: var(--fg-4); }
+  .composer-row { display: flex; align-items: center; gap: 6px; }
+  .icon-btn { width: 28px; height: 28px; border-radius: var(--radius-sm); border: none; background: transparent; cursor: pointer; display: grid; place-items: center; color: var(--fg-3); }
+  .icon-btn:hover { background: var(--neutral-1); color: var(--fg-1); }
+  .icon-btn svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .composer-row .spacer { flex: 1; }
+  .hint-kbd { font-family: var(--font-mono); font-size: 11px; color: var(--fg-4); display: inline-flex; gap: 4px; align-items: center; padding-right: 4px; }
+  .hint-kbd kbd { font-family: var(--font-mono); font-size: 10px; padding: 2px 5px; background: var(--neutral-1); border: 1px solid var(--border-1); border-radius: 4px; color: var(--fg-3); }
+  .send { height: 28px; padding: 0 10px 0 12px; border-radius: 999px; border: none; background: var(--neutral-8); color: var(--neutral-0); font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .send svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+  /* === Review mode === */
+  .review { flex: 1; min-height: 0; display: none; grid-template-columns: 280px 1fr; border-top: 1px solid var(--border-1); margin-top: 24px; }
+  .review.active { display: grid; }
+  .build.hidden + .review-wrap, .review-wrap { display: contents; }
+
+  .doc-list { background: var(--neutral-1); border-right: 1px solid var(--border-1); display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+  .doc-list-head { padding: 14px 16px 10px; border-bottom: 1px solid var(--border-1); }
+  .doc-list-head .eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-4); }
+  .doc-list-head .count { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); margin-left: 6px; }
+  .doc-list-search { padding: 10px 12px; border-bottom: 1px solid var(--border-1); }
+  .doc-list-search input { width: 100%; box-sizing: border-box; font-family: var(--font-sans); font-size: 12px; padding: 6px 10px; border: 1px solid var(--border-1); border-radius: var(--radius-sm); background: var(--bg-surface); color: var(--fg-1); outline: none; }
+  .doc-list-search input::placeholder { color: var(--fg-4); }
+  .doc-list-search input:focus { border-color: var(--neutral-7); }
+  .doc-list-body { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 8px; }
+  .doc-list-body::-webkit-scrollbar { width: 6px; }
+  .doc-list-body::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 999px; }
+  .doc-group { margin-bottom: 10px; }
+  .doc-group .group-eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; color: var(--fg-4); padding: 6px 8px; display: flex; align-items: center; gap: 8px; }
+  .doc-group .group-eyebrow .dot { width: 6px; height: 6px; border-radius: 999px; }
+  .doc-item { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; }
+  .doc-item:hover { background: var(--bg-surface); }
+  .doc-item.active { background: var(--bg-surface); border-color: var(--border-1); box-shadow: var(--shadow-xs); }
+  .doc-item .name { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--fg-1); min-width: 0; }
+  .doc-item .name svg { width: 13px; height: 13px; stroke: var(--fg-3); stroke-width: 1.5; fill: none; flex-shrink: 0; }
+  .doc-item .name .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-item .name .pulse { width: 5px; height: 5px; border-radius: 999px; background: var(--accent-2); animation: pulse 1.2s ease-in-out infinite; flex-shrink: 0; margin-left: auto; }
+  .doc-item .sub { display: flex; gap: 8px; padding-left: 21px; font-family: var(--font-mono); font-size: 10px; color: var(--fg-4); letter-spacing: 0.02em; }
+  .doc-item .sub .stage-pip { width: 4px; height: 4px; border-radius: 999px; align-self: center; }
+
+  /* Preview pane */
+  .preview { display: flex; flex-direction: column; min-width: 0; background: var(--bg-page); }
+  .preview-head { padding: 14px 22px; border-bottom: 1px solid var(--border-1); display: flex; align-items: flex-start; gap: 12px; }
+  .preview-head .left { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+  .preview-head .file-path { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.02em; }
+  .preview-head .file-name { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; color: var(--fg-1); display: flex; align-items: center; gap: 10px; }
+  .preview-head .badge { font-family: var(--font-mono); font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 999px; background: var(--accent-2-soft); color: var(--accent-2); letter-spacing: 0.04em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 5px; }
+  .preview-head .badge .pulse { width: 5px; height: 5px; border-radius: 999px; background: var(--accent-2); animation: pulse 1.2s ease-in-out infinite; }
+  .preview-head .stage-tag { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); display: inline-flex; align-items: center; gap: 6px; }
+  .preview-head .stage-tag .pip { width: 6px; height: 6px; border-radius: 999px; }
+  .preview-head .actions { display: flex; gap: 6px; }
+  .ghost-btn { font-size: 12px; color: var(--fg-2); padding: 5px 10px; background: var(--bg-surface); border: 1px solid var(--border-2); border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-sans); }
+  .ghost-btn:hover { border-color: var(--neutral-7); color: var(--fg-1); }
+  .primary-btn { font-size: 12px; font-weight: 500; padding: 5px 10px; background: var(--neutral-8); color: var(--neutral-0); border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-sans); }
+
+  .preview-tabs { display: flex; gap: 2px; padding: 0 22px; border-bottom: 1px solid var(--border-1); }
+  .ptab { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; padding: 8px 10px; color: var(--fg-3); cursor: pointer; border-bottom: 1px solid transparent; margin-bottom: -1px; }
+  .ptab:hover { color: var(--fg-1); }
+  .ptab.active { color: var(--fg-1); border-bottom-color: var(--neutral-8); }
+
+  .code-pane { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: auto 1fr; background: var(--bg-page); }
+  .code-pane::-webkit-scrollbar { width: 8px; height: 8px; }
+  .code-pane::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 999px; }
+  .gutter { font-family: var(--font-mono); font-size: 12px; color: var(--fg-4); padding: 16px 14px 16px 22px; text-align: right; user-select: none; border-right: 1px solid var(--border-1); background: var(--neutral-1); }
+  .gutter span { display: block; line-height: 1.7; }
+  .code { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; padding: 16px 22px; color: var(--fg-1); white-space: pre; }
+
+  /* Syntax highlighting — botanical pastel tokens */
+  .hl-key  { color: var(--bot-3); font-weight: 500; }   /* sea-glass keys */
+  .hl-str  { color: var(--bot-4); }                      /* moss strings */
+  .hl-num  { color: var(--bot-7); }                      /* ochre numbers */
+  .hl-bool { color: var(--bot-9); font-weight: 500; }    /* plum booleans */
+  .hl-com  { color: var(--ink-4); font-style: italic; }
+  .hl-punct{ color: var(--fg-3); }
+  .hl-ref  { color: var(--bot-8); }                      /* terracotta refs */
+  .hl-warn { background: var(--bot-7-soft); border-left: 2px solid var(--accent-2); margin-left: -22px; padding-left: 20px; display: inline-block; min-width: calc(100% + 44px); margin-right: -22px; padding-right: 22px; }
+
+  /* Theme toggle button */
+  .theme-toggle { width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--border-1); background: var(--bg-surface); cursor: pointer; display: grid; place-items: center; color: var(--fg-2); margin-left: 8px; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+  .theme-toggle:hover { color: var(--fg-1); border-color: var(--border-2); }
+  .theme-toggle svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  :root[data-theme="dark"] .theme-toggle .sun { display: block; }
+  :root[data-theme="dark"] .theme-toggle .moon { display: none; }
+  .theme-toggle .sun { display: none; }
+  .theme-toggle .moon { display: block; }
+
+  .preview-foot { border-top: 1px solid var(--border-1); padding: 10px 22px; display: flex; align-items: center; gap: 8px; background: var(--bg-surface); flex-shrink: 0; }
+  .preview-foot .meta { font-family: var(--font-mono); font-size: 10px; color: var(--fg-4); margin-right: auto; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="rail-l">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none">
+        <path d="M4 22 L16 10 L28 22" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8 26 L16 18 L24 26" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>
+      </svg>
+      <span class="brand-word">sherpy</span>
+      <span class="brand-version">v0.4.2</span>
+    </div>
+    <div class="nav-section">
+      <span class="nav-eyebrow">Workspace</span>
+      <a class="nav-item active"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>sherpy-web<span class="count">5</span></a>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M16 8l-4 8-4-2-2-4z"/></svg>billing-platform</a>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New project</a>
+    </div>
+    <div class="nav-section">
+      <span class="nav-eyebrow">Recent runs</span>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>biz-req-04</a>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>biz-req-03</a>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>style-anchors</a>
+    </div>
+    <div class="footer">
+      <div class="avatar">KW</div>
+      <div class="who"><span class="n">Kyle Welsby</span><span class="e">@validkeys</span></div>
+    </div>
+  </aside>
+
+  <main class="center">
+    <div class="header">
+      <div class="crumb">
+        <a>sherpy-web</a><span class="sep">/</span><a>run-04</a><span class="sep">/</span><span class="now">business requirements</span>
+      </div>
+      <div class="stage-label"><span class="num">stage 02 of 10</span><span>·</span><span class="name">Business requirements</span></div>
+      <div class="mode-toggle" id="mode-toggle">
+        <button class="mode-btn active" data-mode="build">
+          <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg>
+          Build
+        </button>
+        <button class="mode-btn" data-mode="review">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>
+          Review
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--fg-4);margin-left:2px;">7</span>
+        </button>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+        <svg class="moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+    </div>
+
+    <div class="spectrum-wrap">
+      <div class="spectrum">
+        <div class="seg s1 complete"><div class="fill"></div><div class="tip"><span class="tip-num">01</span>Gap analysis</div></div>
+        <div class="seg s2 now"><div class="fill"></div><div class="tip"><span class="tip-num">02 · in progress</span>Business requirements</div></div>
+        <div class="seg s3 pending"><div class="fill"></div><div class="tip"><span class="tip-num">03</span>Technical requirements</div></div>
+        <div class="seg s4 pending"><div class="fill"></div><div class="tip"><span class="tip-num">04</span>Style anchors</div></div>
+        <div class="seg s5 pending"><div class="fill"></div><div class="tip"><span class="tip-num">05</span>Implementation plan</div></div>
+        <div class="seg s6 pending"><div class="fill"></div><div class="tip"><span class="tip-num">06</span>Plan review</div></div>
+        <div class="seg s7 pending"><div class="fill"></div><div class="tip"><span class="tip-num">07</span>Architecture decisions</div></div>
+        <div class="seg s8 pending"><div class="fill"></div><div class="tip"><span class="tip-num">08</span>Delivery timeline</div></div>
+        <div class="seg s9 pending"><div class="fill"></div><div class="tip"><span class="tip-num">09</span>QA test plan</div></div>
+      </div>
+    </div>
+
+    <!-- ============= BUILD MODE ============= -->
+    <section class="build" id="build-mode">
+      <div class="thread-scroll">
+        <div class="thread">
+          <div class="msg">
+            <div class="role assistant">S</div>
+            <div class="bubble">
+              <div class="meta"><span class="who">sherpy</span><span>· 09:14</span></div>
+              <div class="body">
+                <p>Gap analysis is signed off. Three gaps were resolved before promotion. Starting <strong>business requirements</strong>.</p>
+                <p>Sherpy will work through outcomes, scope, constraints, acceptance criteria, and stakeholders, then produce <code>business-requirements.yaml</code>.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="msg">
+            <div class="role assistant">S</div>
+            <div class="bubble">
+              <div class="meta"><span class="who">sherpy</span><span>· 09:14</span><span>· question 4 of 17</span></div>
+              <div class="body">
+                <p>Who is the primary user of the Sherpy web app on day one?</p>
+              </div>
+              <div class="answer-card">
+                <span class="q-eyebrow">single select · pick one</span>
+                <div class="opts">
+                  <div class="opt selected"><span class="key">A</span><span>Solo engineers running side projects with Claude Code</span></div>
+                  <div class="opt"><span class="key">B</span><span>Tech leads scoping work for a small team</span></div>
+                  <div class="opt"><span class="key">C</span><span>Product managers writing structured PRDs</span></div>
+                  <div class="opt"><span class="key">D</span><span>Other — describe in chat</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="msg">
+            <div class="role user">KW</div>
+            <div class="bubble">
+              <div class="meta"><span class="who">you</span><span>· 09:15</span></div>
+              <div class="body">
+                <p>A — solo engineers. They already use Claude Code and want a richer surface to drive the same skills without losing structure.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="msg">
+            <div class="role assistant">S</div>
+            <div class="bubble">
+              <div class="meta"><span class="who">sherpy</span><span>· 09:16</span></div>
+              <div class="body">
+                <p>Recorded. Updated <code>business-requirements.yaml</code> — two new gaps surfaced. Switch to <strong>Review</strong> to inspect.</p>
+              </div>
+              <button class="artifact-pill" onclick="setMode('review')">
+                <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+                <span class="file">business-requirements.yaml</span>
+                <span class="meta">v12 · 17.4 KB</span>
+                <span class="pulse"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="composer-wrap">
+        <div class="composer">
+          <textarea class="composer-input" rows="1">Single user for v1, no auth. Local-first persistence in IndexedDB, with an explicit export to disk.</textarea>
+          <div class="composer-row">
+            <button class="icon-btn"><svg viewBox="0 0 24 24"><path d="M21.4 11.05L12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.67 3.67 0 0 1 5.19 5.19l-9.2 9.19a1.83 1.83 0 0 1-2.59-2.59l8.49-8.49"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24"><path d="M17 4L7 20"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></button>
+            <span class="spacer"></span>
+            <span class="hint-kbd"><kbd>⌘</kbd><kbd>↵</kbd> to send</span>
+            <button class="send">Send <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= REVIEW MODE ============= -->
+    <section class="review" id="review-mode">
+      <aside class="doc-list">
+        <div class="doc-list-head">
+          <span class="eyebrow">Documents</span>
+          <span class="count">7 files · 2 streaming</span>
+        </div>
+        <div class="doc-list-search">
+          <input type="text" placeholder="Filter…" />
+        </div>
+        <div class="doc-list-body">
+          <div class="doc-group">
+            <div class="group-eyebrow"><span class="dot" style="background:var(--bot-2)"></span>Stage 02 · Business</div>
+            <div class="doc-item active">
+              <div class="name">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                <span class="file-name">business-requirements.yaml</span>
+                <span class="pulse"></span>
+              </div>
+              <div class="sub"><span class="stage-pip" style="background:var(--bot-2)"></span><span>v12 · just now · 17.4 KB</span></div>
+            </div>
+            <div class="doc-item">
+              <div class="name">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                <span class="file-name">stakeholder-map.md</span>
+              </div>
+              <div class="sub"><span class="stage-pip" style="background:var(--bot-2)"></span><span>v3 · 4m ago · 6.1 KB</span></div>
+            </div>
+          </div>
+
+          <div class="doc-group">
+            <div class="group-eyebrow"><span class="dot" style="background:var(--bot-1)"></span>Stage 01 · Gap analysis</div>
+            <div class="doc-item">
+              <div class="name">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                <span class="file-name">gap-analysis.yaml</span>
+              </div>
+              <div class="sub"><span class="stage-pip" style="background:var(--bot-1)"></span><span>v6 · signed off · 12.8 KB</span></div>
+            </div>
+            <div class="doc-item">
+              <div class="name">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                <span class="file-name">research-notes.md</span>
+              </div>
+              <div class="sub"><span class="stage-pip" style="background:var(--bot-1)"></span><span>v2 · signed off · 9.4 KB</span></div>
+            </div>
+            <div class="doc-item">
+              <div class="name">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                <span class="file-name">verification.jsonl</span>
+                <span class="pulse"></span>
+              </div>
+              <div class="sub"><span class="stage-pip" style="background:var(--bot-1)"></span><span>v4 · streaming · 3.2 KB</span></div>
+            </div>
+          </div>
+
+          <div class="doc-group">
+            <div class="group-eyebrow"><span class="dot" style="background:var(--neutral-4)"></span>Workspace</div>
+            <div class="doc-item">
+              <div class="name">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                <span class="file-name">project.yaml</span>
+              </div>
+              <div class="sub"><span class="stage-pip" style="background:var(--neutral-4)"></span><span>v1 · 1h ago · 1.1 KB</span></div>
+            </div>
+            <div class="doc-item">
+              <div class="name">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                <span class="file-name">README.md</span>
+              </div>
+              <div class="sub"><span class="stage-pip" style="background:var(--neutral-4)"></span><span>v1 · 1h ago · 2.4 KB</span></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="preview">
+        <div class="preview-head">
+          <div class="left">
+            <span class="file-path">requirements / business-requirements.yaml</span>
+            <span class="file-name">
+              business-requirements.yaml
+              <span class="badge"><span class="pulse"></span>streaming</span>
+            </span>
+            <span class="stage-tag"><span class="pip" style="background:var(--bot-2)"></span>stage 02 · Business requirements</span>
+          </div>
+          <div class="actions">
+            <button class="ghost-btn">View diff</button>
+            <button class="ghost-btn">Download</button>
+            <button class="primary-btn">Promote</button>
+          </div>
+        </div>
+
+        <div class="preview-tabs">
+          <span class="ptab active">Source</span>
+          <span class="ptab">Outline</span>
+          <span class="ptab">Diff · v11→v12</span>
+          <span class="ptab">Gaps · 2</span>
+        </div>
+
+        <div class="code-pane">
+          <div class="gutter">
+<span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span><span>28</span><span>29</span><span>30</span><span>31</span><span>32</span><span>33</span>
+          </div>
+          <div class="code"><span class="hl-com"># business-requirements.yaml</span>
+<span class="hl-com"># generated by sherpy · stage 02 · v12</span>
+<span class="hl-com"># last updated: just now</span>
+
+<span class="hl-key">project</span><span class="hl-punct">:</span>     <span class="hl-str">sherpy-web</span>
+<span class="hl-key">run_id</span><span class="hl-punct">:</span>      <span class="hl-str">run-04</span>
+<span class="hl-key">stage</span><span class="hl-punct">:</span>       <span class="hl-str">business-requirements</span>
+<span class="hl-key">status</span><span class="hl-punct">:</span>      <span class="hl-str">in-progress</span>
+<span class="hl-key">version</span><span class="hl-punct">:</span>     <span class="hl-num">12</span>
+
+<span class="hl-key">stakeholders</span><span class="hl-punct">:</span>
+  <span class="hl-key">primary</span><span class="hl-punct">:</span>   <span class="hl-str">solo-engineers</span>
+  <span class="hl-key">secondary</span><span class="hl-punct">:</span> <span class="hl-str">tech-leads</span>
+  <span class="hl-key">decider</span><span class="hl-punct">:</span>   <span class="hl-ref">@validkeys</span>
+
+<span class="hl-key">outcomes</span><span class="hl-punct">:</span>
+  <span class="hl-punct">-</span> <span class="hl-key">id</span><span class="hl-punct">:</span> <span class="hl-str">O1</span>
+    <span class="hl-key">title</span><span class="hl-punct">:</span> <span class="hl-str">"Drive Sherpy skills via UI"</span>
+    <span class="hl-key">measure</span><span class="hl-punct">:</span> <span class="hl-str">"95% of CLI flows reachable"</span>
+  <span class="hl-punct">-</span> <span class="hl-key">id</span><span class="hl-punct">:</span> <span class="hl-str">O2</span>
+    <span class="hl-key">title</span><span class="hl-punct">:</span> <span class="hl-str">"Preserve gap discipline"</span>
+    <span class="hl-key">measure</span><span class="hl-punct">:</span> <span class="hl-str">"0 promotions w/ open gaps"</span>
+
+<span class="hl-key">constraints</span><span class="hl-punct">:</span>
+  <span class="hl-key">runtime</span><span class="hl-punct">:</span>  <span class="hl-str">browser-only</span>
+  <span class="hl-key">offline</span><span class="hl-punct">:</span>  <span class="hl-bool">true</span>
+<span class="hl-warn">  <span class="hl-key">auth</span><span class="hl-punct">:</span>     <span class="hl-com">⚠ unresolved — gap #1</span></span>
+<span class="hl-warn">  <span class="hl-key">storage</span><span class="hl-punct">:</span>  <span class="hl-com">⚠ unresolved — gap #2</span></span>
+
+<span class="hl-key">acceptance</span><span class="hl-punct">:</span>
+  <span class="hl-punct">-</span> <span class="hl-str">"User completes 5-stage flow in &lt; 90m"</span>
+  <span class="hl-punct">-</span> <span class="hl-str">"All artifacts diffable as plain text"</span>
+<span class="hl-com">▌</span></div>
+        </div>
+
+        <div class="preview-foot">
+          <span class="meta">17.4 KB · v12 · auto-saved · sha 8a2f9c1</span>
+          <button class="ghost-btn">Copy path</button>
+          <button class="ghost-btn">Open in editor</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  function setMode(mode) {
+    const build = document.getElementById('build-mode');
+    const review = document.getElementById('review-mode');
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    if (mode === 'review') {
+      build.style.display = 'none';
+      review.classList.add('active');
+    } else {
+      build.style.display = 'flex';
+      review.classList.remove('active');
+    }
+  }
+  document.getElementById('mode-toggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('.mode-btn');
+    if (btn) setMode(btn.dataset.mode);
+  });
+  // Theme toggle (light/dark) — botanical pastel palette
+  const themeBtn = document.getElementById('theme-toggle');
+  if (themeBtn) {
+    const saved = localStorage.getItem('sherpy-theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    themeBtn.addEventListener('click', () => {
+      const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = cur === 'dark' ? 'light' : 'dark';
+      if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('sherpy-theme', next);
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'r') { e.preventDefault();
+      const cur = document.querySelector('.mode-btn.active').dataset.mode;
+      setMode(cur === 'build' ? 'review' : 'build');
+    }
+  });
+</script>
+</body>
+</html>

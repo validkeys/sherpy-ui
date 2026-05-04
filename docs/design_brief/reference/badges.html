@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Badges</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin:0; padding:32px; background:var(--bg-page); display:flex; flex-wrap:wrap; gap:8px; height:180px; box-sizing:border-box; align-content:center; }
+  .b { font-family:var(--font-mono); font-size:11px; font-weight:500; letter-spacing:.04em; padding:3px 9px; border-radius:var(--radius-pill); display:inline-flex; align-items:center; gap:6px; border:1px solid transparent; }
+  .pending { background:var(--neutral-1); color:var(--fg-3); border-color:var(--border-1); }
+  .active { background:var(--neutral-8); color:var(--neutral-0); }
+  .now { background:var(--accent-2-soft); color:var(--accent-2); }
+  .complete { background:var(--success-soft); color:var(--success); }
+  .gap { background:var(--warning-soft); color:var(--warning); }
+  .blocked { background:var(--danger-soft); color:var(--danger); }
+  .info { background:var(--info-soft); color:var(--info); }
+  .dot { width:6px; height:6px; border-radius:999px; background:currentColor; }
+</style></head>
+<body>
+  <span class="b pending"><span class="dot"></span>pending</span>
+  <span class="b active"><span class="dot"></span>active</span>
+  <span class="b now"><span class="dot"></span>now</span>
+  <span class="b complete"><span class="dot"></span>complete</span>
+  <span class="b gap"><span class="dot"></span>3 gaps</span>
+  <span class="b blocked"><span class="dot"></span>blocked</span>
+  <span class="b info"><span class="dot"></span>v0.4.2</span>
+  <span class="b pending">phase 03</span>
+  <span class="b complete">signed off</span>
+  <span class="b now">streaming</span>
+</body></html>

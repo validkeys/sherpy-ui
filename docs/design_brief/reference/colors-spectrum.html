@@ -1,0 +1,50 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Botanical spectrum</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin:0; padding:32px; background:var(--bg-page); display:flex; flex-direction:column; gap:24px; height:340px; box-sizing:border-box; font-family:var(--font-sans); color:var(--fg-1); }
+  .head { display:flex; align-items:baseline; justify-content:space-between; }
+  .head h2 { font-size:18px; font-weight:500; letter-spacing:-0.01em; margin:0; }
+  .head .sub { font-family:var(--font-mono); font-size:11px; color:var(--fg-3); letter-spacing:0.04em; }
+
+  .bar { display:flex; height:6px; border-radius:999px; overflow:hidden; gap:2px; }
+  .bar .seg { flex:1; border-radius:2px; }
+
+  .grid { display:grid; grid-template-columns:repeat(9,1fr); gap:8px; }
+  .swatch { display:flex; flex-direction:column; gap:6px; }
+  .swatch .chip { aspect-ratio:1.4/1; border-radius:var(--radius-sm); border:1px solid var(--border-1); position:relative; overflow:hidden; }
+  .swatch .chip .soft { position:absolute; left:0; right:0; bottom:0; height:38%; }
+  .swatch .label { font-family:var(--font-mono); font-size:10px; color:var(--fg-2); letter-spacing:0.02em; }
+  .swatch .hex { font-family:var(--font-mono); font-size:10px; color:var(--fg-4); }
+  .swatch .name { font-size:12px; color:var(--fg-1); letter-spacing:-0.005em; }
+</style></head>
+<body>
+  <div class="head">
+    <h2>Botanical pastel spectrum</h2>
+    <span class="sub">9 stages · herbarium · soft saturation</span>
+  </div>
+
+  <div class="bar">
+    <div class="seg" style="background:var(--bot-1)"></div>
+    <div class="seg" style="background:var(--bot-2)"></div>
+    <div class="seg" style="background:var(--bot-3)"></div>
+    <div class="seg" style="background:var(--bot-4)"></div>
+    <div class="seg" style="background:var(--bot-5)"></div>
+    <div class="seg" style="background:var(--bot-6)"></div>
+    <div class="seg" style="background:var(--bot-7)"></div>
+    <div class="seg" style="background:var(--bot-8)"></div>
+    <div class="seg" style="background:var(--bot-9)"></div>
+  </div>
+
+  <div class="grid">
+    <div class="swatch"><div class="chip" style="background:var(--bot-1)"><div class="soft" style="background:var(--bot-1-soft)"></div></div><span class="label">--bot-1</span><span class="name">lichen</span><span class="hex">#9AA68F</span></div>
+    <div class="swatch"><div class="chip" style="background:var(--bot-2)"><div class="soft" style="background:var(--bot-2-soft)"></div></div><span class="label">--bot-2</span><span class="name">sage</span><span class="hex">#8AA89A</span></div>
+    <div class="swatch"><div class="chip" style="background:var(--bot-3)"><div class="soft" style="background:var(--bot-3-soft)"></div></div><span class="label">--bot-3</span><span class="name">sea-glass</span><span class="hex">#7DA8AE</span></div>
+    <div class="swatch"><div class="chip" style="background:var(--bot-4)"><div class="soft" style="background:var(--bot-4-soft)"></div></div><span class="label">--bot-4</span><span class="name">moss</span><span class="hex">#A6B889</span></div>
+    <div class="swatch"><div class="chip" style="background:var(--bot-5)"><div class="soft" style="background:var(--bot-5-soft)"></div></div><span class="label">--bot-5</span><span class="name">dried grass</span><span class="hex">#C9C285</span></div>
+    <div class="swatch"><div class="chip" style="background:var(--bot-6)"><div class="soft" style="background:var(--bot-6-soft)"></div></div><span class="label">--bot-6</span><span class="name">honey</span><span class="hex">#E0B97A</span></div>
+    <div class="swatch"><div class="chip" style="background:var(--bot-7)"><div class="soft" style="background:var(--bot-7-soft)"></div></div><span class="label">--bot-7</span><span class="name">ochre</span><span class="hex">#D49A6E</span></div>
+    <div class="swatch"><div class="chip" style="background:var(--bot-8)"><div class="soft" style="background:var(--bot-8-soft)"></div></div><span class="label">--bot-8</span><span class="name">terracotta</span><span class="hex">#C97C61</span></div>
+    <div class="swatch"><div class="chip" style="background:var(--bot-9)"><div class="soft" style="background:var(--bot-9-soft)"></div></div><span class="label">--bot-9</span><span class="name">plum</span><span class="hex">#A87391</span></div>
+  </div>
+</body></html>

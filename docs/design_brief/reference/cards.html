@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Cards</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin:0; padding:24px; background:var(--bg-page); display:grid; grid-template-columns:1fr 1fr; gap:14px; height:280px; box-sizing:border-box; align-content:center; }
+  .card { background:var(--bg-surface); border:1px solid var(--border-1); border-radius:var(--radius-md); padding:18px 20px; position:relative; display:flex; flex-direction:column; gap:8px; }
+  .card.active { border-left:2px solid var(--neutral-8); }
+  .card.complete { border-left:2px solid var(--success); }
+  .eyebrow { font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--fg-3); }
+  .title { font-family:var(--font-sans); font-size:17px; font-weight:500; color:var(--fg-1); line-height:1.25; letter-spacing:-0.015em; }
+  .desc { font-family:var(--font-sans); font-size:13px; color:var(--fg-2); line-height:1.5; }
+  .meta { display:flex; gap:8px; margin-top:auto; font-family:var(--font-mono); font-size:11px; color:var(--fg-3); }
+  .meta span { padding:2px 7px; background:var(--neutral-1); border:1px solid var(--border-1); border-radius:4px; }
+  .check { width:14px; height:14px; color:var(--success); }
+</style></head>
+<body>
+  <div class="card active">
+    <span class="eyebrow">Phase 02 · Active</span>
+    <h3 class="title">Business requirements</h3>
+    <p class="desc">Structured interview deriving outcomes, constraints, and acceptance criteria.</p>
+    <div class="meta"><span>17 questions</span><span>est. 25m</span></div>
+  </div>
+  <div class="card complete">
+    <span class="eyebrow" style="display:inline-flex; align-items:center; gap:6px;"><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>Phase 01 · Complete</span>
+    <h3 class="title">Gap analysis</h3>
+    <p class="desc">3 gaps surfaced and resolved before promotion.</p>
+    <div class="meta"><span>gaps: 3 → 0</span><span>signed off</span></div>
+  </div>
+</body></html>
