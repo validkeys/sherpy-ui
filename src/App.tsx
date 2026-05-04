@@ -1,5 +1,11 @@
+import { ThemeProvider, AppShell } from '@/components'
+
 function App() {
-  return <></>;
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
+  )
 }
 
-export default App;
+export default App
