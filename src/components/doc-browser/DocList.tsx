@@ -78,8 +78,8 @@ export function DocList({ groups, activeDoc, onDocClick }: DocListProps) {
           <div key={group.label} className="mb-[10px]">
             <div className="flex items-center gap-2 px-2 py-[6px] font-mono text-[10px] tracking-[0.06em] text-fg-4">
               <span
-                className="w-[6px] h-[6px] rounded-full flex-shrink-0"
-                style={{ backgroundColor: group.stageColor }}
+                className="w-[6px] h-[6px] rounded-full flex-shrink-0 bg-[--stage-color]"
+                style={{ '--stage-color': group.stageColor } as React.CSSProperties}
               />
               {group.label}
             </div>

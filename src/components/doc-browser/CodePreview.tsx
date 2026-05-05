@@ -82,8 +82,8 @@ export function CodePreview({
           </span>
           <span className="flex items-center gap-[6px] font-mono text-[11px] text-fg-3">
             <span
-              className="w-[6px] h-[6px] rounded-full flex-shrink-0"
-              style={{ backgroundColor: stageColor }}
+              className="w-[6px] h-[6px] rounded-full flex-shrink-0 bg-[--stage-color]"
+              style={{ '--stage-color': stageColor } as React.CSSProperties}
             />
             {stageName}
           </span>

@@ -54,8 +54,8 @@ export function DocItem({
       </div>
       <div className="flex items-center gap-2 pl-[21px] font-mono text-[10px] text-fg-4 tracking-[0.02em]">
         <span
-          className="w-1 h-1 rounded-full flex-shrink-0"
-          style={{ backgroundColor: stageColor }}
+          className="w-1 h-1 rounded-full flex-shrink-0 bg-[--stage-color]"
+          style={{ '--stage-color': stageColor } as React.CSSProperties}
         />
         <span>
           {version} · {time} · {size}

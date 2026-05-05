@@ -57,13 +57,14 @@ function Segment({
       {/* Colored fill bar */}
       <span
         aria-hidden
+        style={{ '--seg-color': segColor, '--seg-glow': glowShadow ?? 'none' } as React.CSSProperties}
         className={cn(
           'absolute inset-0',
           borderRadiusClass,
           fillOpacityClass,
+          'bg-[--seg-color] [box-shadow:var(--seg-glow)]',
           'motion-safe:transition-[opacity,box-shadow] motion-safe:duration-[140ms] motion-safe:[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]',
         )}
-        style={{ background: segColor, boxShadow: glowShadow }}
       />
 
       {/* Tooltip — shown on hover via group-hover */}
@@ -86,13 +87,7 @@ function Segment({
         {/* Downward arrow */}
         <span
           aria-hidden
-          className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0"
-          style={{
-            borderWidth: 4,
-            borderStyle: 'solid',
-            borderColor: 'transparent',
-            borderTopColor: 'var(--bg-inverse)',
-          }}
+          className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-4 border-solid border-transparent border-t-[var(--bg-inverse)]"
         />
       </span>
     </button>
