@@ -74,8 +74,8 @@
                   "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono:    "Geist Mono", ui-monospace, "SF Mono", "JetBrains Mono",
                   "Cascadia Code", Menlo, Consolas, monospace;
-  --font-serif:   "Instrument Serif", "Iowan Old Style", "Times New Roman",
-                  Georgia, serif;
+  --font-serif:   "Bodoni Moda Variable", "Bodoni Moda", "Didot", "Bodoni MT",
+                  "Hoefler Text", Georgia, serif;
 
   /* ---------- Type: scale ---------- */
   --fs-xs:   0.75rem;
@@ -267,7 +267,6 @@ body { margin: 0; }
 
 /* ---------- Headings ---------- */
 h1, .h1 {
-  font-family: var(--font-sans);
   font-size: var(--fs-3xl);
   font-weight: var(--fw-medium);
   line-height: var(--lh-tight);
@@ -276,7 +275,6 @@ h1, .h1 {
   margin: 0;
 }
 h2, .h2 {
-  font-family: var(--font-sans);
   font-size: var(--fs-2xl);
   font-weight: var(--fw-medium);
   line-height: var(--lh-tight);
@@ -285,7 +283,6 @@ h2, .h2 {
   margin: 0;
 }
 h3, .h3 {
-  font-family: var(--font-sans);
   font-size: var(--fs-lg);
   font-weight: var(--fw-medium);
   line-height: var(--lh-snug);
@@ -294,7 +291,6 @@ h3, .h3 {
   margin: 0;
 }
 h4, .h4 {
-  font-family: var(--font-sans);
   font-size: var(--fs-md);
   font-weight: var(--fw-semibold);
   line-height: var(--lh-snug);
