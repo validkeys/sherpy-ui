@@ -34,9 +34,9 @@ Ordered for early visual feedback. Each milestone should be committed and review
 ## Milestone 3 — Primitives (Badge, Card)
 **Goal: All shadcn primitives re-skinned with Sherpy tokens**
 
-- [ ] `npx shadcn add badge` → re-skin in `ui/badge.tsx` (neutral/accent/success/warning/danger + soft flag)
-- [ ] `npx shadcn add card` → re-skin in `ui/card.tsx` (`bg-surface border-border-1 rounded-md shadow-xs`)
-- [ ] Export from `components/index.ts`
+- [x] `npx shadcn add badge` → re-skin in `ui/badge.tsx` (neutral/accent/success/warning/danger + soft flag)
+- [x] `npx shadcn add card` → re-skin in `ui/card.tsx` (`bg-surface border-border-1 rounded-md shadow-xs`)
+- [x] Export from `components/index.ts`
 
 **Acceptance:** No shadcn default colors (`oklch`, `--primary`, etc.) remain. Zero hex codes.
 
@@ -84,6 +84,7 @@ Ordered for early visual feedback. Each milestone should be committed and review
 ---
 
 ## Done
+- [x] Milestone 3 — Primitives (Badge + Card re-skinned, zero shadcn default colors)
 - [x] Milestone 1 — Shell & Theme (visible skeleton, light + dark verified)
 - [x] Vite + React 19 + TypeScript strict scaffolded
 - [x] `src/styles/tokens.css` — design tokens verbatim from brief

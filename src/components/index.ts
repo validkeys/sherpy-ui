@@ -1,4 +1,6 @@
 export * from './ui/button'
+export * from './ui/badge'
+export * from './ui/card'
 export * from './theme-provider'
 export * from './mode-toggle'
 export * from './header'
