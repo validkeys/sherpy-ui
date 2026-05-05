@@ -108,18 +108,14 @@ const SAMPLE_GROUPS: DocGroup[] = [
   },
 ]
 
-function findDoc(name: string) {
-  for (const group of SAMPLE_GROUPS) {
-    const doc = group.docs.find((d) => d.name === name)
-    if (doc) return { doc, group }
-  }
-  return null
-}
+const DOC_INDEX = new Map(
+  SAMPLE_GROUPS.flatMap((group) => group.docs.map((doc) => [doc.name, { doc, group }]))
+)
 
 export function ReviewView() {
   const [activeDoc, setActiveDoc] = useState('business-requirements.yaml')
 
-  const found = findDoc(activeDoc)
+  const found = DOC_INDEX.get(activeDoc)
   const doc = found?.doc
   const group = found?.group
 

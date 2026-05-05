@@ -17,6 +17,12 @@ const TOKEN_CLASS: Record<TokenType, string> = {
   plain:   '',
 }
 
+const RE_NUMBER = /^-?\d+(\.\d+)?$/
+const RE_COMMENT = /^\s*#/
+const RE_WHITESPACE = /^(\s*)(.*)$/
+const RE_KEY_VALUE = /^([a-zA-Z_][a-zA-Z0-9_-]*)(\s*:\s*)(.*)$/
+const RE_INLINE_COMMENT = /^(.*?)([ \t]+#.*)$/
+
 function tokenizeValue(val: string): Token[] {
   if (!val) return []
 
@@ -25,14 +31,14 @@ function tokenizeValue(val: string): Token[] {
   if (trimmed === 'true' || trimmed === 'false') {
     return [{ type: 'bool', text: val }]
   }
-  if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+  if (RE_NUMBER.test(trimmed)) {
     return [{ type: 'num', text: val }]
   }
   if (trimmed.startsWith('@') || trimmed.startsWith('$ref')) {
     return [{ type: 'ref', text: val }]
   }
   // Inline comment after value
-  const inlineComment = val.match(/^(.*?)([ \t]+#.*)$/)
+  const inlineComment = val.match(RE_INLINE_COMMENT)
   if (inlineComment && !val.trimStart().startsWith('"')) {
     return [
       ...tokenizeValue(inlineComment[1]!),
@@ -44,14 +50,14 @@ function tokenizeValue(val: string): Token[] {
 
 function tokenizeLine(line: string): Token[] {
   // Full-line comment
-  if (/^\s*#/.test(line)) {
+  if (RE_COMMENT.test(line)) {
     return [{ type: 'comment', text: line }]
   }
 
   const tokens: Token[] = []
 
   // Preserve leading whitespace
-  const wsMatch = line.match(/^(\s*)(.*)$/)
+  const wsMatch = line.match(RE_WHITESPACE)
   const ws = wsMatch?.[1] ?? ''
   const rest = wsMatch?.[2] ?? ''
 
@@ -67,7 +73,7 @@ function tokenizeLine(line: string): Token[] {
   if (!body) return tokens
 
   // key: value
-  const keyMatch = body.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)(\s*:\s*)(.*)$/)
+  const keyMatch = body.match(RE_KEY_VALUE)
   if (keyMatch) {
     tokens.push({ type: 'key', text: keyMatch[1]! })
     tokens.push({ type: 'punct', text: keyMatch[2]! })

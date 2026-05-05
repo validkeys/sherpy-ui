@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Search } from 'lucide-react'
 import { DocItem, type DocItemData } from './DocItem'
 
@@ -17,19 +17,28 @@ interface DocListProps {
 export function DocList({ groups, activeDoc, onDocClick }: DocListProps) {
   const [filter, setFilter] = useState('')
 
-  const filtered = groups
-    .map((g) => ({
-      ...g,
-      docs: g.docs.filter((d) =>
-        d.name.toLowerCase().includes(filter.toLowerCase()),
-      ),
-    }))
-    .filter((g) => g.docs.length > 0)
+  const filtered = useMemo(
+    () =>
+      groups
+        .map((g) => ({
+          ...g,
+          docs: g.docs.filter((d) =>
+            d.name.toLowerCase().includes(filter.toLowerCase()),
+          ),
+        }))
+        .filter((g) => g.docs.length > 0),
+    [groups, filter],
+  )
 
-  const totalCount = groups.reduce((n, g) => n + g.docs.length, 0)
-  const streamingCount = groups.reduce(
-    (n, g) => n + g.docs.filter((d) => d.streaming).length,
-    0,
+  const { totalCount, streamingCount } = useMemo(
+    () => ({
+      totalCount: groups.reduce((n, g) => n + g.docs.length, 0),
+      streamingCount: groups.reduce(
+        (n, g) => n + g.docs.filter((d) => d.streaming).length,
+        0,
+      ),
+    }),
+    [groups],
   )
 
   return (

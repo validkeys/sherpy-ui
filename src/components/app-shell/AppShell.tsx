@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, Activity } from 'react'
 import { LeftRail } from '@/components/left-rail'
 import { Header } from '@/components/header'
 import { type Mode } from '@/components/mode-toggle'
@@ -56,11 +56,12 @@ export function AppShell() {
           activeIndex={activeStage}
           onStageClick={setActiveStage}
         />
-        {mode === 'build' ? (
+        <Activity mode={mode === 'build' ? 'visible' : 'hidden'}>
           <BuildView />
-        ) : (
+        </Activity>
+        <Activity mode={mode === 'review' ? 'visible' : 'hidden'}>
           <ReviewView />
-        )}
+        </Activity>
       </main>
     </div>
   )
