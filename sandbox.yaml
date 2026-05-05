@@ -64,6 +64,7 @@ envFromKeychain:
 # from the host.
 ports:
   - 5180
+  - 6006
   # - 5432
 
 # --- Services ------------------------------------------------------------------
@@ -150,6 +151,7 @@ skills:
 firewall:
   allow:
     - "ui.shadcn.com"
+    - "fonts.googleapis.com"
     # - "cdn.example.com"
 
 # --- Claude Code settings -----------------------------------------------------
