@@ -40,6 +40,17 @@
   --bot-8:  #C97C61;        /* terracotta */
   --bot-9:  #A87391;        /* plum */
 
+  /* Per-segment glow values for the SpectrumStepper "now" state */
+  --bot-1-glow: rgba(154, 166, 143, 0.45);
+  --bot-2-glow: rgba(138, 168, 154, 0.50);
+  --bot-3-glow: rgba(125, 168, 174, 0.50);
+  --bot-4-glow: rgba(166, 184, 137, 0.50);
+  --bot-5-glow: rgba(201, 194, 133, 0.55);
+  --bot-6-glow: rgba(224, 185, 122, 0.55);
+  --bot-7-glow: rgba(212, 154, 110, 0.55);
+  --bot-8-glow: rgba(201, 124,  97, 0.55);
+  --bot-9-glow: rgba(168, 115, 145, 0.55);
+
   /* Soft tint companions (very low-sat fills for surfaces / pills) */
   --bot-1-soft: #EAEDE4;
   --bot-2-soft: #E6EEE8;
