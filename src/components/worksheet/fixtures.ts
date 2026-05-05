@@ -57,27 +57,27 @@ export const WORKSHEET_GAPS_NINE_ROW: WorksheetRowData[] = [
 ]
 
 export const WORKSHEET_FRAME_E_ROWS: WorksheetRowProps[] = [
-  { ...WORKSHEET_GAPS_NINE_ROW[0], status: 'filled', why: 'Answer: "WAU ≥ 200 by week 8 post-launch"', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[1], status: 'filled', why: 'Answer: "Three roles — admin / editor / viewer"', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[2], status: 'needs-review', why: 'Answer: "Q2" — Sherpy: needs an exact date for sequencing.', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[3], status: 'filled', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[4], status: 'merging', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[5], muted: true },
+  { ...WORKSHEET_GAPS_NINE_ROW[0]!, status: 'filled', why: 'Answer: "WAU ≥ 200 by week 8 post-launch"', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[1]!, status: 'filled', why: 'Answer: "Three roles — admin / editor / viewer"', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[2]!, status: 'needs-review', why: 'Answer: "Q2" — Sherpy: needs an exact date for sequencing.', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[3]!, status: 'filled', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[4]!, status: 'merging', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[5]!, muted: true },
 ]
 
 export const WORKSHEET_FRAME_F_ROWS: WorksheetRowProps[] = [
-  { ...WORKSHEET_GAPS_NINE_ROW[0], status: 'filled', why: 'WAU ≥ 200 by week 8 post-launch', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[1], status: 'filled', why: 'Three roles — admin / editor / viewer', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[0]!, status: 'filled', why: 'WAU ≥ 200 by week 8 post-launch', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[1]!, status: 'filled', why: 'Three roles — admin / editor / viewer', muted: false },
   {
-    ...WORKSHEET_GAPS_NINE_ROW[2],
+    ...WORKSHEET_GAPS_NINE_ROW[2]!,
     status: 'needs-review',
     why: 'Answer was "Q2". Sherpy needs an exact date for sequencing — pick one or confirm directional.',
     muted: false,
   },
-  { ...WORKSHEET_GAPS_NINE_ROW[3], status: 'filled', why: 'Fast-follow — billing not in v1', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[4], status: 'filled', why: 'Read: GitHub, Slack. Write: Confluence.', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[5], status: 'filled', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[6], status: 'filled', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[7], status: 'filled', muted: false },
-  { ...WORKSHEET_GAPS_NINE_ROW[8], status: 'filled', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[3]!, status: 'filled', why: 'Fast-follow — billing not in v1', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[4]!, status: 'filled', why: 'Read: GitHub, Slack. Write: Confluence.', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[5]!, status: 'filled', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[6]!, status: 'filled', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[7]!, status: 'filled', muted: false },
+  { ...WORKSHEET_GAPS_NINE_ROW[8]!, status: 'filled', muted: false },
 ]
