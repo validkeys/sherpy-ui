@@ -21,11 +21,11 @@ Ordered for early visual feedback. Each milestone should be committed and review
 ## Milestone 2 — SpectrumStepper (signature element)
 **Goal: The 9-stage botanical bar is pixel-perfect**
 
-- [ ] `components/spectrum-stepper/` — 10 segments, `pending/now/complete` states
-- [ ] Hover tooltip (stage NN + name, inverse bg, arrow, 6px radius)
-- [ ] Active glow (`0 0 12px var(--seg-glow)`) + inset white ring
-- [ ] `prefers-reduced-motion` respected
-- [ ] Wired into `AppShell` with sample data
+- [x] `components/spectrum-stepper/` — 10 segments, `pending/now/complete` states
+- [x] Hover tooltip (stage NN + name, inverse bg, arrow, 6px radius)
+- [x] Active glow (`0 0 12px var(--seg-glow)`) + inset white ring
+- [x] `prefers-reduced-motion` respected
+- [x] Wired into `AppShell` with sample data
 
 **Acceptance:** Matches `reference/web-app.html` hover and glow behavior exactly.
 
@@ -45,13 +45,13 @@ Ordered for early visual feedback. Each milestone should be committed and review
 ## Milestone 4 — BuildView (chat surface)
 **Goal: Chat thread renders, composer submits, streaming pulse shows**
 
-- [ ] Install `@assistant-ui/react`
-- [ ] `components/build-view/` — scrollable thread + pinned composer, top-fade gradient
-- [ ] `components/build-view/Message` — role chip, meta line, body, inline `<code>` styling
-- [ ] `components/build-view/AnswerCard` — PICK ONE card with option rows
-- [ ] `components/build-view/Composer` — 720px max, multi-line, send on Enter
-- [ ] Streaming pulse dot (accent color, 2s opacity animation)
-- [ ] Wire `LocalRuntime` with stubbed sample messages
+- [x] Install `@assistant-ui/react`
+- [x] `components/build-view/` — scrollable thread + pinned composer, top-fade gradient
+- [x] `components/build-view/Message` — role chip, meta line, body, inline `<code>` styling
+- [x] `components/build-view/AnswerCard` — PICK ONE card with option rows
+- [x] `components/build-view/Composer` — 720px max, multi-line, send on Enter
+- [x] Streaming pulse dot (accent color, animate-pulse)
+- [x] Wire `LocalRuntime` with stubbed sample messages
 
 **Acceptance:** Thread scrolls, composer submits a message and appends it, pulse animates on active doc.
 
@@ -84,6 +84,7 @@ Ordered for early visual feedback. Each milestone should be committed and review
 ---
 
 ## Done
+- [x] Milestone 4 — BuildView (chat thread + composer + AnswerCard wired with LocalRuntime)
 - [x] Milestone 3 — Primitives (Badge + Card re-skinned, zero shadcn default colors)
 - [x] Milestone 1 — Shell & Theme (visible skeleton, light + dark verified)
 - [x] Vite + React 19 + TypeScript strict scaffolded
