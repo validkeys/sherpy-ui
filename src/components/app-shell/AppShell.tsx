@@ -75,8 +75,8 @@ export function AppShell() {
               <Composer
                 cta={
                   <div className="flex items-center gap-2 ml-auto">
-                    <button type="button" className="text-[11px] px-[9px] py-[3px] rounded-pill border-[1.5px] border-border-emph bg-transparent text-fg-1 cursor-pointer">? Ask Sherpy</button>
-                    <button type="button" className="text-[12px] px-3 py-[5px] rounded border-none bg-inverse text-fg-on-inverse font-medium cursor-pointer">Send ↵</button>
+                    <button type="button" aria-label="Ask Sherpy" className="text-[11px] px-[9px] py-[3px] rounded-pill border-[1.5px] border-border-emph bg-transparent text-fg-1 cursor-pointer">? Ask Sherpy</button>
+                    <button type="button" aria-label="Send answer" className="text-[12px] px-3 py-[5px] rounded border-none bg-inverse text-fg-on-inverse font-medium cursor-pointer">Send ↵</button>
                   </div>
                 }
               />

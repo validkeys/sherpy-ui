@@ -16,7 +16,7 @@ export function OptionCard({ letter, title, body, recommended = false, selected 
       role="button"
       tabIndex={0}
       onClick={onClick}
-      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.()}
       className={cn(
         'flex gap-3 items-start px-3.5 py-3 rounded-[8px] border-[1.5px] cursor-pointer transition-colors',
         'focus-visible:outline-none focus-visible:shadow-focus',

@@ -14,7 +14,7 @@ export function PathCard({ title, subtitle, meta, recommended = false, onClick }
       role="button"
       tabIndex={0}
       onClick={onClick}
-      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.()}
       className={cn(
         'px-3.5 pt-3.5 pb-3 rounded-[6px] border-[1.5px] flex flex-col gap-1 cursor-pointer',
         'focus-visible:outline-none focus-visible:shadow-focus',
