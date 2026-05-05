@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/react'
-import { ReviewView } from './ReviewView'
+import type { Meta, StoryObj } from '@storybook/react-vite'
+import { DocBrowser } from './DocBrowser'
 
-const meta: Meta<typeof ReviewView> = {
-  title: 'Views/ReviewView',
-  component: ReviewView,
+const meta: Meta<typeof DocBrowser> = {
+  title: 'Views/DocBrowser',
+  component: DocBrowser,
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
@@ -15,6 +15,6 @@ const meta: Meta<typeof ReviewView> = {
 }
 
 export default meta
-type Story = StoryObj<typeof ReviewView>
+type Story = StoryObj<typeof DocBrowser>
 
 export const Default: Story = {}

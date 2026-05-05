@@ -5,7 +5,7 @@ import { type Mode } from '@/components/mode-toggle'
 import { SpectrumStepper } from '@/components/spectrum-stepper'
 import type { Stage } from '@/components/spectrum-stepper'
 import { BuildView } from '@/components/build-view'
-import { ReviewView } from '@/components/review-view'
+import { DocBrowser } from '@/components/doc-browser'
 
 const SAMPLE_BREADCRUMB = [
   { label: 'sherpy-web' },
@@ -60,7 +60,7 @@ export function AppShell() {
           <BuildView />
         </Activity>
         <Activity mode={mode === 'review' ? 'visible' : 'hidden'}>
-          <ReviewView />
+          <DocBrowser />
         </Activity>
       </main>
     </div>

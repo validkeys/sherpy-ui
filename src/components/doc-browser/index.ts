@@ -1,4 +1,4 @@
-export * from './ReviewView'
+export * from './DocBrowser'
 export * from './DocList'
 export * from './DocItem'
 export * from './CodePreview'

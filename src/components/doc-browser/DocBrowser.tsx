@@ -112,7 +112,7 @@ const DOC_INDEX = new Map(
   SAMPLE_GROUPS.flatMap((group) => group.docs.map((doc) => [doc.name, { doc, group }]))
 )
 
-export function ReviewView() {
+export function DocBrowser() {
   const [activeDoc, setActiveDoc] = useState('business-requirements.yaml')
 
   const found = DOC_INDEX.get(activeDoc)

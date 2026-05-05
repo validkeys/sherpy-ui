@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 import { BuildView } from './BuildView'
 
 const meta: Meta<typeof BuildView> = {

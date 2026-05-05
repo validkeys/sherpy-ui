@@ -1,14 +1,16 @@
 import React from 'react'
 import type { Preview, Decorator } from '@storybook/react-vite'
-import { ThemeContext } from '@/components/theme-provider/ThemeProvider'
+import { ThemeContext } from '@/components/theme-provider/theme-context'
 import type { Theme } from '@/hooks/use-theme'
 import '../src/index.css'
 
-const withTheme: Decorator = (Story, context) => {
-  const toolbarTheme = ((context.globals as Record<string, unknown>)['theme'] ?? 'light') as Theme
-  const [theme, setTheme] = React.useState<Theme>(toolbarTheme)
+interface ThemeWrapperProps {
+  initialTheme: Theme
+  children: React.ReactNode
+}
 
-  React.useEffect(() => { setTheme(toolbarTheme) }, [toolbarTheme])
+function ThemeWrapper({ initialTheme, children }: ThemeWrapperProps) {
+  const [theme, setTheme] = React.useState<Theme>(initialTheme)
 
   React.useEffect(() => {
     if (theme === 'dark') {
@@ -21,6 +23,15 @@ const withTheme: Decorator = (Story, context) => {
   return React.createElement(
     ThemeContext.Provider,
     { value: { theme, setTheme } },
+    children
+  )
+}
+
+const withTheme: Decorator = (Story, context) => {
+  const toolbarTheme = ((context.globals as Record<string, unknown>)['theme'] ?? 'light') as Theme
+  return React.createElement(
+    ThemeWrapper,
+    { initialTheme: toolbarTheme, key: toolbarTheme },
     React.createElement(Story as React.ComponentType)
   )
 }
