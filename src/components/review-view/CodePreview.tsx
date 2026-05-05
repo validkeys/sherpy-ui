@@ -38,6 +38,25 @@ export function CodePreview({
 }: CodePreviewProps) {
   const [activeTab, setActiveTab] = useState<Tab>('Source')
 
+  const TAB_CONTENT: Record<Tab, React.ReactNode> = {
+    Source: <YamlHighlight code={sourceCode} />,
+    Outline: (
+      <div className="flex-1 flex items-center justify-center text-fg-4 font-mono text-[12px]">
+        outline view
+      </div>
+    ),
+    Diff: (
+      <div className="flex-1 flex items-center justify-center text-fg-4 font-mono text-[12px]">
+        diff view
+      </div>
+    ),
+    Gaps: (
+      <div className="flex-1 flex items-center justify-center text-fg-4 font-mono text-[12px]">
+        {gapCount > 0 ? `${gapCount} gap${gapCount !== 1 ? 's' : ''}` : 'no gaps'}
+      </div>
+    ),
+  }
+
   function tabLabel(tab: Tab): string {
     if (tab === 'Diff' && diffLabel) return `Diff · ${diffLabel}`
     if (tab === 'Gaps' && gapCount > 0) return `Gaps · ${gapCount}`
@@ -112,22 +131,7 @@ export function CodePreview({
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-        {activeTab === 'Source' && <YamlHighlight code={sourceCode} />}
-        {activeTab === 'Outline' && (
-          <div className="flex-1 flex items-center justify-center text-fg-4 font-mono text-[12px]">
-            outline view
-          </div>
-        )}
-        {activeTab === 'Diff' && (
-          <div className="flex-1 flex items-center justify-center text-fg-4 font-mono text-[12px]">
-            diff view
-          </div>
-        )}
-        {activeTab === 'Gaps' && (
-          <div className="flex-1 flex items-center justify-center text-fg-4 font-mono text-[12px]">
-            {gapCount > 0 ? `${gapCount} gap${gapCount !== 1 ? 's' : ''}` : 'no gaps'}
-          </div>
-        )}
+        {TAB_CONTENT[activeTab]}
       </div>
 
       {/* Footer */}

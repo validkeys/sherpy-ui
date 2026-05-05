@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 import { MessageCircle, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -12,16 +12,17 @@ interface ModeToggleProps {
 }
 
 export function ModeToggle({ mode, artifactCount = 0, onModeChange, className }: ModeToggleProps) {
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
-        e.preventDefault()
-        onModeChange(mode === 'build' ? 'review' : 'build')
-      }
+  const handleKeyDown = useEffectEvent((e: KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+      e.preventDefault()
+      onModeChange(mode === 'build' ? 'review' : 'build')
     }
+  })
+
+  useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [mode, onModeChange])
+  }, [])
 
   return (
     <div
