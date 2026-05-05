@@ -2,9 +2,9 @@ import { cn } from '@/lib/utils'
 
 export interface Stage {
   id: string
-  num: number // 1..10; stages 1-9 map to var(--bot-N), 10 is neutral sign-off
+  num: number
   name: string
-  status: 'pending' | 'now' | 'complete'
+  status: 'pending' | 'now' | 'complete' | 'skipped'
 }
 
 export interface SpectrumStepperProps {
@@ -32,7 +32,9 @@ function Segment({
       ? 'opacity-[0.18] group-hover/seg:opacity-[0.85]'
       : stage.status === 'complete'
         ? 'opacity-100 group-hover/seg:opacity-[0.85]'
-        : 'opacity-100' // 'now' keeps full opacity on hover
+        : stage.status === 'skipped'
+          ? 'opacity-[0.08] group-hover/seg:opacity-[0.25]'
+          : 'opacity-100'
 
   const borderRadiusClass = isFirst
     ? 'rounded-l-full rounded-r-[2px]'

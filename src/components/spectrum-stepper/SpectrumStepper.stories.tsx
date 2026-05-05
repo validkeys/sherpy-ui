@@ -3,17 +3,29 @@ import { useState } from 'react'
 import { SpectrumStepper } from './SpectrumStepper'
 import type { Stage } from './SpectrumStepper'
 
-const CANONICAL_STAGES: Stage[] = [
-  { id: 'discovery',      num: 1,  name: 'Discovery',               status: 'complete' },
-  { id: 'biz-req',        num: 2,  name: 'Business requirements',    status: 'now'      },
-  { id: 'stakeholder',    num: 3,  name: 'Stakeholder map',          status: 'pending'  },
-  { id: 'func-req',       num: 4,  name: 'Functional requirements',  status: 'pending'  },
-  { id: 'non-func',       num: 5,  name: 'Non-functional',           status: 'pending'  },
-  { id: 'architecture',   num: 6,  name: 'Architecture',             status: 'pending'  },
-  { id: 'tech-design',    num: 7,  name: 'Technical design',         status: 'pending'  },
-  { id: 'impl-plan',      num: 8,  name: 'Implementation plan',      status: 'pending'  },
-  { id: 'validation',     num: 9,  name: 'Validation',               status: 'pending'  },
-  { id: 'sign-off',       num: 10, name: 'Sign-off',                 status: 'pending'  },
+const TEN_STAGES: Stage[] = [
+  { id: 'discovery',    num: 1,  name: 'Discovery',               status: 'complete' },
+  { id: 'biz-req',      num: 2,  name: 'Business requirements',    status: 'now'      },
+  { id: 'stakeholder',  num: 3,  name: 'Stakeholder map',          status: 'pending'  },
+  { id: 'func-req',     num: 4,  name: 'Functional requirements',  status: 'pending'  },
+  { id: 'non-func',     num: 5,  name: 'Non-functional',           status: 'pending'  },
+  { id: 'architecture', num: 6,  name: 'Architecture',             status: 'pending'  },
+  { id: 'tech-design',  num: 7,  name: 'Technical design',         status: 'pending'  },
+  { id: 'impl-plan',    num: 8,  name: 'Implementation plan',      status: 'pending'  },
+  { id: 'validation',   num: 9,  name: 'Validation',               status: 'pending'  },
+  { id: 'sign-off',     num: 10, name: 'Sign-off',                 status: 'pending'  },
+]
+
+const NINE_STAGES: Stage[] = [
+  { id: 'discovery',    num: 1, name: 'Discovery',               status: 'complete' },
+  { id: 'biz-req',      num: 2, name: 'Business requirements',    status: 'now'      },
+  { id: 'stakeholder',  num: 3, name: 'Stakeholder map',          status: 'pending'  },
+  { id: 'func-req',     num: 4, name: 'Functional requirements',  status: 'pending'  },
+  { id: 'non-func',     num: 5, name: 'Non-functional',           status: 'pending'  },
+  { id: 'architecture', num: 6, name: 'Architecture',             status: 'pending'  },
+  { id: 'tech-design',  num: 7, name: 'Technical design',         status: 'pending'  },
+  { id: 'impl-plan',    num: 8, name: 'Implementation plan',      status: 'pending'  },
+  { id: 'validation',   num: 9, name: 'Validation',               status: 'pending'  },
 ]
 
 const meta: Meta<typeof SpectrumStepper> = {
@@ -32,31 +44,52 @@ const meta: Meta<typeof SpectrumStepper> = {
 export default meta
 type Story = StoryObj<typeof SpectrumStepper>
 
-export const Default: Story = {
+export const TenStages: Story = {
   args: {
-    stages: CANONICAL_STAGES,
+    stages: TEN_STAGES,
     activeIndex: 1,
   },
 }
 
-export const AllComplete: Story = {
+export const NineStages: Story = {
   args: {
-    stages: CANONICAL_STAGES.map((s) => ({ ...s, status: 'complete' as const })),
-    activeIndex: 9,
+    stages: NINE_STAGES,
+    activeIndex: 1,
+  },
+}
+
+export const WithSkippedStages: Story = {
+  args: {
+    stages: TEN_STAGES.map((s, i) => ({
+      ...s,
+      status:
+        i < 2 ? ('complete' as const)
+        : i >= 2 && i <= 4 ? ('skipped' as const)
+        : i === 5 ? ('now' as const)
+        : ('pending' as const),
+    })),
+    activeIndex: 5,
   },
 }
 
 export const AllPending: Story = {
   args: {
-    stages: CANONICAL_STAGES.map((s) => ({ ...s, status: 'pending' as const })),
+    stages: TEN_STAGES.map((s) => ({ ...s, status: 'pending' as const })),
     activeIndex: 0,
+  },
+}
+
+export const AllComplete: Story = {
+  args: {
+    stages: TEN_STAGES.map((s) => ({ ...s, status: 'complete' as const })),
+    activeIndex: 9,
   },
 }
 
 export const Interactive: Story = {
   render: () => {
     const [activeIndex, setActiveIndex] = useState(1)
-    const stages = CANONICAL_STAGES.map((s, i) => ({
+    const stages = TEN_STAGES.map((s, i) => ({
       ...s,
       status:
         i < activeIndex ? ('complete' as const)

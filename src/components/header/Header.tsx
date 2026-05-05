@@ -1,12 +1,18 @@
 import { ModeToggle, type Mode } from '@/components/mode-toggle'
 import { ThemeToggle } from '@/components/theme-provider'
+import { Button } from '@/components/ui/button'
 
 interface BreadcrumbItem {
   label: string
   href?: string
 }
 
-interface HeaderProps {
+export interface SkipAction {
+  label: string
+  onClick?: () => void
+}
+
+export interface HeaderProps {
   breadcrumb: BreadcrumbItem[]
   stageNum: number
   stageTotal: number
@@ -14,6 +20,7 @@ interface HeaderProps {
   mode: Mode
   artifactCount?: number
   onModeChange: (mode: Mode) => void
+  skipAction?: SkipAction
 }
 
 export function Header({
@@ -24,6 +31,7 @@ export function Header({
   mode,
   artifactCount,
   onModeChange,
+  skipAction,
 }: HeaderProps) {
   return (
     <header className="flex items-center justify-between gap-4 px-8 pt-4 shrink-0">
@@ -53,6 +61,16 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-2">
+        {skipAction && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="rounded-full text-[11px] font-medium"
+            onClick={skipAction.onClick}
+          >
+            {skipAction.label} →
+          </Button>
+        )}
         <ModeToggle mode={mode} artifactCount={artifactCount} onModeChange={onModeChange} />
         <ThemeToggle />
       </div>
