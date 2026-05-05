@@ -130,3 +130,13 @@
     color: var(--neutral-0);
   }
 }
+
+@keyframes aside-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+@keyframes gen-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}

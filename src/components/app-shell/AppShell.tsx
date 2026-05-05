@@ -4,8 +4,13 @@ import { Header } from '@/components/header'
 import { type Mode } from '@/components/mode-toggle'
 import { SpectrumStepper } from '@/components/spectrum-stepper'
 import type { Stage } from '@/components/spectrum-stepper'
-import { BuildView } from '@/components/build-view'
 import { DocBrowser } from '@/components/doc-browser'
+import { ThreadView } from '@/components/thread'
+import { ThreadDivider } from '@/components/thread'
+import { QuestionCard } from '@/components/thread'
+import { OptionStack } from '@/components/thread'
+import { OptionCard } from '@/components/thread'
+import { Composer } from '@/components/thread'
 
 const SAMPLE_BREADCRUMB = [
   { label: 'sherpy-web' },
@@ -57,7 +62,26 @@ export function AppShell() {
           onStageClick={setActiveStage}
         />
         <Activity mode={mode === 'build' ? 'visible' : 'hidden'}>
-          <BuildView />
+          <ThreadView
+            divider={<ThreadDivider label="Gap analysis · signed off · 9 of 9 resolved" tone="success" />}
+            question={<QuestionCard n={1} text="What outcome should we be able to point to and say 'this is why we built it'?" />}
+            options={
+              <OptionStack>
+                <OptionCard letter="A" title="A measurable user behavior" body="e.g. users complete a run end-to-end in <30 min" recommended />
+                <OptionCard letter="B" title="A revenue or pipeline target" body="e.g. $5k MRR by month 6" />
+              </OptionStack>
+            }
+            composer={
+              <Composer
+                cta={
+                  <div className="flex items-center gap-2 ml-auto">
+                    <button type="button" className="text-[11px] px-[9px] py-[3px] rounded-pill border-[1.5px] border-border-emph bg-transparent text-fg-1 cursor-pointer">? Ask Sherpy</button>
+                    <button type="button" className="text-[12px] px-3 py-[5px] rounded border-none bg-inverse text-fg-on-inverse font-medium cursor-pointer">Send ↵</button>
+                  </div>
+                }
+              />
+            }
+          />
         </Activity>
         <Activity mode={mode === 'review' ? 'visible' : 'hidden'}>
           <DocBrowser />
