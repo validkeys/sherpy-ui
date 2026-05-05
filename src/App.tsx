@@ -1,11 +1,9 @@
-import { ThemeProvider, AppShell, BuildView } from '@/components'
+import { ThemeProvider, AppShell } from '@/components'
 
 function App() {
   return (
     <ThemeProvider>
-      <AppShell>
-        <BuildView />
-      </AppShell>
+      <AppShell />
     </ThemeProvider>
   )
 }

@@ -1,14 +1,11 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
 import { LeftRail } from '@/components/left-rail'
 import { Header } from '@/components/header'
 import { type Mode } from '@/components/mode-toggle'
 import { SpectrumStepper } from '@/components/spectrum-stepper'
 import type { Stage } from '@/components/spectrum-stepper'
-
-interface AppShellProps {
-  children?: ReactNode
-}
+import { BuildView } from '@/components/build-view'
+import { ReviewView } from '@/components/review-view'
 
 const SAMPLE_BREADCRUMB = [
   { label: 'sherpy-web' },
@@ -29,9 +26,9 @@ const SAMPLE_STAGES: Stage[] = [
   { id: 'sign-off',     num: 10, name: 'Sign-off',                 status: 'pending'  },
 ]
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell() {
   const [mode, setMode] = useState<Mode>('build')
-  const [activeStage, setActiveStage] = useState(1) // 0-based index of 'now' stage
+  const [activeStage, setActiveStage] = useState(1)
 
   const stages = SAMPLE_STAGES.map((s, i) => ({
     ...s,
@@ -59,9 +56,11 @@ export function AppShell({ children }: AppShellProps) {
           activeIndex={activeStage}
           onStageClick={setActiveStage}
         />
-        <div className="flex-1 min-h-0 overflow-hidden">
-          {children}
-        </div>
+        {mode === 'build' ? (
+          <BuildView />
+        ) : (
+          <ReviewView />
+        )}
       </main>
     </div>
   )

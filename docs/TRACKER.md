@@ -60,12 +60,12 @@ Ordered for early visual feedback. Each milestone should be committed and review
 ## Milestone 5 — ReviewView (doc list + code preview)
 **Goal: Review mode shows documents and YAML with syntax highlighting**
 
-- [ ] `components/review-view/` — `320px | 1fr` grid, both columns scroll independently
-- [ ] `components/review-view/DocList` — filter input, stage groups with colored dots, DocItem rows
-- [ ] `components/review-view/DocItem` — file icon, name, pulse for streaming, version/time/size sub-row
-- [ ] `components/review-view/CodePreview` — stage-tinted header, Source/Outline/Diff/Gaps tabs
-- [ ] YAML highlighter — keys (bot-3), strings (bot-4), numbers (bot-7), booleans (bot-9), refs (bot-8), comments (fg-4 italic)
-- [ ] Gap rows — left ember bar + `bg-bot-7-soft` tint
+- [x] `components/review-view/` — `320px | 1fr` grid, both columns scroll independently
+- [x] `components/review-view/DocList` — filter input, stage groups with colored dots, DocItem rows
+- [x] `components/review-view/DocItem` — file icon, name, pulse for streaming, version/time/size sub-row
+- [x] `components/review-view/CodePreview` — stage-tinted header, Source/Outline/Diff/Gaps tabs
+- [x] YAML highlighter — keys (bot-3), strings (bot-4), numbers (bot-7), booleans (bot-9), refs (bot-8), comments (fg-4 italic)
+- [x] Gap rows — left ember bar + `bg-bot-7-soft` tint
 
 **Acceptance:** YAML colors match spec. Gap rows render with ember bar. Tabs switch content.
 
@@ -84,6 +84,7 @@ Ordered for early visual feedback. Each milestone should be committed and review
 ---
 
 ## Done
+- [x] Milestone 5 — ReviewView (doc list + YAML code preview + syntax highlighter)
 - [x] Milestone 4 — BuildView (chat thread + composer + AnswerCard wired with LocalRuntime)
 - [x] Milestone 3 — Primitives (Badge + Card re-skinned, zero shadcn default colors)
 - [x] Milestone 1 — Shell & Theme (visible skeleton, light + dark verified)
