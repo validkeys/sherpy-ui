@@ -7,7 +7,7 @@ const meta: Meta<typeof DocBrowser> = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div className="flex flex-col bg-page" style={{ height: '100vh' }}>
+      <div className="flex flex-col bg-page h-screen">
         <Story />
       </div>
     ),

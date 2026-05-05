@@ -17,10 +17,10 @@ export function MergeProgress({ value }: MergeProgressProps) {
     >
       <div
         className={cn(
-          'h-full rounded-pill transition-[width] duration-500 ease-out',
+          'h-full w-[--pct] rounded-pill transition-[width] duration-500 ease-out',
           pct === 100 ? 'bg-success' : 'bg-accent animate-pulse',
         )}
-        style={{ width: `${pct}%` }}
+        style={{ '--pct': `${pct}%` } as React.CSSProperties}
       />
     </div>
   )
