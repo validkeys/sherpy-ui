@@ -11,7 +11,7 @@ visuals are deliberately not.
 ## What's in here
 
 ```
-design_handoff_sherpy_onboarding/
+docs/plan/
 ├── README.md                            ← you are here
 ├── frames/                              ← per-frame PNGs (980×600 inner, ~960px wide outer)
 │   ├── 01-A-blank-thread.png
