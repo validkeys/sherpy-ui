@@ -11,6 +11,9 @@ const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(file
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
+  server: {
+    port: parseInt(process.env.SHERPY_UI_PORT ?? '5173', 10),
+  },
   plugins: [tailwindcss(), react(), babel({
     presets: [reactCompilerPreset()]
   })],
