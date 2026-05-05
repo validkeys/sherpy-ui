@@ -72,18 +72,30 @@ Ordered for early visual feedback. Each milestone should be committed and review
 ---
 
 ## Milestone 6 — Storybook
-**Goal: `npm run storybook` with light/dark switcher for every component**
+**Goal: `pnpm storybook` with light/dark switcher for every component**
 
-- [ ] Install Storybook 8 (Vite framework)
-- [ ] Global toolbar: `data-theme` toggle on `document.documentElement`
-- [ ] One story per component with realistic arg data
-- [ ] `AppShell.stories.tsx` — full-screen integration story matching reference HTML
+- [x] Install Storybook 10 (Vite framework) — `pnpm storybook` / `pnpm build-storybook`
+- [x] Global toolbar: `data-theme` toggle on `document.documentElement` (preview.ts)
+- [x] One story per component with realistic arg data:
+  - SpectrumStepper (Default, AllComplete, AllPending, Interactive)
+  - AppShell (Default — full-screen integration)
+  - LeftRail (Default, CustomUser)
+  - Header (BuildMode, ReviewMode, Interactive)
+  - ModeToggle (BuildActive, ReviewActive, WithBadge, Interactive)
+  - ThemeToggle (Default)
+  - BuildView (Default)
+  - ReviewView (Default)
+  - Badge (AllVariants + per-variant)
+  - Card (Default, Small)
+  - Button (AllVariants + per-variant)
+- [x] `AppShell.stories.tsx` — full-screen integration story
 
 **Acceptance:** All stories render in light and dark. No console errors.
 
 ---
 
 ## Done
+- [x] Milestone 6 — Storybook (all components, light/dark toolbar, zero build errors)
 - [x] Milestone 5 — ReviewView (doc list + YAML code preview + syntax highlighter)
 - [x] Milestone 4 — BuildView (chat thread + composer + AnswerCard wired with LocalRuntime)
 - [x] Milestone 3 — Primitives (Badge + Card re-skinned, zero shadcn default colors)

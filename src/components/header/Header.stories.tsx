@@ -1,0 +1,44 @@
+import type { Meta, StoryObj } from '@storybook/react'
+import { useState } from 'react'
+import { Header } from './Header'
+import type { Mode } from '@/components/mode-toggle'
+
+const meta: Meta<typeof Header> = {
+  title: 'Components/Header',
+  component: Header,
+  parameters: { layout: 'padded' },
+  decorators: [
+    (Story) => (
+      <div className="bg-page min-h-24">
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    breadcrumb: [
+      { label: 'sherpy-web' },
+      { label: 'run-04' },
+      { label: 'business requirements' },
+    ],
+    stageNum: 2,
+    stageTotal: 10,
+    stageName: 'Business requirements',
+    mode: 'build',
+    artifactCount: 7,
+    onModeChange: () => {},
+  },
+}
+
+export default meta
+type Story = StoryObj<typeof Header>
+
+export const BuildMode: Story = { args: { mode: 'build' } }
+
+export const ReviewMode: Story = { args: { mode: 'review' } }
+
+export const Interactive: Story = {
+  render: (args) => {
+    const [mode, setMode] = useState<Mode>('build')
+    return <Header {...args} mode={mode} onModeChange={setMode} />
+  },
+}

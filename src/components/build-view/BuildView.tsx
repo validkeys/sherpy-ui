@@ -83,7 +83,7 @@ function BuildViewInner() {
       <ThreadPrimitive.Root className="flex-1 min-h-0 flex flex-col">
         <ThreadPrimitive.Viewport className="flex-1 min-h-0 overflow-y-auto pt-8 pb-[140px] [scrollbar-width:thin] [scrollbar-color:var(--border-2)_transparent]">
           <div className="flex flex-col gap-7">
-            <ThreadPrimitive.Messages Message={Message} />
+            <ThreadPrimitive.Messages components={{ Message }} />
           </div>
         </ThreadPrimitive.Viewport>
       </ThreadPrimitive.Root>

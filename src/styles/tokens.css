@@ -4,9 +4,6 @@
    Drop into any HTML page and use the variables.
    ===================================================================== */
 
-/* ---------- Webfonts (CDN — self-host into /fonts for production) ---------- */
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@300..600&family=Instrument+Serif:ital@0;1&display=swap");
-
 /* =====================================================================
    BASE TOKENS — light / paper
    ===================================================================== */

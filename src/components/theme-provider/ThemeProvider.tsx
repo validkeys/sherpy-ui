@@ -7,7 +7,7 @@ interface ThemeContextValue {
   setTheme: (t: Theme) => void
 }
 
-const ThemeContext = createContext<ThemeContextValue | null>(null)
+export const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const value = useThemeState()
