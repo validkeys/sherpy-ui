@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 import { AppShell } from './AppShell'
 
 const meta: Meta<typeof AppShell> = {
@@ -10,4 +10,4 @@ const meta: Meta<typeof AppShell> = {
 export default meta
 type Story = StoryObj<typeof AppShell>
 
-export const Default: Story = {}
+export const WithDocBrowser: Story = {}

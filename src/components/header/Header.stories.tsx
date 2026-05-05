@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { Header } from './Header'
 import type { Mode } from '@/components/mode-toggle'
@@ -32,7 +32,24 @@ const meta: Meta<typeof Header> = {
 export default meta
 type Story = StoryObj<typeof Header>
 
-export const BuildMode: Story = { args: { mode: 'build' } }
+export const Default: Story = {}
+
+export const WithSkipAction: Story = {
+  args: {
+    skipAction: { label: 'Skip — start business interview', onClick: () => {} },
+  },
+}
+
+export const WithBreadcrumbTruncation: Story = {
+  args: {
+    breadcrumb: [
+      { label: 'my-very-long-project-name' },
+      { label: 'run-2024-01-15-morning-standup' },
+      { label: 'technical requirements and functional specifications' },
+    ],
+    skipAction: { label: 'Skip — start business interview', onClick: () => {} },
+  },
+}
 
 export const ReviewMode: Story = { args: { mode: 'review' } }
 
