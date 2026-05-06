@@ -315,6 +315,8 @@ tasks:
       on_failure: Verify useStepState returns data shape matching Stage type
 
   - id: m2-005
+    status: complete
+    completed: "2026-05-06"
     name: Interview thread wired to step state
     description: |
       Build mode renders current step's question and options in ThreadView.
@@ -373,6 +375,8 @@ tasks:
       on_failure: Verify stepState shape; check ThreadView prop types match
 
   - id: m2-006
+    status: complete
+    completed: "2026-05-06"
     name: Intake sub-view for new projects
     description: |
       When a project's currentStep is 1 AND no answers exist yet, show the
@@ -420,6 +424,8 @@ tasks:
       on_failure: Verify step answer check logic; re-test with seed data
 
   - id: m2-007
+    status: complete
+    completed: "2026-05-06"
     name: Code review — M2 Build Mode
     description: |
       Full code review of all M2 work. Verify step state architecture,
