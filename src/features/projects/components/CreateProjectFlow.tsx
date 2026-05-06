@@ -1,4 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
+import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Intake } from "@/components/intake/Intake";
 import { PathCard } from "@/components/intake/PathCard";
@@ -24,6 +25,7 @@ export function CreateProjectFlow({
   const [nameError, setNameError] = useState("");
 
   const { mutate: createProject, isPending } = useCreateProject();
+  const navigate = useNavigate();
 
   function handlePathSelect(path: EntryPath) {
     setEntryPath(path);
@@ -47,6 +49,10 @@ export function CreateProjectFlow({
         onSuccess: (project) => {
           onCreated?.(project.id);
           handleClose();
+          navigate({
+            to: "/project/$projectId/build",
+            params: { projectId: project.id },
+          });
         },
       },
     );

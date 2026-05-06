@@ -9,6 +9,10 @@ vi.mock("../hooks", () => ({
   useCreateProject: vi.fn(),
 }));
 
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => vi.fn(),
+}));
+
 const mockMutate = vi.fn();
 
 function wrap(ui: React.ReactElement) {
