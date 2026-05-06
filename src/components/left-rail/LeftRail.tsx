@@ -1,5 +1,6 @@
-import { CheckCircle2, Compass, FileText, Home, Plus } from "lucide-react";
+import { CheckCircle2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LeftRailNav } from "./LeftRailNav";
 
 interface NavItem {
   label: string;
@@ -22,43 +23,26 @@ interface UserInfo {
 interface LeftRailProps {
   user?: UserInfo;
   className?: string;
+  onNewProject?: () => void;
 }
 
-const DEFAULT_NAV: NavSection[] = [
-  {
-    eyebrow: "Workspace",
-    items: [
-      {
-        label: "sherpy-web",
-        icon: <Home size={15} strokeWidth={1.5} />,
-        active: true,
-        count: 5,
-      },
-      {
-        label: "billing-platform",
-        icon: <Compass size={15} strokeWidth={1.5} />,
-      },
-      { label: "New project", icon: <Plus size={15} strokeWidth={1.5} /> },
-    ],
-  },
-  {
-    eyebrow: "Recent runs",
-    items: [
-      {
-        label: "biz-req-04",
-        icon: <CheckCircle2 size={15} strokeWidth={1.5} />,
-      },
-      {
-        label: "biz-req-03",
-        icon: <CheckCircle2 size={15} strokeWidth={1.5} />,
-      },
-      {
-        label: "style-anchors",
-        icon: <FileText size={15} strokeWidth={1.5} />,
-      },
-    ],
-  },
-];
+const RECENT_RUNS_NAV: NavSection = {
+  eyebrow: "Recent runs",
+  items: [
+    {
+      label: "biz-req-04",
+      icon: <CheckCircle2 size={15} strokeWidth={1.5} />,
+    },
+    {
+      label: "biz-req-03",
+      icon: <CheckCircle2 size={15} strokeWidth={1.5} />,
+    },
+    {
+      label: "style-anchors",
+      icon: <FileText size={15} strokeWidth={1.5} />,
+    },
+  ],
+};
 
 const DEFAULT_USER: UserInfo = {
   initials: "KW",
@@ -66,7 +50,11 @@ const DEFAULT_USER: UserInfo = {
   handle: "@validkeys",
 };
 
-export function LeftRail({ user = DEFAULT_USER, className }: LeftRailProps) {
+export function LeftRail({
+  user = DEFAULT_USER,
+  className,
+  onNewProject = () => {},
+}: LeftRailProps) {
   return (
     <aside
       className={cn(
@@ -111,9 +99,8 @@ export function LeftRail({ user = DEFAULT_USER, className }: LeftRailProps) {
       </div>
 
       {/* Nav sections */}
-      {DEFAULT_NAV.map((section) => (
-        <NavSectionGroup key={section.eyebrow} section={section} />
-      ))}
+      <LeftRailNav onNewProject={onNewProject} />
+      <NavSectionGroup section={RECENT_RUNS_NAV} />
 
       {/* Pinned footer */}
       <div className="mt-auto flex items-center gap-[10px] px-2 py-2 border-t border-border-1">

@@ -7,6 +7,7 @@ const VALID_THEMES: Theme[] = ["light", "dark"];
 
 export function useThemeState() {
   const [theme, setThemeRaw] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "light";
     const stored = localStorage.getItem(THEME_KEY);
     return VALID_THEMES.includes(stored as Theme) ? (stored as Theme) : "light";
   });
