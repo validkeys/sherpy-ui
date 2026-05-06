@@ -1,13 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ArtifactBrowser } from "@/features/artifacts/components/ArtifactBrowser";
+import { $listArtifacts } from "@/features/artifacts/server";
 
 export const Route = createFileRoute("/project/$projectId/review")({
   component: ReviewComponent,
+  loader: async ({ params }) => {
+    // Prefetch artifacts list to eliminate waterfall
+    await $listArtifacts({ data: { projectId: params.projectId } });
+  },
 });
 
 function ReviewComponent() {
-  return (
-    <div className="flex-1 flex items-center justify-center text-fg-4 text-sm font-mono">
-      doc browser — wired in M3
-    </div>
-  );
+  const { projectId } = Route.useParams();
+
+  return <ArtifactBrowser projectId={projectId} />;
 }

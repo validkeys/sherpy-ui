@@ -26,15 +26,23 @@ function Segment({
 }) {
   const segColor =
     stage.num <= 9 ? `var(--bot-${stage.num})` : "var(--neutral-5)";
+  const segSoftColor =
+    stage.num <= 9 ? `var(--bot-${stage.num}-soft)` : "var(--neutral-2)";
   const glowVar = stage.num <= 9 ? `var(--bot-${stage.num}-glow)` : null;
+
+  // Use soft variant for pending, full color for complete/now
+  const backgroundColor =
+    stage.status === "pending" || stage.status === "skipped"
+      ? segSoftColor
+      : segColor;
 
   const fillOpacityClass =
     stage.status === "pending"
-      ? "opacity-[0.18] group-hover/seg:opacity-[0.85]"
+      ? "opacity-100 group-hover/seg:opacity-[0.85]"
       : stage.status === "complete"
         ? "opacity-100 group-hover/seg:opacity-[0.85]"
         : stage.status === "skipped"
-          ? "opacity-[0.08] group-hover/seg:opacity-[0.25]"
+          ? "opacity-60 group-hover/seg:opacity-[0.5]"
           : "opacity-100";
 
   const borderRadiusClass = isFirst
@@ -60,7 +68,7 @@ function Segment({
         aria-hidden
         style={
           {
-            "--seg-color": segColor,
+            "--seg-color": backgroundColor,
             "--seg-glow": glowShadow ?? "none",
           } as React.CSSProperties
         }
@@ -68,7 +76,7 @@ function Segment({
           "absolute inset-0",
           borderRadiusClass,
           fillOpacityClass,
-          "bg-[--seg-color] [box-shadow:var(--seg-glow)]",
+          "bg-[var(--seg-color)] [box-shadow:var(--seg-glow)]",
           "motion-safe:transition-[opacity,box-shadow] motion-safe:duration-[140ms] motion-safe:[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
         )}
       />

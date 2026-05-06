@@ -121,7 +121,7 @@ mounts:
   # AWS config — enables Bedrock/SSO credential resolution for Claude Code.
   - "source=${HOME}/.aws,target=/home/node/.aws,type=bind"
   # Ollama models — shares host models so they don't need re-downloading.
-  - "source=${HOME}/.ollama,target=/home/node/.ollama,type=bind"
+  # - "source=${HOME}/.ollama,target=/home/node/.ollama,type=bind"
   # Neovim config — mount your host config so your editor settings persist.
   - "source=${HOME}/.config/nvim,target=/home/node/.config/nvim,type=bind"
   # Git identity — mounts user.name/user.email config so commits are attributed correctly.
