@@ -11,12 +11,20 @@ interface ArtifactBrowserProps {
 export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
 	const artifactsQuery = useArtifacts(projectId)
 	const [selectedKey, setSelectedKey] = useState<string | null>(null)
+	const [copied, setCopied] = useState(false)
 
 	// Auto-select first artifact
 	const effectiveSelectedKey =
 		selectedKey ?? artifactsQuery.data?.[0]?.key ?? null
 
 	const artifactQuery = useArtifact(projectId, effectiveSelectedKey)
+
+	const handleCopy = (artifact: typeof artifactQuery.data) => {
+		if (!artifact) return
+		navigator.clipboard.writeText(artifact.content)
+		setCopied(true)
+		setTimeout(() => setCopied(false), 1500)
+	}
 
 	const groups: DocGroup[] = useMemo(() => {
 		if (!artifactsQuery.data) return []
@@ -95,6 +103,8 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
 					fileSize={`${(selectedArtifact.content.length / 1024).toFixed(1)} KB`}
 					sourceCode={selectedArtifact.content}
 					onDownload={() => downloadArtifact(selectedArtifact)}
+					onCopy={() => handleCopy(selectedArtifact)}
+					copyButtonLabel={copied ? 'Copied!' : 'Copy'}
 				/>
 			) : (
 				<div className="flex items-center justify-center text-fg-4 font-mono text-[12px]">

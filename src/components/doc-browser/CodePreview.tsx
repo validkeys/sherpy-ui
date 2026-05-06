@@ -19,6 +19,8 @@ interface CodePreviewProps {
   diffLabel?: string;
   sourceCode: string;
   onDownload?: () => void;
+  onCopy?: () => void;
+  copyButtonLabel?: string;
 }
 
 const TABS: Tab[] = ["Source", "Outline", "Diff", "Gaps"];
@@ -37,6 +39,8 @@ export function CodePreview({
   diffLabel,
   sourceCode,
   onDownload,
+  onCopy,
+  copyButtonLabel = "Copy",
 }: CodePreviewProps) {
   const [activeTab, setActiveTab] = useState<Tab>("Source");
 
@@ -98,6 +102,13 @@ export function CodePreview({
             className="text-[12px] text-fg-2 px-[10px] py-[5px] bg-surface border border-border-2 rounded-sm cursor-pointer font-sans hover:border-border-emph hover:text-fg-1 transition-colors duration-[140ms]"
           >
             View diff
+          </button>
+          <button
+            type="button"
+            onClick={onCopy}
+            className="text-[12px] text-fg-2 px-[10px] py-[5px] bg-surface border border-border-2 rounded-sm cursor-pointer font-sans hover:border-border-emph hover:text-fg-1 transition-colors duration-[140ms]"
+          >
+            {copyButtonLabel}
           </button>
           <button
             type="button"
