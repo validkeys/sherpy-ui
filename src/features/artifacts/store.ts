@@ -1,52 +1,52 @@
-import type { Artifact } from './types'
+import type { Artifact } from "./types";
 
-const artifactStore = new Map<string, Map<string, Artifact>>()
+const artifactStore = new Map<string, Map<string, Artifact>>();
 
 function getProjectMap(projectId: string): Map<string, Artifact> {
-	if (!artifactStore.has(projectId)) {
-		artifactStore.set(projectId, new Map())
-	}
-	return artifactStore.get(projectId)!
+  if (!artifactStore.has(projectId)) {
+    artifactStore.set(projectId, new Map());
+  }
+  return artifactStore.get(projectId)!;
 }
 
 export function listArtifacts(projectId: string): Artifact[] {
-	const projectMap = getProjectMap(projectId)
-	return Array.from(projectMap.values())
+  const projectMap = getProjectMap(projectId);
+  return Array.from(projectMap.values());
 }
 
 export function getArtifact(
-	projectId: string,
-	key: string,
+  projectId: string,
+  key: string,
 ): Artifact | undefined {
-	const projectMap = getProjectMap(projectId)
-	return projectMap.get(key)
+  const projectMap = getProjectMap(projectId);
+  return projectMap.get(key);
 }
 
 export function upsertArtifact(artifact: Artifact): void {
-	const projectMap = getProjectMap(artifact.projectId)
-	projectMap.set(artifact.key, artifact)
+  const projectMap = getProjectMap(artifact.projectId);
+  projectMap.set(artifact.key, artifact);
 }
 
 export function seedArtifacts(projectId: string): void {
-	const projectMap = getProjectMap(projectId)
-	if (projectMap.size > 0) {
-		return
-	}
+  const projectMap = getProjectMap(projectId);
+  if (projectMap.size > 0) {
+    return;
+  }
 
-	const now = new Date().toISOString()
+  const now = new Date().toISOString();
 
-	const artifacts: Artifact[] = [
-		{
-			id: `${projectId}-business-requirements`,
-			projectId,
-			key: 'business-requirements',
-			label: 'Business Requirements',
-			format: 'yaml',
-			status: 'ready',
-			generatedAt: now,
-			content: `version: "1.0.0"
+  const artifacts: Artifact[] = [
+    {
+      id: `${projectId}-business-requirements`,
+      projectId,
+      key: "business-requirements",
+      label: "Business Requirements",
+      format: "yaml",
+      status: "ready",
+      generatedAt: now,
+      content: `version: "1.0.0"
 project: Sample Project
-generated: "${now.split('T')[0]}"
+generated: "${now.split("T")[0]}"
 
 problem_statement: |
   Engineering teams waste significant time context-switching between planning
@@ -69,18 +69,18 @@ success_metrics:
     baseline: 60%
     target: 95%
 `,
-		},
-		{
-			id: `${projectId}-technical-requirements`,
-			projectId,
-			key: 'technical-requirements',
-			label: 'Technical Requirements',
-			format: 'yaml',
-			status: 'ready',
-			generatedAt: now,
-			content: `version: "1.0.0"
+    },
+    {
+      id: `${projectId}-technical-requirements`,
+      projectId,
+      key: "technical-requirements",
+      label: "Technical Requirements",
+      format: "yaml",
+      status: "ready",
+      generatedAt: now,
+      content: `version: "1.0.0"
 project: Sample Project
-generated: "${now.split('T')[0]}"
+generated: "${now.split("T")[0]}"
 
 architecture:
   stack:
@@ -112,18 +112,18 @@ non_functional_requirements:
   - category: Security
     requirement: OIDC authentication required
 `,
-		},
-		{
-			id: `${projectId}-milestones`,
-			projectId,
-			key: 'milestones',
-			label: 'Implementation Milestones',
-			format: 'yaml',
-			status: 'ready',
-			generatedAt: now,
-			content: `version: "1.0.0"
+    },
+    {
+      id: `${projectId}-milestones`,
+      projectId,
+      key: "milestones",
+      label: "Implementation Milestones",
+      format: "yaml",
+      status: "ready",
+      generatedAt: now,
+      content: `version: "1.0.0"
 project: Sample Project
-generated: "${now.split('T')[0]}"
+generated: "${now.split("T")[0]}"
 
 milestones:
   - id: m1
@@ -153,20 +153,20 @@ milestones:
       - Step progression logic
       - Answer persistence
 `,
-		},
-		{
-			id: `${projectId}-architecture`,
-			projectId,
-			key: 'architecture',
-			label: 'Architecture Decision Record',
-			format: 'markdown',
-			status: 'ready',
-			generatedAt: now,
-			content: `# Architecture Decision Record
+    },
+    {
+      id: `${projectId}-architecture`,
+      projectId,
+      key: "architecture",
+      label: "Architecture Decision Record",
+      format: "markdown",
+      status: "ready",
+      generatedAt: now,
+      content: `# Architecture Decision Record
 
 ## Project: Sample Project
 
-**Generated:** ${now.split('T')[0]}
+**Generated:** ${now.split("T")[0]}
 
 ---
 
@@ -211,10 +211,10 @@ Use in-memory Map-based storage for all data.
 - SQLite: Adds persistence but increases complexity
 - PostgreSQL: Overkill for demo purposes
 `,
-		},
-	]
+    },
+  ];
 
-	for (const artifact of artifacts) {
-		projectMap.set(artifact.key, artifact)
-	}
+  for (const artifact of artifacts) {
+    projectMap.set(artifact.key, artifact);
+  }
 }

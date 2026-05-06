@@ -91,8 +91,18 @@ describe("InterviewThread", () => {
           status: "now" as const,
           question: "Pick one?",
           options: [
-            { letter: "A", title: "Option Alpha", body: "Details", recommended: true },
-            { letter: "B", title: "Option Beta", body: "Details", recommended: false },
+            {
+              letter: "A",
+              title: "Option Alpha",
+              body: "Details",
+              recommended: true,
+            },
+            {
+              letter: "B",
+              title: "Option Beta",
+              body: "Details",
+              recommended: false,
+            },
           ],
         },
         ...Array.from({ length: 9 }, (_, i) => ({
@@ -106,7 +116,9 @@ describe("InterviewThread", () => {
 
     wrap(<InterviewThread stepState={stepState} projectId="p1" />);
 
-    await userEvent.click(screen.getByRole("button", { name: /option alpha/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /option alpha/i }),
+    );
     await userEvent.click(screen.getByRole("button", { name: /submit/i }));
 
     expect(mockMutate).toHaveBeenCalledWith(

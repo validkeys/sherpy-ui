@@ -12,8 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectProjectIdRouteImport } from './routes/project/$projectId'
-import { Route as ProjectProjectIdBuildRouteImport } from './routes/project/$projectId.build'
 import { Route as ProjectProjectIdReviewRouteImport } from './routes/project/$projectId.review'
+import { Route as ProjectProjectIdBuildRouteImport } from './routes/project/$projectId.build'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -30,28 +30,28 @@ const ProjectProjectIdRoute = ProjectProjectIdRouteImport.update({
   path: '/project/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjectProjectIdBuildRoute = ProjectProjectIdBuildRouteImport.update({
-  id: '/project/$projectId/build',
-  path: '/build',
+const ProjectProjectIdReviewRoute = ProjectProjectIdReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
   getParentRoute: () => ProjectProjectIdRoute,
 } as any)
-const ProjectProjectIdReviewRoute = ProjectProjectIdReviewRouteImport.update({
-  id: '/project/$projectId/review',
-  path: '/review',
+const ProjectProjectIdBuildRoute = ProjectProjectIdBuildRouteImport.update({
+  id: '/build',
+  path: '/build',
   getParentRoute: () => ProjectProjectIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/project/$projectId': typeof ProjectProjectIdRoute
+  '/project/$projectId': typeof ProjectProjectIdRouteWithChildren
   '/project/$projectId/build': typeof ProjectProjectIdBuildRoute
   '/project/$projectId/review': typeof ProjectProjectIdReviewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/project/$projectId': typeof ProjectProjectIdRoute
+  '/project/$projectId': typeof ProjectProjectIdRouteWithChildren
   '/project/$projectId/build': typeof ProjectProjectIdBuildRoute
   '/project/$projectId/review': typeof ProjectProjectIdReviewRoute
 }
@@ -59,7 +59,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/project/$projectId': typeof ProjectProjectIdRoute
+  '/project/$projectId': typeof ProjectProjectIdRouteWithChildren
   '/project/$projectId/build': typeof ProjectProjectIdBuildRoute
   '/project/$projectId/review': typeof ProjectProjectIdReviewRoute
 }
@@ -90,7 +90,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
-  ProjectProjectIdRoute: typeof ProjectProjectIdRoute
+  ProjectProjectIdRoute: typeof ProjectProjectIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -116,31 +116,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/project/$projectId/build': {
-      id: '/project/$projectId/build'
-      path: '/build'
-      fullPath: '/project/$projectId/build'
-      preLoaderRoute: typeof ProjectProjectIdBuildRouteImport
-      parentRoute: typeof ProjectProjectIdRouteImport
-    }
     '/project/$projectId/review': {
       id: '/project/$projectId/review'
       path: '/review'
       fullPath: '/project/$projectId/review'
       preLoaderRoute: typeof ProjectProjectIdReviewRouteImport
-      parentRoute: typeof ProjectProjectIdRouteImport
+      parentRoute: typeof ProjectProjectIdRoute
+    }
+    '/project/$projectId/build': {
+      id: '/project/$projectId/build'
+      path: '/build'
+      fullPath: '/project/$projectId/build'
+      preLoaderRoute: typeof ProjectProjectIdBuildRouteImport
+      parentRoute: typeof ProjectProjectIdRoute
     }
   }
 }
 
-const ProjectProjectIdRouteChildren = {
+interface ProjectProjectIdRouteChildren {
+  ProjectProjectIdBuildRoute: typeof ProjectProjectIdBuildRoute
+  ProjectProjectIdReviewRoute: typeof ProjectProjectIdReviewRoute
+}
+
+const ProjectProjectIdRouteChildren: ProjectProjectIdRouteChildren = {
   ProjectProjectIdBuildRoute: ProjectProjectIdBuildRoute,
   ProjectProjectIdReviewRoute: ProjectProjectIdReviewRoute,
 }
 
-const ProjectProjectIdRouteWithChildren = ProjectProjectIdRoute._addFileChildren(
-  ProjectProjectIdRouteChildren,
-)
+const ProjectProjectIdRouteWithChildren =
+  ProjectProjectIdRoute._addFileChildren(ProjectProjectIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
