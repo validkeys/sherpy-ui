@@ -5,6 +5,7 @@ import { OptionStack } from "@/components/thread/OptionStack";
 import { QuestionCard } from "@/components/thread/QuestionCard";
 import { ThreadDivider } from "@/components/thread/ThreadDivider";
 import { ThreadView } from "@/components/thread/ThreadView";
+import { useStreamingQuestion } from "@/features/ai/hooks";
 import { useSubmitAnswer } from "@/features/planning/hooks";
 import type { ProjectStepState } from "@/features/planning/types";
 import { AnsweredMessage } from "./AnsweredMessage";
@@ -21,6 +22,24 @@ export function InterviewThread({
   const [inputText, setInputText] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const { mutate: submitAnswer, isPending } = useSubmitAnswer(projectId);
+
+  // Get previous answers for current step (currently only single answer per step)
+  const currentStepData = stepState.steps.find(
+    (s) => s.stepNumber === stepState.currentStep,
+  );
+  const completedAnswers = currentStepData?.answer
+    ? [currentStepData.answer.value]
+    : [];
+
+  // Streaming AI question - currently for demonstration, falls back to mock
+  const { text: streamedQuestion, loading: isStreaming } = useStreamingQuestion(
+    {
+      projectId,
+      stepNumber: stepState.currentStep,
+      previousAnswers: completedAnswers,
+      enabled: false, // TODO: Enable in M4-007 when wiring end-to-end
+    },
+  );
 
   const completedSteps = stepState.steps.filter((s) => s.status === "complete");
   const currentStep = stepState.steps.find(
@@ -44,9 +63,8 @@ export function InterviewThread({
   }
 
   const messages =
-    completedSteps.length > 0 ? (
-      <>
-        {completedSteps.map((step) => (
+    completedSteps.length > 0
+      ? completedSteps.map((step) => (
           <div key={step.stepNumber} className="flex flex-col gap-2">
             <ThreadDivider label={step.name} tone="success" />
             {step.answer && (
@@ -56,16 +74,16 @@ export function InterviewThread({
               />
             )}
           </div>
-        ))}
-      </>
-    ) : undefined;
+        ))
+      : undefined;
+
+  // Use streamed question when available, otherwise fall back to mock
+  const questionText = isStreaming
+    ? streamedQuestion || "Loading question..."
+    : streamedQuestion || currentStep?.question || "Loading question...";
 
   const question = currentStep ? (
-    <QuestionCard
-      n={currentStep.stepNumber}
-      total={10}
-      text={currentStep.question}
-    />
+    <QuestionCard n={currentStep.stepNumber} total={10} text={questionText} />
   ) : undefined;
 
   const options = currentStep?.options?.length ? (
@@ -107,7 +125,7 @@ export function InterviewThread({
           handleSubmit();
         }
       }}
-      disabled={isPending}
+      disabled={isPending || isStreaming}
     />
   );
 
@@ -115,7 +133,9 @@ export function InterviewThread({
     <button
       type="button"
       onClick={handleSubmit}
-      disabled={isPending || (!selectedOption && !inputText.trim())}
+      disabled={
+        isPending || isStreaming || (!selectedOption && !inputText.trim())
+      }
       className="font-mono text-[11px] px-3 py-1.5 rounded-md bg-inverse text-fg-on-inverse disabled:opacity-40 disabled:cursor-not-allowed"
     >
       {isPending ? "…" : "Submit →"}
@@ -131,7 +151,7 @@ export function InterviewThread({
         <Composer
           input={composerInput}
           cta={composerCta}
-          disabled={isPending}
+          disabled={isPending || isStreaming}
         />
       }
     />
