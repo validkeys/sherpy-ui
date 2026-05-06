@@ -8,7 +8,9 @@
       "!.claude",
       "!node_modules",
       "!app/routeTree.gen.ts",
-      "!docs"
+      "!docs",
+      "!**/*.css",
+      "!vitest.shims.d.ts"
     ]
   },
   "linter": {
