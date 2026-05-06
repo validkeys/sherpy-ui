@@ -10,6 +10,10 @@ export default defineConfig({
       srcDirectory: "app",
     }),
   ],
+  server: {
+    host: true,
+    port: Number(process.env.SHERPY_UI_PORT) || 5180,
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
