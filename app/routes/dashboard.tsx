@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { LeftRail } from "../../src/components/left-rail";
 import { CreateProjectFlow } from "../../src/features/projects/components/CreateProjectFlow";
@@ -10,12 +10,20 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardComponent() {
   const [createOpen, setCreateOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="grid grid-cols-[var(--left-rail-width)_1fr] h-screen min-h-[760px]">
       <LeftRail onNewProject={() => setCreateOpen(true)} />
       <main className="flex flex-col bg-page overflow-hidden">
-        <ProjectList />
+        <ProjectList
+          onProjectClick={(project) => {
+            navigate({
+              to: "/project/$projectId/build",
+              params: { projectId: project.id },
+            });
+          }}
+        />
       </main>
       <CreateProjectFlow
         open={createOpen}
