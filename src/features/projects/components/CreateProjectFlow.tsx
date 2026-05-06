@@ -36,6 +36,10 @@ export function CreateProjectFlow({
       setNameError("Project name is required");
       return;
     }
+    if (name.trim().length > 120) {
+      setNameError("Project name must be 120 characters or fewer");
+      return;
+    }
     setNameError("");
     createProject(
       { name: name.trim(), entryPath },
@@ -117,6 +121,7 @@ export function CreateProjectFlow({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. billing-platform"
+                    maxLength={120}
                     className="text-sm border border-border-1 rounded-md px-3 py-2 bg-surface text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-border-2"
                   />
                   {nameError && (
