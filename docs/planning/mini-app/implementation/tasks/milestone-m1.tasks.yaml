@@ -1,0 +1,612 @@
+milestone: m1
+name: Dashboard Page
+generated: "2026-05-05"
+
+style_anchors:
+  - path: src/components/ui/card.tsx
+    description: |
+      Project cards use Card + CardHeader + CardTitle + CardDescription +
+      CardContent. Follow data-slot pattern and cn() for className merging.
+  - path: src/components/left-rail/LeftRail.tsx
+    description: |
+      NavItemRow shows active state with bg-surface border shadow-xs.
+      Use same pattern for project nav items in the wired LeftRail.
+  - path: src/components/intake/Intake.tsx
+    lines: 1-30
+    description: |
+      PathCard grid layout for the new-project entry-point selection.
+      Re-use as-is; only wire onClick to server fn.
+
+global_constraints:
+  allowed_patterns:
+    - "ONLY createServerFn from @tanstack/start for server-side logic"
+    - "ONLY TanStack Query (useQuery / useMutation) for client state"
+    - "ONLY in-memory module-level Map/Array for data persistence"
+    - "ONLY Tailwind utility classes — no inline style= attributes"
+    - "ONLY TypeScript — no plain JS files"
+  forbidden_patterns:
+    - "No useState for data that belongs in server state"
+    - "No fetch() calls — all server communication via createServerFn"
+    - "No localStorage or sessionStorage"
+    - "No new component libraries beyond what is already installed"
+  tdd_required: true
+  max_task_duration_minutes: 90
+  commit_strategy: "Commit after each task"
+  drift_policy:
+    stop_criteria:
+      - Introduces dependency not listed in allowed_patterns
+      - Edits touch >3 files not in this task's files section
+      - Lint or type errors introduced that cannot be resolved within task scope
+      - Test fails and model proposes modifying the test instead of fixing implementation
+    on_detect: |
+      STOP immediately. Do not continue editing.
+      Summarize: (1) what you intended, (2) what you found, (3) which files were touched.
+      Revert: git checkout -- .
+      Create incident note: docs/drift-incidents/YYYY-MM-DD-<task-id>.md
+    allowed_deviations:
+      - Whitespace-only edits
+      - Single-line refactor within targeted file if type-checked and in-scope
+
+quality_gates:
+  - stage: pre-commit
+    commands:
+      - "pnpm biome check --write ."
+      - "pnpm tsc --noEmit"
+      - "pnpm test --run"
+  - stage: task-completion
+    criteria:
+      - All tests passing
+      - No TypeScript errors
+      - Biome passes
+      - Feature works end-to-end in browser
+
+tasks:
+  - id: m1-001
+    name: Define project types and in-memory store
+    description: |
+      Create the canonical TypeScript types for a Project record and the
+      module-level in-memory store that all project server fns share.
+    estimate_minutes: 45
+    type: code
+    dependencies: []
+    files:
+      create:
+        - src/features/projects/types.ts
+        - src/features/projects/store.ts
+      modify: []
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Shared types used by both server fns and the client. The store module
+      holds the single in-memory Map that acts as the fake database.
+
+      **Implementation Steps:**
+      1. `src/features/projects/types.ts`:
+         ```typescript
+         export type ProjectStatus = 'active' | 'archived' | 'complete'
+         export type EntryPath = 'scratch' | 'doc-first'
+
+         export interface Project {
+           id: string            // nanoid(8)
+           code: string          // SHR-XXXX auto-generated
+           name: string
+           status: ProjectStatus
+           entryPath: EntryPath
+           currentStep: number   // 1-10
+           lastTouchedAt: string // ISO date string
+           createdAt: string
+         }
+
+         export interface CreateProjectInput {
+           name: string
+           entryPath: EntryPath
+         }
+         ```
+      2. `src/features/projects/store.ts`:
+         ```typescript
+         import { nanoid } from 'nanoid'
+         import type { Project, CreateProjectInput } from './types'
+
+         // Module-level store — resets on server restart by design
+         const store = new Map<string, Project>()
+         let codeCounter = 42
+
+         function nextCode(): string {
+           return `SHR-${String(codeCounter++).padStart(4, '0')}`
+         }
+
+         export function listProjects(): Project[] {
+           return Array.from(store.values())
+             .sort((a, b) => b.lastTouchedAt.localeCompare(a.lastTouchedAt))
+         }
+
+         export function createProject(input: CreateProjectInput): Project {
+           const now = new Date().toISOString()
+           const project: Project = {
+             id: nanoid(8),
+             code: nextCode(),
+             name: input.name,
+             status: 'active',
+             entryPath: input.entryPath,
+             currentStep: 1,
+             lastTouchedAt: now,
+             createdAt: now,
+           }
+           store.set(project.id, project)
+           return project
+         }
+
+         export function updateProjectStatus(
+           id: string,
+           status: Project['status']
+         ): Project {
+           const project = store.get(id)
+           if (!project) throw new Error(`Project not found: ${id}`)
+           const updated = { ...project, status, lastTouchedAt: new Date().toISOString() }
+           store.set(id, updated)
+           return updated
+         }
+
+         export function getProject(id: string): Project | undefined {
+           return store.get(id)
+         }
+         ```
+      3. Install nanoid: `pnpm add nanoid`
+
+      **TDD Checklist:**
+      - [ ] Write tests for listProjects (empty, with items, sort order)
+      - [ ] Write tests for createProject (id generated, code increments, defaults)
+      - [ ] Write tests for updateProjectStatus (found, not-found error)
+      - [ ] Run tests — all pass before committing
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/projects/store.test.ts"
+      expected_output: tsc clean, all store tests pass
+      on_failure: Fix type errors; ensure nanoid is installed
+
+  - id: m1-002
+    name: Project server functions (list, create, updateStatus)
+    description: |
+      Expose the store operations as TanStack Start server functions.
+      These are the only API surface for project CRUD.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m1-001]
+    files:
+      create:
+        - src/features/projects/server.ts
+        - src/features/projects/server.test.ts
+      modify: []
+      touch_only:
+        - src/features/projects/store.ts
+    instructions: |
+      **Objective:**
+      createServerFn wrappers around store operations. TypeScript types
+      flow end-to-end — no `any`, no type assertions.
+
+      **Implementation Steps:**
+      1. `src/features/projects/server.ts`:
+         ```typescript
+         import { createServerFn } from '@tanstack/start'
+         import { listProjects, createProject, updateProjectStatus } from './store'
+         import type { CreateProjectInput } from './types'
+
+         export const $listProjects = createServerFn({ method: 'GET' })
+           .handler(() => listProjects())
+
+         export const $createProject = createServerFn({ method: 'POST' })
+           .validator((data: unknown): CreateProjectInput => {
+             if (typeof data !== 'object' || data === null)
+               throw new Error('invalid input: expected object')
+             const d = data as Record<string, unknown>
+             if (typeof d.name !== 'string' || !d.name.trim())
+               throw new Error('name is required')
+             if (d.entryPath !== 'scratch' && d.entryPath !== 'doc-first')
+               throw new Error('invalid entryPath')
+             return { name: d.name.trim(), entryPath: d.entryPath as 'scratch' | 'doc-first' }
+           })
+           .handler(({ data }) => createProject(data))
+
+         export const $updateProjectStatus = createServerFn({ method: 'POST' })
+           .validator((data: unknown) => {
+             if (typeof data !== 'object' || data === null)
+               throw new Error('invalid input: expected object')
+             const d = data as Record<string, unknown>
+             if (typeof d.id !== 'string' || !d.id) throw new Error('id is required')
+             if (d.status !== 'archived' && d.status !== 'complete')
+               throw new Error('status must be archived or complete')
+             return { id: d.id, status: d.status as 'archived' | 'complete' }
+           })
+           .handler(({ data }) => updateProjectStatus(data.id, data.status))
+         ```
+      2. Write integration tests in `server.test.ts` using Vitest.
+         Import and call the server fns directly (no HTTP layer needed).
+
+      **TDD Checklist:**
+      - [ ] Test: $listProjects returns empty array initially
+      - [ ] Test: $createProject creates a project with valid input
+      - [ ] Test: $createProject throws on missing name
+      - [ ] Test: $updateProjectStatus archives a project
+      - [ ] Test: $updateProjectStatus throws on unknown id
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/projects/server.test.ts"
+      expected_output: tsc clean, all server fn tests pass
+      on_failure: Check createServerFn import path; verify validator types
+
+  - id: m1-003
+    name: TanStack Query hooks for project operations
+    description: |
+      Client-side hooks that call server fns and manage cache invalidation.
+      These are the only hooks components import for project data.
+    estimate_minutes: 45
+    type: code
+    dependencies: [m1-002]
+    files:
+      create:
+        - src/features/projects/hooks.ts
+      modify: []
+      touch_only:
+        - src/features/projects/server.ts
+    instructions: |
+      **Objective:**
+      Thin wrapper hooks over TanStack Query. No business logic here —
+      just cache key management and mutation callbacks.
+
+      **Implementation Steps:**
+      ```typescript
+      // src/features/projects/hooks.ts
+      import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+      import { $listProjects, $createProject, $updateProjectStatus } from './server'
+      import type { CreateProjectInput } from './types'
+
+      export const projectsQueryKey = ['projects'] as const
+
+      export function useProjects() {
+        return useQuery({
+          queryKey: projectsQueryKey,
+          queryFn: () => $listProjects(),
+        })
+      }
+
+      export function useCreateProject() {
+        const qc = useQueryClient()
+        return useMutation({
+          mutationFn: (input: CreateProjectInput) => $createProject({ data: input }),
+          onSuccess: () => qc.invalidateQueries({ queryKey: projectsQueryKey }),
+        })
+      }
+
+      export function useUpdateProjectStatus() {
+        const qc = useQueryClient()
+        return useMutation({
+          mutationFn: (vars: { id: string; status: 'archived' | 'complete' }) =>
+            $updateProjectStatus({ data: vars }),
+          onSuccess: () => qc.invalidateQueries({ queryKey: projectsQueryKey }),
+        })
+      }
+      ```
+
+      **TDD Checklist:**
+      - [ ] No logic to test directly — type-check is the validation here
+      - [ ] tsc --noEmit passes on hooks.ts
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+      expected_output: tsc clean
+      on_failure: Verify @tanstack/react-query installed; check import from server.ts
+
+  - id: m1-004
+    name: Root layout + QueryClient provider + Dashboard route
+    description: |
+      Set up QueryClientProvider in the root route. Create the /dashboard
+      route with the two-column layout (LeftRail + main). Wire basic routing.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m1-003]
+    files:
+      create:
+        - app/routes/dashboard.tsx
+      modify:
+        - app/routes/__root.tsx
+        - app/routes/index.tsx
+      touch_only: []
+    instructions: |
+      **Objective:**
+      React Query context available to all routes. Dashboard at /dashboard.
+      Root index (/) redirects to /dashboard.
+
+      **Implementation Steps:**
+      1. Update `app/routes/__root.tsx`:
+         ```tsx
+         import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+         import { ThemeProvider } from '@/components/theme-provider'
+
+         const queryClient = new QueryClient()
+
+         export function RootComponent() {
+           return (
+             <QueryClientProvider client={queryClient}>
+               <ThemeProvider>
+                 <Outlet />
+               </ThemeProvider>
+             </QueryClientProvider>
+           )
+         }
+         ```
+      2. `app/routes/index.tsx` — redirect to /dashboard:
+         ```tsx
+         import { Navigate } from '@tanstack/react-router'
+         export function IndexComponent() {
+           return <Navigate to="/dashboard" />
+         }
+         ```
+      3. `app/routes/dashboard.tsx` — render the Dashboard layout:
+         ```tsx
+         export function DashboardComponent() {
+           return (
+             <div className="grid grid-cols-[240px_1fr] h-screen min-h-[760px]">
+               <LeftRail />
+               <main className="flex flex-col bg-page overflow-hidden">
+                 {/* project list rendered in m1-005 */}
+               </main>
+             </div>
+           )
+         }
+         ```
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+      expected_output: tsc clean; /dashboard route renders in browser
+      on_failure: Check TanStack Router createFileRoute usage; verify QueryClient wraps root
+
+  - id: m1-005
+    name: Project list UI with active/past tabs
+    description: |
+      Dashboard main area: tab bar (Active / Past), list of ProjectCards,
+      empty states for each tab. Data from useProjects() hook.
+    estimate_minutes: 90
+    type: code
+    dependencies: [m1-004]
+    files:
+      create:
+        - src/features/projects/components/ProjectList.tsx
+        - src/features/projects/components/ProjectCard.tsx
+        - src/features/projects/components/ProjectList.test.tsx
+      modify:
+        - app/routes/dashboard.tsx
+      touch_only:
+        - src/components/ui/card.tsx
+        - src/features/projects/hooks.ts
+    instructions: |
+      **Objective:**
+      Dashboard is fully functional: projects load from server, tabs filter
+      by status, each card is clickable. Uses Card component from design system.
+
+      **Implementation Steps:**
+      1. `ProjectCard.tsx` — uses Card + CardHeader + CardTitle + CardDescription:
+         ```tsx
+         interface ProjectCardProps {
+           project: Project
+           onArchive: () => void
+           onComplete: () => void
+           onClick: () => void
+         }
+         ```
+         Card shows: name, code (monospace, small, muted), current step
+         (e.g. "Step 3 · Technical Requirements"), lastTouchedAt (relative
+         time string). Actions: Archive / Complete buttons in CardFooter.
+
+      2. `ProjectList.tsx` — two-tab layout:
+         - Tab "Active" → projects where status === 'active'
+         - Tab "Past" → projects where status === 'archived' || 'complete'
+         - Empty state for each: centered muted message, no icon needed
+         - Loading state: skeleton or muted "Loading…" text
+         - Uses useProjects() and useUpdateProjectStatus()
+
+      3. Mount ProjectList in `app/routes/dashboard.tsx` main area.
+
+      4. Style: match LeftRail nav density — card gap-3, px-6 content area.
+
+      **TDD Checklist:**
+      - [ ] Test: renders "No active projects" when list is empty
+      - [ ] Test: renders project cards with name and code
+      - [ ] Test: Past tab shows archived projects, not active ones
+      - [ ] Run: pnpm test --run ProjectList.test.tsx
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/projects/components/ProjectList.test.tsx"
+      expected_output: tsc clean, all ProjectList tests pass
+      on_failure: Check useProjects() returns correct shape; verify Card import
+
+  - id: m1-006
+    name: Wire LeftRail to real project navigation
+    description: |
+      Replace the hardcoded DEFAULT_NAV in LeftRail.tsx with real project
+      data from useProjects(). Active project highlighted. "New project" nav
+      item triggers create flow.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m1-005]
+    files:
+      create:
+        - src/components/left-rail/LeftRailNav.tsx
+      modify:
+        - src/components/left-rail/LeftRail.tsx
+        - src/components/left-rail/index.ts
+      touch_only:
+        - src/features/projects/hooks.ts
+    instructions: |
+      **Objective:**
+      LeftRail becomes real navigation. Projects list populates the workspace
+      section. The active route's project is highlighted. "New project" opens
+      the create flow.
+
+      **Implementation Steps:**
+      1. Create `LeftRailNav.tsx` — a client component that calls useProjects()
+         and renders the nav sections. Extract this from LeftRail.tsx to keep
+         LeftRail itself as a presentational layout wrapper.
+      2. Map active projects → nav items in "Workspace" section.
+      3. "New project" item (+ icon) calls a prop `onNewProject: () => void`.
+      4. Use TanStack Router's `useRouter()` to detect active project route and
+         apply the active nav item style (bg-surface border shadow-xs pattern
+         from LeftRail.tsx's NavItemRow).
+      5. Pass `onNewProject` from the dashboard route down through LeftRail.
+
+      **TDD Checklist:**
+      - [ ] Test: LeftRailNav renders project name for each active project
+      - [ ] Test: "New project" item calls onNewProject prop on click
+      - [ ] Test: currently active project route gets active nav item class
+      - [ ] Run: pnpm test --run src/components/left-rail/LeftRailNav.test.tsx
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/components/left-rail/LeftRailNav.test.tsx"
+      expected_output: tsc clean; LeftRail shows real project list in browser
+      on_failure: Check useProjects() is called inside QueryClientProvider scope
+
+  - id: m1-007
+    name: Create-project flow (Intake → server fn)
+    description: |
+      "New project" triggers a modal or inline panel with the Intake component
+      (scratch vs doc-first path cards). Submitting creates the project via
+      $createProject and navigates to the new project page.
+    estimate_minutes: 90
+    type: code
+    dependencies: [m1-006]
+    files:
+      create:
+        - src/features/projects/components/CreateProjectFlow.tsx
+        - src/features/projects/components/CreateProjectFlow.test.tsx
+      modify:
+        - app/routes/dashboard.tsx
+      touch_only:
+        - src/components/intake/Intake.tsx
+        - src/components/intake/PathCard.tsx
+        - src/features/projects/hooks.ts
+    instructions: |
+      **Objective:**
+      Full create-project UX using the existing Intake + PathCard components.
+      No new UI patterns — wire existing components to real server fn.
+
+      **Implementation Steps:**
+      1. `CreateProjectFlow.tsx`:
+         - Renders Intake with two PathCards: "Start from scratch" and
+           "Start with requirements doc"
+         - Step 1: path selection → set entryPath state
+         - Step 2: project name input (simple text field) → name state
+         - Submit: call useCreateProject() → navigate to /project/:id
+         - Cancel: dismiss flow, return to dashboard
+      2. Show as overlay (centered modal-like panel) when `open` prop is true.
+         Use simple conditional render — no animation library.
+      3. Wire `onNewProject` from LeftRailNav to set `open = true`.
+      4. After successful creation, navigate to /project/:id (route created in M2).
+         For now, navigate back to /dashboard.
+
+      **TDD Checklist:**
+      - [ ] Test: renders both PathCards
+      - [ ] Test: selecting "scratch" advances to name step
+      - [ ] Test: submitting empty name shows validation error
+      - [ ] Test: successful create calls mutation and dismisses flow
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/projects/components/CreateProjectFlow.test.tsx"
+      expected_output: tsc clean, all create-flow tests pass
+      on_failure: Verify Intake props match component interface; check useNavigate import
+
+  - id: m1-008
+    name: Seed data + integration smoke test
+    description: |
+      Add a seed module that pre-populates 3–4 realistic demo projects at
+      server startup. Manual browser walkthrough of the full dashboard flow.
+    estimate_minutes: 45
+    type: code
+    dependencies: [m1-007]
+    files:
+      create:
+        - src/features/projects/seed.ts
+      modify:
+        - src/features/projects/store.ts
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Dashboard is demo-ready without manual data entry. Seed data loaded
+      once on module initialization.
+
+      **Implementation Steps:**
+      1. `src/features/projects/seed.ts`:
+         Create 3–4 realistic PM projects:
+         - "sherpy-web" — active, step 4, code SHR-0001
+         - "billing-platform" — active, step 2, code SHR-0002
+         - "mobile-v3" — archived, step 7, code SHR-0003
+         - "design-tokens" — complete, step 10, code SHR-0004
+      2. Import and call seed() at the bottom of `store.ts` (guarded by
+         an env check: only run if SEED_DATA !== 'false').
+      3. Manual walkthrough in browser:
+         - Dashboard loads with seed projects
+         - Active tab shows sherpy-web and billing-platform
+         - Past tab shows mobile-v3 and design-tokens
+         - Create new project flow works end-to-end
+         - Archive/complete status change reflects immediately
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+      expected_output: tsc clean; seed projects visible in browser on first load
+      on_failure: Verify seed.ts is imported in store.ts; check codeCounter doesn't clash
+
+  - id: m1-009
+    name: Code review — M1 Dashboard
+    description: |
+      Full code review of all M1 work. Verify server fn patterns, Query hook
+      patterns, component structure, and test coverage.
+    estimate_minutes: 60
+    type: code-review
+    dependencies: [m1-001, m1-002, m1-003, m1-004, m1-005, m1-006, m1-007, m1-008]
+    files:
+      create:
+        - code-reviews/2026-05-05-2-code-review.yaml
+      modify: []
+      touch_only:
+        - src/features/projects/
+        - app/routes/dashboard.tsx
+        - app/routes/__root.tsx
+    instructions: |
+      **Review Checklist:**
+      1. **Server Fn Patterns:**
+         - [ ] All server fns use createServerFn — no raw fetch/API routes
+         - [ ] Validators reject invalid input with typed errors
+         - [ ] No business logic in client components (only in store.ts)
+      2. **Query Patterns:**
+         - [ ] useQuery with stable queryKey
+         - [ ] useMutation invalidates correct query keys on success
+         - [ ] No direct store imports in client components
+      3. **Component Structure:**
+         - [ ] Card usage matches style anchor (data-slot, cn(), semantic tokens)
+         - [ ] No inline style= attributes
+         - [ ] No hardcoded colors — only Tailwind semantic token classes
+      4. **Tests:**
+         - [ ] Store unit tests cover all operations
+         - [ ] Component tests cover empty state, populated state, user actions
+      5. **Routing:**
+         - [ ] / redirects to /dashboard
+         - [ ] No broken links
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm biome check ."
+        - "pnpm test --run"
+      expected_output: All quality gates pass
+      on_failure: Document and fix before starting M2

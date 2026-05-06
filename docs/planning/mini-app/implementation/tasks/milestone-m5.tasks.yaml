@@ -1,0 +1,294 @@
+milestone: m5
+name: Deploy Prep
+generated: "2026-05-05"
+
+style_anchors:
+  - path: .env.example
+    description: |
+      Every env var required at runtime must be listed here with a comment.
+      Created in M4. M5 extends it with PORT, SEED_DATA, and health check vars.
+  - path: app/api/health.ts
+    description: |
+      Pattern for Nitro/TanStack Start API routes: default export via
+      defineEventHandler(). All app/api/ routes follow this exact shape.
+      Returns plain object — Nitro serializes to JSON automatically.
+  - path: Dockerfile
+    description: |
+      Multi-stage build pattern: builder stage runs pnpm build → produces .output/;
+      runtime stage installs prod deps only + copies .output/. Non-root user (sherpy).
+      Created in m5-001 — reference this file for any container config questions.
+
+global_constraints:
+  allowed_patterns:
+    - "ONLY multi-stage Docker build (builder + runtime stages)"
+    - "ONLY pnpm as package manager inside Docker"
+    - "ONLY Node.js 22 LTS as base image"
+    - "ONLY env vars for configuration — no config files embedded in image"
+    - "Health check at /health — plain HTTP GET, returns 200 OK"
+  forbidden_patterns:
+    - "No root user in Docker runtime stage"
+    - "No node_modules copied wholesale — use pnpm prune --prod"
+    - "No .env files baked into the image"
+    - "No hardcoded ports — use PORT env var"
+  tdd_required: false
+  max_task_duration_minutes: 90
+  commit_strategy: "Commit after each task"
+  drift_policy:
+    stop_criteria:
+      - Introduces dependency not listed in allowed_patterns
+      - Edits touch >3 files not in this task's files section
+      - Lint or type errors introduced that cannot be resolved within task scope
+      - Test fails and model proposes modifying the test instead of fixing implementation
+    on_detect: |
+      STOP immediately. Do not continue editing.
+      Summarize: (1) what you intended, (2) what you found, (3) which files were touched.
+      Revert: git checkout -- .
+      Create incident note: docs/drift-incidents/YYYY-MM-DD-<task-id>.md
+    allowed_deviations:
+      - Whitespace-only edits
+      - Single-line refactor within targeted file if type-checked and in-scope
+
+quality_gates:
+  - stage: pre-commit
+    commands:
+      - "pnpm biome check --write ."
+      - "pnpm tsc --noEmit"
+  - stage: task-completion
+    criteria:
+      - docker build completes without errors
+      - docker run serves app on configured PORT
+      - /health returns 200 OK
+      - Seed data visible in browser
+
+tasks:
+  - id: m5-001
+    name: Dockerfile and Docker health check
+    description: |
+      Multi-stage Dockerfile: build stage compiles the TanStack Start app,
+      runtime stage runs the Node.js server. Non-root user. Health check
+      endpoint at /health wired into Nitro.
+    estimate_minutes: 90
+    type: config
+    dependencies: []
+    files:
+      create:
+        - Dockerfile
+        - .dockerignore
+        - app/api/health.ts
+      modify:
+        - .env.example
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Production-ready container image. App starts fast, runs as non-root,
+      exposes /health for K8s liveness probes.
+
+      **Implementation Steps:**
+      1. `Dockerfile`:
+         ```dockerfile
+         # ── Build stage ──────────────────────────────────────────────
+         FROM node:22-alpine AS builder
+         WORKDIR /app
+
+         RUN corepack enable && corepack prepare pnpm@latest --activate
+
+         COPY package.json pnpm-lock.yaml ./
+         RUN pnpm install --frozen-lockfile
+
+         COPY . .
+         RUN pnpm build
+
+         # ── Runtime stage ────────────────────────────────────────────
+         FROM node:22-alpine AS runtime
+         WORKDIR /app
+
+         RUN corepack enable && corepack prepare pnpm@latest --activate
+         RUN addgroup -S sherpy && adduser -S sherpy -G sherpy
+
+         COPY package.json pnpm-lock.yaml ./
+         RUN pnpm install --frozen-lockfile --prod
+
+         COPY --from=builder /app/.output ./.output
+
+         USER sherpy
+         EXPOSE 3000
+
+         ENV PORT=3000
+         CMD ["node", ".output/server/index.mjs"]
+         ```
+      2. `.dockerignore`:
+         ```
+         node_modules
+         .output
+         _ref
+         storybook-static
+         dist
+         .env
+         *.local
+         ```
+      3. `app/api/health.ts` — Nitro/TanStack Start API route:
+         ```typescript
+         export default defineEventHandler(() => {
+           return { status: 'ok', timestamp: new Date().toISOString() }
+         })
+         ```
+         This registers as GET /api/health (returns 200 JSON).
+      4. Update `.env.example` with PORT and SEED_DATA entries.
+
+    validation:
+      commands:
+        - "docker build -t sherpy-mini-app ."
+        - "docker run --rm -p 3000:3000 -e SEED_DATA=true sherpy-mini-app &"
+        - "sleep 5 && curl -f http://localhost:3000/api/health"
+      expected_output: Build succeeds; /api/health returns 200
+      on_failure: Check .output path after pnpm build; verify Nitro server output location
+
+  - id: m5-002
+    name: Realistic seed data module
+    description: |
+      Expand the M1 seed module with more complete project data including
+      realistic artifact content for all demo projects. Demo-ready without
+      any manual data entry.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m5-001]
+    files:
+      create:
+        - src/features/projects/seed-content.ts
+      modify:
+        - src/features/projects/seed.ts
+        - src/features/artifacts/store.ts
+      touch_only:
+        - src/features/planning/store.ts
+    instructions: |
+      **Objective:**
+      Stakeholder demo runs without a real Bedrock call. All four seed projects
+      have realistic artifact content so DocBrowser is populated on first load.
+
+      **Implementation Steps:**
+      1. `src/features/projects/seed-content.ts`:
+         Add realistic YAML content strings for each seed project:
+         - sherpy-web: business-requirements.yaml + technical-requirements.yaml
+           (abbreviated real content — 30–50 lines each)
+         - billing-platform: business-requirements.yaml (abbreviated)
+         - mobile-v3: milestones.yaml (abbreviated, archived)
+         Each content string is a template literal in this file.
+      2. Update `seed.ts` to call `seedArtifacts` for each demo project,
+         passing the content from seed-content.ts.
+      3. Update `seedArtifacts` in the artifact store to accept optional
+         content overrides (use defaults if not provided).
+      4. Add step state seed for demo projects:
+         - sherpy-web: steps 1–3 complete, step 4 is current
+         - billing-platform: step 1 complete, step 2 current
+         These must match currentStep on the Project record.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+      expected_output: tsc clean; seed projects show step history in browser
+      on_failure: Verify step state seed matches project.currentStep value
+
+  - id: m5-003
+    name: README — local setup and Docker instructions
+    description: |
+      Update README.md with local dev setup, Docker build/run commands,
+      environment variable reference, and AWS credential setup for Bedrock.
+    estimate_minutes: 45
+    type: docs
+    dependencies: [m5-002]
+    files:
+      create: []
+      modify:
+        - README.md
+      touch_only:
+        - .env.example
+        - Dockerfile
+    instructions: |
+      **Objective:**
+      Any developer can clone the repo and run the app in under 10 minutes.
+      No tribal knowledge required.
+
+      **README Sections to Add/Update:**
+      1. **Prerequisites** — Node 22, pnpm, AWS credentials configured
+      2. **Local Development**:
+         ```bash
+         cp .env.example .env
+         pnpm install
+         pnpm dev
+         ```
+      3. **Docker**:
+         ```bash
+         docker build -t sherpy-mini-app .
+         docker run -p 3000:3000 \
+           -e AWS_REGION=us-east-1 \
+           -e BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0 \
+           sherpy-mini-app
+         ```
+      4. **AWS Credentials** — brief note: local = AWS profile/SSO,
+         production = IRSA (no static keys needed)
+      5. **Environment Variables** — table with name, description, default
+      6. **Project Structure** — top-level directory listing with one-line
+         descriptions
+
+    validation:
+      commands:
+        - "cat README.md | grep -c 'pnpm dev'"
+      expected_output: At least 1 match (setup instructions present)
+      on_failure: Ensure all sections are populated with accurate commands
+
+  - id: m5-004
+    name: Code review — M5 Deploy Prep
+    description: |
+      Final code review covering Dockerfile, seed data, and README.
+      Verify the full happy path in Docker container before sign-off.
+    estimate_minutes: 60
+    type: code-review
+    dependencies: [m5-001, m5-002, m5-003]
+    files:
+      create:
+        - code-reviews/2026-05-05-6-code-review.yaml
+      modify: []
+      touch_only:
+        - Dockerfile
+        - .dockerignore
+        - .env.example
+        - README.md
+        - src/features/projects/seed.ts
+        - src/features/projects/seed-content.ts
+    instructions: |
+      **Review Checklist:**
+      1. **Dockerfile:**
+         - [ ] Multi-stage build (builder + runtime)
+         - [ ] Non-root user in runtime stage
+         - [ ] pnpm install --prod in runtime stage (no devDeps)
+         - [ ] No .env or secrets baked into image layers
+         - [ ] EXPOSE matches PORT env var default
+      2. **Health Check:**
+         - [ ] /api/health returns 200 with JSON body
+         - [ ] No auth required on health endpoint
+      3. **Seed Data:**
+         - [ ] All 4 demo projects visible in Dashboard
+         - [ ] Artifacts populated in DocBrowser for seed projects
+         - [ ] Step history matches project.currentStep
+      4. **README:**
+         - [ ] Local dev commands accurate
+         - [ ] Docker commands accurate
+         - [ ] .env.example variables all documented
+      5. **Full Docker Walkthrough:**
+         - [ ] docker build succeeds
+         - [ ] Dashboard loads with seed projects
+         - [ ] Build mode shows interview thread
+         - [ ] Review mode shows artifacts
+         - [ ] /api/health returns 200
+
+      **Sign-off:**
+      If all checklist items pass → mark ready_for_next_milestone: yes
+      (this is the final milestone — ship criteria met)
+
+    validation:
+      commands:
+        - "docker build -t sherpy-mini-app ."
+        - "docker run --rm -p 3001:3000 -e SEED_DATA=true -e AWS_REGION=us-east-1 sherpy-mini-app &"
+        - "sleep 8 && curl -sf http://localhost:3001/api/health && echo PASS"
+      expected_output: Build and health check both pass
+      on_failure: Document failures; fix before declaring project complete

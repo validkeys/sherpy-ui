@@ -1,0 +1,287 @@
+project: Sherpy Mini-App
+version: "1.0.0"
+generated: "2026-05-05"
+business_requirements_ref: docs/planning/mini-app/planning/business-requirements.yaml
+
+architecture:
+  pattern: Feature-based SPA (full-stack via TanStack Start)
+  description: |
+    Single deployable Node.js application built on TanStack Start (Vinxi/Nitro).
+    Client is a React SPA; server exposes typed RPC-style server functions.
+    Features are organized as vertical slices — each feature folder owns its
+    components, hooks, types, and server function definitions.
+    Initial phase uses mock implementations inside server functions;
+    real implementations replace mock bodies without changing function signatures.
+  components:
+    - name: Client App (React SPA)
+      responsibility: Feature UI, routing, client-side state via TanStack Query
+    - name: Server Functions (createServerFn)
+      responsibility: RPC endpoints — mock data initially, real services later
+    - name: AI Server Function (/api/ai)
+      responsibility: Proxy to AWS Bedrock — live from day one
+    - name: Auth Server Function (/api/auth)
+      responsibility: Returns mock OIDC session shape; Okta SSO later
+    - name: MSW (removed)
+      responsibility: N/A — replaced entirely by server functions
+
+technology_stack:
+  language: TypeScript
+  version: "5"
+  runtime: Node.js
+  frameworks:
+    - TanStack Start (full-stack — includes TanStack Router + Vinxi + Nitro)
+    - React 19
+    - Tailwind CSS v4
+  libraries:
+    core:
+      - TanStack Query (client-side async state)
+      - AWS SDK v3 (@aws-sdk/client-bedrock-runtime)
+    development:
+      - Biome (lint + format)
+      - Vitest
+      - React Testing Library
+  package_manager: pnpm
+
+project_structure:
+  type: single-repo
+  layout: |
+    Feature-based vertical slices under src/features/.
+    Server functions co-located with the feature they serve.
+  key_directories:
+    - path: src/features/projects
+      purpose: Project dashboard, CRUD, status management
+    - path: src/features/planning
+      purpose: Multi-step planning workflow UI and server fns
+    - path: src/features/artifacts
+      purpose: Artifact viewer, download, clipboard actions
+    - path: src/features/auth
+      purpose: Mock OIDC session server fn, auth context
+    - path: src/features/ai
+      purpose: Bedrock proxy server fn, interview/generation logic
+    - path: src/routes
+      purpose: TanStack Router route definitions
+    - path: src/components
+      purpose: Shared UI primitives (not feature-specific)
+
+data_model:
+  strategy: In-memory mock (server-side)
+  database: None (this phase)
+  schema_approach: |
+    Server functions maintain module-level in-memory state during the process
+    lifetime. State resets on server restart. Mock data seeded at module load.
+    Schema defined as TypeScript types shared between client and server fns.
+  migrations: Not applicable this phase
+
+api:
+  style: RPC via TanStack Start server functions
+  convention: /api/:service/:command
+  examples:
+    - /api/projects/list
+    - /api/projects/create
+    - /api/projects/archive
+    - /api/steps/get
+    - /api/steps/advance
+    - /api/artifacts/get
+    - /api/artifacts/update
+    - /api/auth/session
+    - /api/ai/interview
+    - /api/ai/generate
+  type_safety: End-to-end — createServerFn types shared with client callers
+  versioning: None this phase (single app, server fns not public API)
+  documentation: TypeScript types serve as living documentation
+
+security:
+  authentication:
+    method: Mock OIDC (Okta SSO later)
+    implementation: |
+      /api/auth/session server fn returns a user claims object matching
+      Okta's OIDC ID token shape (sub, email, name, groups).
+      Client stores session in React context. Swap = replace server fn body.
+  authorization:
+    model: Per-user data isolation
+    implementation: |
+      Each project record scoped to user sub from session.
+      Mock phase enforces this in server fn logic (single hardcoded user).
+  secrets:
+    storage: |
+      Local dev: AWS credentials via AWS profile/SSO (~/.aws).
+      Production: Kubernetes service account (IRSA) — no static keys.
+    rotation: Managed by AWS IAM / K8s IRSA — no app-level rotation needed
+  data_validation:
+    input: TypeScript type checking at server fn boundary
+    output: TypeScript return types enforced by createServerFn
+
+testing:
+  strategy: Component + integration tests against server function responses
+  types:
+    unit:
+      framework: Vitest
+      coverage_target: 70%
+      scope: Pure utility functions, data transformers, server fn logic
+    integration:
+      framework: Vitest + React Testing Library
+      approach: |
+        Render feature components, call real server fns (mock implementations).
+        No browser required. Tests exercise full client → server fn → response path.
+    e2e:
+      framework: None this phase
+      approach: Manual walkthrough before stakeholder demos
+  mocking:
+    strategy: No MSW — server fn mock implementations are the mock layer
+    tools: Vitest built-in mocking for unit-level isolation only
+
+development:
+  workflow: Local dev via TanStack Start dev server (pnpm dev)
+  code_quality:
+    linter: Biome
+    formatter: Biome
+    type_checker: TypeScript (strict mode)
+  pre_commit_hooks:
+    - biome check --apply
+    - tsc --noEmit
+
+ci_cd:
+  platform: None this phase
+  pipeline: Manual — developer builds Docker image and deploys directly
+  future: GitHub Actions (lint → type-check → test → Docker build → push)
+
+deployment:
+  target: Docker / self-hosted Kubernetes
+  packaging:
+    format: Docker image (Node.js server)
+    distribution: Internal container registry
+  environments:
+    - name: development
+      config: pnpm dev — TanStack Start dev server with HMR
+    - name: production
+      config: Docker container, env vars via K8s ConfigMap/Secrets, IRSA for AWS
+  release_process:
+    strategy: Manual for this phase
+    automation: None
+
+monitoring:
+  logging:
+    format: Plain text (console)
+    destination: stdout → Docker / kubectl logs
+  metrics:
+    collection: None this phase
+  alerts:
+    strategy: None this phase
+
+performance:
+  targets:
+    response_time: <500ms for server fn responses (mock data, should be instant)
+    ai_response_time: Bedrock latency — streaming preferred for interview UX
+  optimization:
+    strategy: TanStack Query caching for repeated project/artifact fetches
+    monitoring: Browser DevTools this phase
+
+scalability:
+  approach: Vertical (single container this phase)
+  limits:
+    concurrent_users: ~10 (internal PM tool, demo phase)
+    data_volume: Negligible (in-memory, resets on restart)
+  bottlenecks:
+    - Bedrock API rate limits under concurrent AI sessions
+    - In-memory state lost on container restart (by design this phase)
+
+constraints:
+  technical:
+    - No real database this phase — all state in-memory
+    - Bedrock region must match IAM/IRSA permissions
+    - TanStack Start SSR must be compatible with Tailwind v4 setup
+  operational:
+    - No real auth this phase — single mock user per session
+    - Manual deploys only — no rollback automation
+
+trade_offs:
+  - decision: TanStack Start over Vite SPA + MSW
+    rationale: Server functions replace the throw-away MSW mock layer. Same function signatures in phase 1 and production — no migration step, no dead code.
+    alternative: Vite SPA + MSW for phase 1, real API later
+    consequence: Slightly more complex local setup (Node server vs. static), but eliminates a full rework cycle
+  - decision: Biome over ESLint + Prettier
+    rationale: Single tool, faster, less config surface
+    alternative: ESLint + Prettier (more plugins, larger ecosystem)
+    consequence: Some ESLint-specific rules unavailable; acceptable for this scope
+  - decision: No CI/CD this phase
+    rationale: Early-phase, small team, manual deploys sufficient
+    alternative: GitHub Actions from day one
+    consequence: No automated gate on broken builds; acceptable until team grows
+  - decision: In-memory mock state (server-side)
+    rationale: Zero config, resets cleanly, forces stateless server fn design
+    alternative: SQLite with seed data (persistent across restarts)
+    consequence: Demo data lost on restart; acceptable, seed data can be added later
+  - decision: IRSA for production AWS auth
+    rationale: No static keys, no rotation overhead, native K8s integration
+    alternative: AWS_ACCESS_KEY_ID env vars
+    consequence: Requires K8s service account config — already standard in target infra
+
+open_questions:
+  - question: Which AWS Bedrock model for AI interview and artifact generation?
+    answer: Claude Sonnet 4.5 — us.anthropic.claude-sonnet-4-5-20250929-v1:0. Model ID and all AWS config sourced from environment variables (already configured in target environment).
+    resolved: true
+  - question: Should AI responses stream to the client?
+    answer: Yes — Bedrock InvokeModelWithResponseStream. TanStack Start streaming response. Client receives tokens progressively.
+    resolved: true
+  - question: Persistent seed data strategy?
+    options:
+      - None — start empty each session
+      - Hardcoded seed in server fn module — realistic demo data pre-loaded
+    impact: Demo and stakeholder walkthrough quality
+
+gap_analysis:
+  business_alignment_score: 9
+  completeness_score: 8
+  consistency_score: 9
+
+  gaps_found:
+    - category: AI Integration
+      issue: Bedrock model not specified
+      severity: medium
+      recommendation: Choose model before implementing /api/ai server fn
+      business_impact: Affects AI interview quality (core product feature)
+    - category: AI Integration
+      issue: Streaming strategy undefined
+      severity: medium
+      recommendation: Decide before building AI server fn — streaming requires different response handling
+      business_impact: Affects PM experience during AI interview steps
+    - category: Data Model
+      issue: No seed data strategy
+      severity: low
+      recommendation: Define seed projects/artifacts for stakeholder demos
+      business_impact: Demo quality for success criteria sign-off
+
+  strong_areas:
+    - Server fn architecture cleanly separates mock from real with zero migration cost
+    - IRSA auth approach is production-grade from day one
+    - Feature-based structure scales naturally with planning workflow steps
+    - TanStack Router + Query already aligned with TanStack Start
+
+  trade_offs_review:
+    - decision: TanStack Start over Vite + MSW
+      assessment: well-reasoned
+      notes: Eliminates throw-away code; natural choice given TanStack Router already selected
+    - decision: Biome
+      assessment: well-reasoned
+      notes: Appropriate for small team, fast iteration phase
+    - decision: No CI/CD
+      assessment: well-reasoned
+      notes: Revisit when second developer joins or demo cadence increases
+
+  open_questions_assessment:
+    - question: Which Bedrock model?
+      blocking: yes
+      recommendation: Resolve before implementing AI server fn
+    - question: Streaming vs. full response?
+      blocking: no
+      recommendation: Resolved — streaming via InvokeModelWithResponseStream
+    - question: Seed data strategy?
+      blocking: no
+      recommendation: Decide before first stakeholder demo
+
+  suggestions:
+    - Add Bedrock model ID and streaming decision to technical requirements before implementation planning
+    - Consider Docker Compose for local dev (app + any future services) even if K8s in prod
+    - Define TypeScript strict tsconfig from project init — cheaper than retrofitting
+
+  ready_for_implementation: yes

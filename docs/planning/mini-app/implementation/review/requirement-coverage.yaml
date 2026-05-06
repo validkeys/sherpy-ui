@@ -1,0 +1,247 @@
+requirement_coverage:
+  generated: "2026-05-05"
+
+  business_requirements_coverage:
+
+    # Project Dashboard
+    dashboard_project_list:
+      requirement: "Shows active/past project list with name, code, step, date"
+      covered_by: [m1-005]
+      status: covered
+
+    dashboard_filters:
+      requirement: "Active / Past (archived+complete) tab filters"
+      covered_by: [m1-005]
+      status: covered
+
+    project_auto_code:
+      requirement: "Auto-generated project reference code (SHR-XXXX)"
+      covered_by: [m1-001]
+      status: covered
+
+    project_status_transitions:
+      requirement: "Archive and Complete status transitions"
+      covered_by: [m1-002, m1-005]
+      status: covered
+
+    project_create_scratch:
+      requirement: "Create project — start from scratch path"
+      covered_by: [m1-007, m2-006]
+      status: covered
+
+    project_create_doc_first:
+      requirement: "Create project — start with requirements doc path"
+      covered_by: [m1-007, m2-006]
+      status: covered
+
+    # Planning Workflow
+    planning_10_steps:
+      requirement: "10-step planning workflow (Gap Analysis → Generate Summaries)"
+      covered_by: [m2-001, m2-005]
+      status: covered
+
+    planning_resumability:
+      requirement: "PM returns mid-step; all prior answers preserved"
+      covered_by: [m2-002, m2-005]
+      status: covered
+
+    planning_step_advancement:
+      requirement: "Submitting answer advances step; stepper updates"
+      covered_by: [m2-002, m2-004, m2-005]
+      status: covered
+
+    # Build Mode
+    build_mode_interview_thread:
+      requirement: "AI interview — QuestionCard, OptionStack, Composer"
+      covered_by: [m2-005]
+      status: covered
+
+    build_mode_spectrum_stepper:
+      requirement: "SpectrumStepper reflects live step status"
+      covered_by: [m2-004]
+      status: covered
+
+    build_mode_intake:
+      requirement: "New project shows Intake before interview"
+      covered_by: [m2-006]
+      status: covered
+
+    build_mode_mock_questions:
+      requirement: "Mock questions for all 10 planning steps (pre-AI)"
+      covered_by: [m2-001]
+      status: covered
+
+    # Review Mode
+    review_mode_artifact_list:
+      requirement: "DocBrowser lists all generated artifacts"
+      covered_by: [m3-003]
+      status: covered
+
+    review_mode_artifact_view:
+      requirement: "Per-artifact view with YAML syntax highlighting"
+      covered_by: [m3-003]
+      status: covered
+
+    review_mode_download:
+      requirement: "Download artifact as file"
+      covered_by: [m3-004]
+      status: covered
+
+    review_mode_copy:
+      requirement: "Copy artifact content to clipboard"
+      covered_by: [m3-005]
+      status: covered
+
+    mode_toggle:
+      requirement: "ModeToggle switches Build ↔ Review without page reload"
+      covered_by: [m2-004]
+      status: covered
+
+    # AI Integration
+    ai_streaming_questions:
+      requirement: "AI-generated questions stream tokens progressively"
+      covered_by: [m4-004, m4-005]
+      status: covered
+
+    ai_artifact_generation:
+      requirement: "Completing step triggers AI artifact generation"
+      covered_by: [m4-006]
+      status: covered
+
+    ai_artifact_in_review:
+      requirement: "Generated artifact appears in Review mode DocBrowser"
+      covered_by: [m4-006, m4-007]
+      status: covered
+
+    # Authentication
+    auth_mock_oidc:
+      requirement: "Mock OIDC session matching Okta shape"
+      covered_by: [m4-002]
+      status: covered
+
+    auth_per_user_isolation:
+      requirement: "Per-user data isolation (projects scoped to user sub)"
+      covered_by: [m4-002]
+      status: partial  # isolation enforced in mock but not tested explicitly
+
+    # Artifact Actions — MISSING
+    artifact_inline_edit:
+      requirement: "PM can edit artifact inline (ai_interaction.artifact_phase)"
+      covered_by: []
+      status: NOT COVERED
+      impact: high
+      note: >
+        Listed in business-requirements.yaml under ai_interaction.artifact_phase.post_generation.
+        No task in any milestone addresses this. Requires decision: in-scope or explicitly deferred.
+
+    artifact_ai_refine:
+      requirement: "PM can prompt AI to make targeted changes to artifact"
+      covered_by: []
+      status: NOT COVERED
+      impact: high
+      note: >
+        Same as above — collaborative doc co-authoring (human + AI loop) is
+        described as a core feature of the artifact phase but has no implementation tasks.
+
+    # Deploy
+    deploy_docker:
+      requirement: "Docker container builds and runs the app"
+      covered_by: [m5-001]
+      status: covered
+
+    deploy_health_check:
+      requirement: "/health endpoint returns 200 OK"
+      covered_by: [m5-001]
+      status: covered
+
+    deploy_seed_data:
+      requirement: "Seed data pre-loads realistic demo projects"
+      covered_by: [m1-008, m5-002]
+      status: covered
+
+    deploy_readme:
+      requirement: "README documents local Docker setup steps"
+      covered_by: [m5-003]
+      status: covered
+
+  technical_requirements_coverage:
+
+    architecture:
+      - decision: "TanStack Start (full-stack, Vinxi + Nitro)"
+        enforced_in: [m0-002, m0-002]
+        status: covered
+      - decision: "Feature-based vertical slice structure under src/features/"
+        enforced_in: [m1-001, m2-001, m3-001, m4-001]
+        status: covered
+      - decision: "createServerFn RPC convention (/api/:service/:command)"
+        enforced_in: [m1-002, m2-002, m3-002, m4-002]
+        status: covered
+      - decision: "In-memory module-level Map/Array for storage"
+        enforced_in: [m1-001, m2-001, m3-001]
+        status: covered
+
+    technology:
+      - choice: "TypeScript strict mode"
+        enforced_in: [m0-002]
+        status: covered
+      - choice: "Biome (lint + format, no ESLint/Prettier)"
+        enforced_in: [m0-002]
+        status: covered
+      - choice: "TanStack Query for client state"
+        enforced_in: [m1-003, m2-002, m3-002]
+        status: covered
+      - choice: "AWS SDK v3 @aws-sdk/client-bedrock-runtime"
+        enforced_in: [m4-001, m4-003, m4-004]
+        status: covered
+      - choice: "Claude Sonnet 4.5 model ID from env vars"
+        enforced_in: [m4-001]
+        status: covered
+      - choice: "Vitest + React Testing Library"
+        enforced_in: [m1-001]  # first test written; config not yet set up
+        status: partial
+        note: "Vitest config (jsdom, coverage) not explicitly created — see testing gap"
+
+    testing:
+      - requirement: "70% unit test coverage target"
+        enforced_in: []
+        status: NOT COVERED
+        note: "No vitest.config.ts with coverage thresholds created in any task"
+      - requirement: "Integration tests — client → server fn path"
+        enforced_in: [m1-002, m1-005, m2-002, m3-003]
+        status: covered
+      - requirement: "No MSW — server fn mock implementations are the mock layer"
+        enforced_in: [m1, m2, m3]
+        status: covered
+
+    security:
+      - requirement: "TypeScript type checking at server fn boundary"
+        enforced_in: [m1-002, m2-002, m3-002, m4-002]
+        status: partial
+        note: "Type assertions used instead of runtime validation — see critical issue"
+      - requirement: "No static AWS credentials — profile/SSO locally, IRSA in prod"
+        enforced_in: [m4-001, m5-004]
+        status: covered
+      - requirement: "Per-user data scoped to user sub"
+        enforced_in: [m4-002]
+        status: partial
+
+    deployment:
+      - requirement: "Multi-stage Dockerfile"
+        enforced_in: [m5-001]
+        status: covered
+      - requirement: "Non-root user in runtime stage"
+        enforced_in: [m5-001]
+        status: covered
+      - requirement: "K8s / IRSA (documented)"
+        enforced_in: [m5-003]
+        status: covered
+
+  coverage_summary:
+    business_requirements:
+      covered: 22
+      partial: 2
+      not_covered: 2  # artifact-inline-edit, artifact-ai-refine
+    technical_requirements:
+      covered: 11
+      partial: 3  # test coverage threshold, type assertion validators, user data scoping
+      not_covered: 1  # 70% coverage enforcement

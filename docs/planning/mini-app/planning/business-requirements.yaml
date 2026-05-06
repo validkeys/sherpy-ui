@@ -1,0 +1,168 @@
+---
+project: Sherpy Mini-App
+version: "1.0"
+date: "2026-05-05"
+phase: MSW (UX/DX validation — no real backend except Bedrock endpoint)
+
+# ── Core Job ────────────────────────────────────────────────────────────────
+primary_job: >
+  Guide a Product Manager through structured software project planning, step
+  by step, at their own pace, across multiple concurrent projects. The user
+  returns repeatedly to add information incrementally before completing any
+  given step.
+
+# ── Users ───────────────────────────────────────────────────────────────────
+users:
+  primary:
+    role: Product Manager
+    context: Coordinating planning across multiple engineering teams
+    behaviour:
+      - Manages several active projects simultaneously
+      - Returns to projects multiple times to add information mid-step
+      - Receives new requirements during a session and needs the AI to adapt
+  secondary:
+    role: Engineers
+    context: Review and consume generated planning artifacts (read-only)
+
+# ── Project Lifecycle ────────────────────────────────────────────────────────
+project_lifecycle:
+  creation:
+    entry_paths:
+      - id: scratch
+        label: "Start from scratch"
+        description: No initial requirements document exists
+        first_step: Business Requirements Interview (skip Gap Analysis)
+      - id: doc_first
+        label: "Start with requirements doc"
+        description: PM uploads or provides an initial requirements document
+        first_step: Gap Analysis → fill gaps → Business Requirements Interview
+        gate: Gap worksheet gaps must be resolved before advancing
+
+  identification:
+    auto_generated_project_code: true
+    description: Each project receives a short auto-generated reference code (e.g. SHR-0042)
+
+  status_transitions:
+    - active
+    - archived
+    - complete
+    trigger: PM manually marks project status (no automatic completion)
+
+# ── Planning Workflow ────────────────────────────────────────────────────────
+planning_workflow:
+  steps:
+    - step: 1
+      name: Gap Analysis Worksheet
+      artifact: gap-analysis-worksheet.md
+      optional: true
+      condition: Only when PM starts with an existing requirements document
+    - step: 2
+      name: Business Requirements Interview
+      artifact: business-requirements.yaml
+    - step: 3
+      name: Technical Requirements Interview
+      artifact: technical-requirements.yaml
+    - step: 4
+      name: Implementation Planner
+      artifacts: [milestones.yaml, "milestone-m*.tasks.yaml"]
+    - step: 5
+      name: Implementation Plan Review
+      artifact: implementation-plan-review.yaml
+    - step: 6
+      name: Definition of Done
+      artifact: definition-of-done.yaml
+    - step: 7
+      name: Architecture Decision Records
+      artifact: "adrs/"
+    - step: 8
+      name: Delivery Timeline
+      artifact: timeline.yaml
+    - step: 9
+      name: QA Test Plan
+      artifact: qa-test-plan.yaml
+    - step: 10
+      name: Generate Summaries
+      artifacts: [developer-summary.md, executive-summary.md]
+
+  resumability:
+    - PM can return mid-step; all prior answers are preserved
+    - PM can edit previously captured answers before continuing
+    - PM can inject new information mid-session; AI adapts and generates
+      additional questions to cover new requirements
+
+# ── AI Interaction Model ─────────────────────────────────────────────────────
+ai_interaction:
+  interview_phase:
+    style: Adaptive conversational — one question at a time
+    adaptation: New information or requirements injected mid-session trigger
+                 additional AI-generated follow-up questions
+  artifact_phase:
+    generation: AI generates complete artifact on first pass
+    post_generation:
+      - PM can view artifact
+      - PM can edit artifact inline
+      - PM can prompt AI to make targeted changes to the artifact
+    model: Collaborative doc co-authoring (human + AI loop)
+
+# ── Project Dashboard ────────────────────────────────────────────────────────
+dashboard:
+  shows_per_project:
+    - project_name
+    - project_code        # auto-generated reference (e.g. SHR-0042)
+    - current_step        # which planning step is active
+    - last_touched_date
+  filters:
+    - active
+    - past (archived / complete)
+
+# ── Modes ────────────────────────────────────────────────────────────────────
+modes:
+  build:
+    description: Active planning mode — AI interview, answer entry, step progression
+  review:
+    description: Read-only artifact viewer — shows all generated documents for the project
+    actors: [PM, Engineers]
+
+# ── Artifact Actions ─────────────────────────────────────────────────────────
+artifact_actions:
+  - view
+  - download_as_file
+  - copy_to_clipboard
+
+# ── Authentication ───────────────────────────────────────────────────────────
+authentication:
+  current_phase: Mocked via MSW — no real auth
+  target: Okta SSO
+  model: Per-user accounts; each PM sees only their own projects
+
+# ── API / Backend Strategy ───────────────────────────────────────────────────
+api_strategy:
+  phase: MSW
+  description: >
+    All data and auth interactions are mocked via Mock Service Worker.
+    One real endpoint exists even in this phase.
+  real_endpoints:
+    - path: /api/ai
+      purpose: Proxy to AWS Bedrock for AI-driven interview and artifact generation
+  mock_scope:
+    - Project CRUD (list, create, update, archive, complete)
+    - Step state persistence
+    - Artifact read/write
+    - User identity / session
+
+# ── Success Criteria (MSW Phase) ─────────────────────────────────────────────
+success_criteria:
+  - All planned screens are wired up and navigable with realistic mock data
+  - PM can complete a full project planning workflow end-to-end in the app
+  - Engineers can access Review mode and consume generated artifacts
+  - Artifact export (download) and copy-to-clipboard flows work correctly
+  - Full happy-path is demo-able to stakeholders
+  - AWS Bedrock AI integration is live and functional within the MSW shell
+
+# ── Out of Scope (this phase) ────────────────────────────────────────────────
+out_of_scope:
+  - Real database / persistence layer
+  - Real Okta integration
+  - Team/shared workspaces (multi-PM collaboration)
+  - Engineer commenting / annotation on artifacts
+  - Notifications or async workflows

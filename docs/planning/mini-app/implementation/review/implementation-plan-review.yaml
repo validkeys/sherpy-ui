@@ -1,0 +1,464 @@
+implementation_plan_review:
+  metadata:
+    plan_files:
+      - docs/planning/mini-app/implementation/milestones.yaml
+      - docs/planning/mini-app/implementation/tasks/milestone-m0.tasks.yaml
+      - docs/planning/mini-app/implementation/tasks/milestone-m1.tasks.yaml
+      - docs/planning/mini-app/implementation/tasks/milestone-m2.tasks.yaml
+      - docs/planning/mini-app/implementation/tasks/milestone-m3.tasks.yaml
+      - docs/planning/mini-app/implementation/tasks/milestone-m4.tasks.yaml
+      - docs/planning/mini-app/implementation/tasks/milestone-m5.tasks.yaml
+    review_date: "2026-05-05"
+    reviewer: implementation-plan-review skill
+
+  overall_scores:
+    structure: 9
+    best_practices_compliance: 6
+    task_sizing: 8
+    completeness: 7
+    alignment: 7
+    development_readiness: 7
+
+  summary:
+    total_milestones: 6
+    total_tasks: 42
+    estimated_total_duration: "9–11 days"
+    critical_path_duration: "9–11 days (linear chain — no parallelization)"
+
+    task_sizing_summary:
+      too_small: 0
+      optimal: 42
+      too_large: 0
+      oversized_file_scope: 1  # m0-006 creates 27 files
+
+    compliance_summary:
+      style_anchors_present: "5/6 milestones meet 2–3 anchor minimum (M5 has only 1)"
+      tdd_checklists_present: "present in most code tasks; gaps in m1-006, m2-003, m2-004, m4-004"
+      drift_policies_present: "0/6 — absent from ALL task files (systemic omission)"
+      quality_gates_defined: partial  # present in all files, but no coverage thresholds
+
+  critical_issues:
+
+    - category: drift-prevention
+      severity: critical
+      issue: >
+        No drift policy in any of the 6 task files. None include "STOP immediately"
+        language, revert instructions, stop criteria, or incident documentation
+        process (docs/drift-incidents/). The global_constraints sections have
+        forbidden_patterns, but forbidden lists alone are not a drift policy —
+        they don't tell the model what to DO when it detects a violation.
+      affected_items: [m0, m1, m2, m3, m4, m5]
+      recommendation: >
+        Add a drift_policy block to each task file's global_constraints section:
+          drift_policy:
+            stop_criteria:
+              - Introduces dependency not in allowed_patterns
+              - Touches >3 files not in task files list
+              - Cannot resolve lint/type error within task scope
+              - Test fails and model proposes changing test instead of implementation
+            on_detect: |
+              STOP immediately. Do not continue. Summarize deviation:
+              (1) what you intended, (2) what you found, (3) files touched.
+              Revert to last commit state. Create note in docs/drift-incidents/.
+            allowed_deviations:
+              - Whitespace-only edits
+              - Single-line refactor within targeted file if type-checked
+      blocks_development: false  # won't stop code from working, but increases drift risk
+
+    - category: security
+      severity: critical
+      issue: >
+        Multiple server fn validators use TypeScript type assertions instead of
+        runtime validation. Technical requirements explicitly state "Never use
+        type assertions on external data. Validate all external inputs with proper
+        error handling." Violations found in:
+          - m1-002: `const input = data as CreateProjectInput` — no runtime check
+          - m3-002: `d as { projectId: string; key: string }` — no runtime check
+          - m4-003: `d as { projectId: string; stepNumber: number; ... }` — no runtime check
+          - m4-006: `d as { projectId: string; stepNumber: number; answers: string[] }` — no runtime check
+        A malicious or malformed client request bypasses validation entirely.
+      affected_items: [m1-002, m3-002, m4-003, m4-006]
+      recommendation: >
+        Replace type assertions with actual runtime validation. Example fix for m1-002:
+          .validator((data: unknown): CreateProjectInput => {
+            if (typeof data !== 'object' || data === null) throw new Error('invalid input')
+            const d = data as Record<string, unknown>
+            if (typeof d.name !== 'string' || !d.name.trim()) throw new Error('name required')
+            if (d.entryPath !== 'scratch' && d.entryPath !== 'doc-first')
+              throw new Error('invalid entryPath')
+            return { name: d.name.trim(), entryPath: d.entryPath }
+          })
+        Apply same pattern to all affected validators. Note: m1-002's existing
+        validator already checks name and entryPath correctly — the issue is the
+        `data as CreateProjectInput` cast at the start that bypasses the check
+        if field order or extra fields appear.
+      blocks_development: false  # works in practice with trusted clients but is a policy violation
+
+  high_priority_issues:
+
+    - category: completeness
+      severity: high
+      issue: >
+        Artifact inline editing and AI-targeted-change prompting are specified in
+        business-requirements.yaml (ai_interaction.artifact_phase.post_generation)
+        but covered by zero tasks across all milestones:
+          - "PM can edit artifact inline"
+          - "PM can prompt AI to make targeted changes to the artifact"
+          - "Collaborative doc co-authoring (human + AI loop)"
+        These are listed as core product behavior, not nice-to-haves.
+      affected_items: [business-requirements.yaml, m3, m4]
+      recommendation: >
+        Add 2 tasks to M4 or a new M4.5 milestone:
+          - m4-ai-edit: Artifact inline edit — editable textarea in CodePreview,
+            save triggers $updateArtifact server fn (upsert). Estimate: 60m.
+          - m4-ai-refine: "Ask AI to refine" button in ArtifactBrowser — opens
+            a Composer-style input, submits prompt to a new $refineArtifact server fn
+            that calls Bedrock with current content + user instruction. Estimate: 90m.
+        Alternative: explicitly mark these out-of-scope for this phase in milestones.yaml.
+
+    - category: file-scope
+      severity: high
+      issue: >
+        m0-006 creates 27 files in a single task (estimate: 90m). Task sizing
+        guidelines require >5 files to be justified or split. While the files are
+        verbatim copies (low per-file risk), a 27-file task is difficult to review,
+        hard to revert if something goes wrong mid-task, and creates a large
+        unreviewed commit.
+      affected_items: [m0-006]
+      recommendation: >
+        Split into 3 tasks by component family:
+          m0-006a: Thread components (12 files) — Composer, ThreadView, QuestionCard,
+            OptionStack, OptionCard, ChattedPill, AskbackAside, SuggestionChip,
+            ThreadDivider, Message, RecommendedBadge + index. Estimate: 45m.
+          m0-006b: Intake + DocBrowser (10 files). Estimate: 45m.
+          m0-006c: Worksheet (6 files). Estimate: 30m.
+        Total: 120m vs. current 90m — small increase, large reduction in per-commit scope.
+
+    - category: testing
+      severity: high
+      issue: >
+        Technical requirements specify 70% unit test coverage target, but no task
+        sets up Vitest with coverage reporting, jsdom environment, or enforces the
+        threshold. M0 scaffolding installs Vitest but contains no task to configure
+        vitest.config.ts with coverage providers, jsdom, and @testing-library/jest-dom
+        setup. Tests will run but coverage will never be measured.
+      affected_items: [m0-002, technical-requirements.yaml]
+      recommendation: >
+        Add task m0-002a (or expand m0-002) to create vitest.config.ts:
+          import { defineConfig } from 'vitest/config'
+          export default defineConfig({
+            test: {
+              environment: 'jsdom',
+              setupFiles: ['./src/test-setup.ts'],
+              coverage: {
+                provider: 'v8',
+                thresholds: { lines: 70, functions: 70, branches: 70 },
+                exclude: ['**/stories/**', '_ref/**', 'app/routes/**'],
+              },
+            },
+          })
+        And src/test-setup.ts importing @testing-library/jest-dom.
+        Estimate: 30m — can be merged into m0-002.
+
+  medium_priority_issues:
+
+    - category: style-anchors
+      severity: medium
+      issue: >
+        M5 has only 1 style anchor (.env.example), below the required 2–3 minimum.
+        Dockerfile patterns and Nitro API route conventions are new patterns in M5
+        with no anchor files to reference.
+      affected_items: [milestone-m5.tasks.yaml]
+      recommendation: >
+        Add 2 anchors:
+          - path: app/api/health.ts
+            description: |
+              Pattern for Nitro/TanStack Start API routes (defineEventHandler).
+              All API routes in app/api/ follow this convention.
+          - path: Dockerfile
+            description: |
+              Multi-stage build: builder copies everything + runs pnpm build;
+              runtime installs prod deps only + copies .output. Non-root user.
+
+    - category: tdd-requirements
+      severity: medium
+      issue: >
+        Several code tasks in TDD-required milestones (M1, M2, M4) are missing
+        TDD checklists:
+          - m1-006 (LeftRail wiring): no checklist — LeftRailNav is new logic
+          - m2-003 (project route): instructions say "no TDD" implicitly
+          - m2-004 (Header/Stepper wiring): no checklist
+          - m4-004 (streaming server fn): no checklist — complex and risky
+      affected_items: [m1-006, m2-003, m2-004, m4-004]
+      recommendation: >
+        m1-006: Add checklist — test that LeftRailNav renders active projects,
+          marks correct item active based on current route.
+        m2-003/m2-004: Routing tasks are hard to unit test — mark explicitly
+          "TDD not applicable; browser smoke test is validation" to make intent clear.
+        m4-004 (highest priority): Add checklist — mock InvokeModelWithResponseStreamCommand
+          and test that stream chunks are yielded correctly, stream closes on completion,
+          and Content-Type header is set.
+
+    - category: hidden-file-modification
+      severity: medium
+      issue: >
+        m2-003 instructions say "add useProject hook to projects/hooks.ts" but
+        src/features/projects/hooks.ts is NOT listed in files.modify. This is a
+        hidden side effect that violates the explicit file scope contract.
+      affected_items: [m2-003]
+      recommendation: >
+        Add src/features/projects/hooks.ts to m2-003 files.modify list.
+        Alternatively, move useProject hook creation to m1 (after m1-003, since
+        the store already has getProject), which is more natural.
+
+    - category: best-practices
+      severity: medium
+      issue: >
+        m3-005 (copy-to-clipboard) explicitly states "No test needed" with rationale
+        that navigator.clipboard is hard to test. However, the copied/reverted
+        state machine (useState + setTimeout) IS testable with vi.useFakeTimers().
+        The 1500ms timeout logic could drift without test coverage.
+      affected_items: [m3-005]
+      recommendation: >
+        Add Vitest test using vi.useFakeTimers():
+          - Test: copied state is true immediately after click
+          - Test: copied state reverts to false after 1500ms (advance timers)
+          Mock navigator.clipboard.writeText with vi.fn(). Estimate: adds 15m.
+
+    - category: constraint-inconsistency
+      severity: medium
+      issue: >
+        M4 global_constraints states "Streaming: use fetch + ReadableStream directly
+        on the client for SSE" but m4-004 instructs creating a Nitro API route
+        (app/api/ai/interview.ts) NOT a createServerFn. This is correct behavior
+        (createServerFn can't stream), but the constraint says "ONLY createServerFn
+        for server-side AI logic" which contradicts the streaming approach.
+      affected_items: [milestone-m4.tasks.yaml]
+      recommendation: >
+        Update M4 global_constraints allowed_patterns:
+        Change: "ONLY createServerFn for server-side AI logic"
+        To: "ONLY createServerFn for non-streaming server logic; streaming uses
+            Nitro API routes (app/api/) returning Response with ReadableStream"
+        This removes the contradiction and makes the exception explicit.
+
+  best_practices_violations:
+
+    style_anchors:
+      - issue: M5 has 1 anchor, minimum is 2–3
+        affected_tasks: [m5-001, m5-002, m5-003, m5-004]
+        guidance: Style anchors should cover each new pattern introduced in the milestone
+
+    tdd_requirements:
+      - issue: m1-006, m2-003, m2-004, m4-004 lack TDD checklists in TDD-required milestones
+        affected_tasks: [m1-006, m2-003, m2-004, m4-004]
+        guidance: All code tasks in TDD-required milestones need a TDD checklist or explicit rationale
+
+    drift_prevention:
+      - issue: No task file includes stop/revert/incident-note drift policy
+        affected_tasks: [all 42 tasks]
+        guidance: >
+          Each task file's global_constraints needs a drift_policy block covering:
+          stop criteria, immediate actions (stop + summarize + revert),
+          and incident note location (docs/drift-incidents/)
+
+    quality_gates:
+      - issue: >
+          No milestone enforces test coverage thresholds in quality gates.
+          M1–M4 run pnpm test --run but never pnpm test --coverage.
+        affected_milestones: [m1, m2, m3, m4]
+        guidance: Add "pnpm test --coverage --run" to quality gates after Vitest coverage is configured
+
+  gaps:
+    missing_coverage:
+      requirements:
+        - id: artifact-inline-edit
+          source: business-requirements.yaml ai_interaction.artifact_phase
+          description: PM can edit artifact inline
+          impact: high
+          covered_by: nothing
+        - id: artifact-ai-refine
+          source: business-requirements.yaml ai_interaction.artifact_phase
+          description: PM can prompt AI to make targeted changes
+          impact: high
+          covered_by: nothing
+        - id: test-coverage-threshold
+          source: technical-requirements.yaml testing.unit.coverage_target
+          description: 70% coverage enforcement
+          impact: medium
+          covered_by: nothing
+
+      task_types:
+        - type: Vitest configuration
+          importance: high
+          recommendation: Add to m0-002 or new m0-002a
+        - type: Error boundary / loading states
+          importance: medium
+          recommendation: >
+            No task addresses React error boundaries or global error states.
+            If Bedrock call fails mid-streaming, the UI has no defined fallback.
+            Consider adding error boundary setup to M4.
+
+    missing_elements:
+      - element: >
+          business-requirements.yaml still uses MSW terminology
+          (authentication.current_phase: "Mocked via MSW"; api_strategy.phase: MSW)
+          even though the implementation replaced MSW with server functions.
+        importance: low
+        recommendation: >
+          Update business-requirements.yaml to reflect TanStack Start server functions.
+          No implementation impact, but creates confusion for new developers reading docs.
+
+  strong_areas:
+    - >
+      Task instruction quality is excellent — every task has clear Objective,
+      numbered Implementation Steps, concrete code snippets, and validation commands.
+      This is significantly above average for implementation plans.
+    - >
+      Server fn validator pattern is used consistently across M1–M4, enforcing
+      the RPC boundary. The lazy-init pattern (initialize step/artifact state on
+      first access rather than at creation time) is a clean design choice that
+      avoids a two-step create sequence.
+    - >
+      Style anchors in M0–M4 are specific: file paths, line numbers (M1 Intake),
+      and concrete descriptions of what pattern to follow. Not abstract ("follow
+      the component pattern") but prescriptive ("use data-slot + cn() + semantic tokens").
+    - >
+      The vertical slice ordering (one page fully complete before the next) is
+      correctly reflected in milestone dependencies. Each milestone has clear,
+      testable success criteria.
+    - >
+      The M4 non-streaming-first approach (m4-003 before m4-004) is excellent
+      engineering practice: validate Bedrock connectivity before adding streaming
+      complexity. This prevents conflating "Bedrock doesn't work" with "streaming
+      doesn't work" during debugging.
+    - >
+      Code review tasks (m0-008, m1-009, m2-007, m3-006, m4-008, m5-004) are
+      present for every milestone with specific checklists. This is good practice.
+    - >
+      Seed data strategy is well-thought-out: M1 seeds basic projects, M5 adds
+      realistic artifact content. The SEED_DATA env var guard is a clean toggle
+      for production vs. demo mode.
+
+  optimization_opportunities:
+    - type: parallelization
+      description: >
+        M0 tasks m0-004, m0-005, m0-006 all depend on m0-003 and have no
+        inter-dependencies. They could run in parallel (port UI primitives,
+        shell components, and planning components simultaneously). However,
+        given m0-006 split is recommended, the resulting 5 tasks (m0-004,
+        m0-005, m0-006a, m0-006b, m0-006c) could all run after m0-003.
+      benefit: Reduces M0 critical path from 7h30m to ~5h if parallelized
+      affected_items: [m0-004, m0-005, m0-006]
+
+    - type: splitting
+      description: >
+        m0-006 (27 files, 90m) should be split as described in high-priority issues.
+      benefit: Smaller commits, easier review, safer revert
+      affected_items: [m0-006]
+
+    - type: merging
+      description: >
+        m4-001 (AWS setup, 45m) and m4-002 (mock OIDC, 45m) have no dependency
+        between them (m4-002 depends on m4-001 only to order them after setup).
+        These could run in parallel or be merged into a single 90m config+auth task.
+      benefit: Reduces M4 task count by 1 with no risk
+      affected_items: [m4-001, m4-002]
+
+  specific_recommendations:
+    - priority: critical
+      category: drift-prevention
+      recommendation: >
+        Add drift_policy block to all 6 task files before development begins.
+        A single shared template can be copy-pasted to each file's global_constraints.
+        10-minute effort, protects all 42 tasks.
+      rationale: Drift policy is the primary mechanism that prevents scope creep and
+        test-modification anti-patterns. Without it, the model has no explicit instruction
+        to stop when it encounters unexpected complexity.
+
+    - priority: critical
+      category: security
+      recommendation: >
+        Fix server fn validators in m1-002, m3-002, m4-003, m4-006 to use
+        actual runtime type checking instead of type assertions. Replace all
+        `d as TypeName` patterns with typeof/strict equality checks.
+      rationale: Type assertions silently pass through malformed data. At server
+        boundaries this can cause silent data corruption or runtime exceptions
+        that surface as 500 errors rather than validation errors.
+
+    - priority: high
+      category: completeness
+      recommendation: >
+        Decision needed before M4 starts: are artifact inline editing and
+        AI-targeted-change features in scope for this phase? If yes, add tasks
+        to M4. If no, explicitly mark them out-of-scope in milestones.yaml.
+        The ambiguity will cause confusion mid-development.
+      rationale: Business requirements list these as first-class features of the
+        artifact phase, not future enhancements. Their absence from the plan is
+        likely an oversight rather than a deliberate decision.
+
+    - priority: high
+      category: testing
+      recommendation: >
+        Configure Vitest (vitest.config.ts + test-setup.ts) in M0-002 before
+        any tests are written. All M1+ tests assume jsdom environment and
+        @testing-library/jest-dom matchers. Without config, tests will fail
+        or run in the wrong environment.
+      rationale: Tests written against the wrong environment are harder to fix
+        retroactively than getting the config right before the first test is written.
+
+    - priority: medium
+      category: file-scope
+      recommendation: Split m0-006 into 3 tasks by component family (Thread, Intake+DocBrowser, Worksheet).
+      rationale: 27-file commits are hard to review and hard to revert if a subset has issues.
+
+    - priority: medium
+      category: constraint-inconsistency
+      recommendation: >
+        Fix M4 global_constraints to clarify that streaming uses Nitro routes,
+        not createServerFn. The current wording creates a contradiction that
+        a model following constraints literally would get stuck on.
+      rationale: Models optimize locally and follow explicit constraints. A contradictory
+        constraint will cause the model to either ignore it or make the wrong choice.
+
+    - priority: low
+      category: documentation
+      recommendation: >
+        Update business-requirements.yaml to replace MSW references with
+        "TanStack Start server functions (mock implementations)". No code impact.
+      rationale: New developers reading the business requirements will be confused
+        when they find no MSW anywhere in the codebase.
+
+  readiness_assessment:
+    ready_for_development: with-modifications
+    blocking_issues: 0  # no issues prevent code from working correctly
+    recommended_modifications: 8
+    development_can_start: yes  # M0 can begin now; critical fixes should land before M1
+
+    suggested_fix_order:
+      before_m0:
+        - Add Vitest config to m0-002 (30m)
+        - Split m0-006 into 3 tasks (10m planning)
+        - Add drift_policy block to M0 task file (10m)
+      before_m1:
+        - Add drift_policy to M1–M5 task files (40m total)
+        - Fix server fn validators — template ready above (30m)
+        - Decision: artifact editing in or out of scope (5m decision)
+        - Add useProject hook to m2-003 files.modify (5m)
+      before_m4:
+        - Fix M4 constraint contradiction (streaming vs createServerFn) (5m)
+        - Add m4-004 TDD checklist (15m)
+      before_m5:
+        - Add 2 style anchors to M5 (10m)
+
+    estimated_effort_to_fix:
+      critical: "2h (drift policy template × 6 files + validator fixes)"
+      high: "3–5h (scope decision + vitest config + m0-006 split)"
+      medium: "1h (TDD checklists + style anchor + constraint fix)"
+      total: "6–8h of plan updates"
+
+    timeline_impact:
+      if_fixed: "9–11 days (no change — fixes are plan edits, not new features)"
+      if_not_fixed: >
+        Drift and validator issues will surface as bugs during M1–M4 development.
+        Estimate 20–30% additional debugging time. Artifact editing gap will
+        surface as a missed requirement before the stakeholder demo.

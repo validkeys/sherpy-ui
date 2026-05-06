@@ -1,0 +1,276 @@
+task_sizing_analysis:
+  generated: "2026-05-05"
+  guidelines:
+    min_minutes: 30
+    optimal_min: 30
+    optimal_max: 150
+    max_minutes: 150
+    preferred_file_scope: 1-3
+    max_file_scope: 5
+
+  totals:
+    total_tasks: 42
+    too_small: 0
+    optimal: 42
+    too_large: 0
+    oversized_scope: 1  # m0-006
+
+  by_milestone:
+
+    m0:
+      tasks: 8
+      total_minutes: 480
+      sizing_issues:
+        - task_id: m0-006
+          estimate_minutes: 90
+          files_created: 27
+          issue: >
+            27 files exceeds the >5 guideline by a factor of 5. The files are
+            verbatim copies (low per-file logic risk), but scope still warrants
+            splitting for reviewability and safe revert.
+          recommendation: >
+            Split into m0-006a (Thread, 12 files, 45m),
+            m0-006b (Intake + DocBrowser, 10 files, 45m),
+            m0-006c (Worksheet, 6 files, 30m).
+
+    m1:
+      tasks: 9
+      total_minutes: 555
+      sizing_issues: []
+
+    m2:
+      tasks: 7
+      total_minutes: 420
+      sizing_issues: []
+
+    m3:
+      tasks: 6
+      total_minutes: 330
+      sizing_issues: []
+
+    m4:
+      tasks: 8
+      total_minutes: 510
+      sizing_issues: []
+
+    m5:
+      tasks: 4
+      total_minutes: 255
+      sizing_issues: []
+
+  all_tasks:
+    - id: m0-001
+      type: config
+      estimate: 30
+      files: 2
+      sizing: ok
+    - id: m0-002
+      type: config
+      estimate: 90
+      files: 7
+      sizing: ok  # config files at project init; justification implicit
+    - id: m0-003
+      type: config
+      estimate: 45
+      files: 4
+      sizing: ok
+    - id: m0-004
+      type: code
+      estimate: 60
+      files: 10
+      sizing: marginal  # 10 files but all verbatim copies, logically 4 components
+    - id: m0-005
+      type: code
+      estimate: 60
+      files: 10
+      sizing: marginal  # same — verbatim copies, acceptable for migration
+    - id: m0-006
+      type: code
+      estimate: 90
+      files: 27
+      sizing: flag  # OVERSIZED FILE SCOPE — recommend split
+    - id: m0-007
+      type: code
+      estimate: 45
+      files: 2
+      sizing: ok
+    - id: m0-008
+      type: code-review
+      estimate: 60
+      files: 1
+      sizing: ok
+
+    - id: m1-001
+      type: code
+      estimate: 45
+      files: 2
+      sizing: ok
+    - id: m1-002
+      type: code
+      estimate: 60
+      files: 2
+      sizing: ok
+    - id: m1-003
+      type: code
+      estimate: 45
+      files: 1
+      sizing: ok
+    - id: m1-004
+      type: code
+      estimate: 60
+      files: 3
+      sizing: ok
+    - id: m1-005
+      type: code
+      estimate: 90
+      files: 4
+      sizing: ok
+    - id: m1-006
+      type: code
+      estimate: 60
+      files: 3
+      sizing: ok
+    - id: m1-007
+      type: code
+      estimate: 90
+      files: 4
+      sizing: ok
+    - id: m1-008
+      type: code
+      estimate: 45
+      files: 2
+      sizing: ok
+    - id: m1-009
+      type: code-review
+      estimate: 60
+      files: 1
+      sizing: ok
+
+    - id: m2-001
+      type: code
+      estimate: 45
+      files: 3
+      sizing: ok
+    - id: m2-002
+      type: code
+      estimate: 60
+      files: 3
+      sizing: ok
+    - id: m2-003
+      type: code
+      estimate: 45
+      files: 3
+      sizing: ok  # +1 hidden (hooks.ts) — see review finding
+    - id: m2-004
+      type: code
+      estimate: 60
+      files: 1
+      sizing: ok
+    - id: m2-005
+      type: code
+      estimate: 90
+      files: 3
+      sizing: ok
+    - id: m2-006
+      type: code
+      estimate: 60
+      files: 3
+      sizing: ok
+    - id: m2-007
+      type: code-review
+      estimate: 60
+      files: 1
+      sizing: ok
+
+    - id: m3-001
+      type: code
+      estimate: 45
+      files: 3
+      sizing: ok
+    - id: m3-002
+      type: code
+      estimate: 60
+      files: 3
+      sizing: ok
+    - id: m3-003
+      type: code
+      estimate: 90
+      files: 3
+      sizing: ok
+    - id: m3-004
+      type: code
+      estimate: 45
+      files: 3
+      sizing: ok
+    - id: m3-005
+      type: code
+      estimate: 30
+      files: 1
+      sizing: ok  # at minimum boundary; acceptable
+    - id: m3-006
+      type: code-review
+      estimate: 60
+      files: 1
+      sizing: ok
+
+    - id: m4-001
+      type: config
+      estimate: 45
+      files: 2
+      sizing: ok
+    - id: m4-002
+      type: code
+      estimate: 45
+      files: 6
+      sizing: marginal  # 6 files but all related to one auth feature
+    - id: m4-003
+      type: code
+      estimate: 60
+      files: 3
+      sizing: ok
+    - id: m4-004
+      type: code
+      estimate: 90
+      files: 2
+      sizing: ok
+    - id: m4-005
+      type: code
+      estimate: 90
+      files: 3
+      sizing: ok
+    - id: m4-006
+      type: code
+      estimate: 60
+      files: 3  # cross-feature modification
+      sizing: ok
+    - id: m4-007
+      type: code
+      estimate: 60
+      files: 1
+      sizing: ok
+    - id: m4-008
+      type: code-review
+      estimate: 60
+      files: 1
+      sizing: ok
+
+    - id: m5-001
+      type: config
+      estimate: 90
+      files: 3
+      sizing: ok
+    - id: m5-002
+      type: code
+      estimate: 60
+      files: 3
+      sizing: ok
+    - id: m5-003
+      type: docs
+      estimate: 45
+      files: 1
+      sizing: ok
+    - id: m5-004
+      type: code-review
+      estimate: 60
+      files: 1
+      sizing: ok

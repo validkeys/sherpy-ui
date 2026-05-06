@@ -1,0 +1,131 @@
+version: "1.0.0"
+project: Sherpy Mini-App
+generated: "2026-05-05"
+
+business_requirements: docs/planning/mini-app/planning/business-requirements.yaml
+technical_requirements: docs/planning/mini-app/planning/technical-requirements.yaml
+
+meta:
+  ordering_strategy: vertical-slice
+  ordering_rationale: >
+    One page fully complete before moving to the next. M0 delivers the
+    migration foundation and wiring skeleton; M1–M3 each finish a single
+    page end-to-end (route → server fn → UI → tests); M4 adds AI without
+    touching page layout; M5 closes with deploy prep.
+
+milestones:
+  - id: m0
+    name: Repo Migration & TanStack Start Scaffold
+    description: |
+      Copy the existing Vite/Storybook repo to _ref/ as a read-only reference.
+      Scaffold a fresh TanStack Start project in the workspace root.
+      Port design tokens, Tailwind v4 config, and all existing shared
+      components (ui/, thread/, left-rail, header, spectrum-stepper,
+      doc-browser, intake, worksheet, theme-provider) into their
+      canonical locations in the new project. Verify with a smoke-test
+      route that the shell renders correctly.
+    dependencies: []
+    estimated_duration: 1 day
+    tasks_file: docs/planning/mini-app/implementation/tasks/milestone-m0.tasks.yaml
+    success_criteria:
+      - _ref/ contains the full original Vite project (committed, read-only)
+      - pnpm dev starts a TanStack Start dev server with no errors
+      - All ported components compile (tsc --noEmit passes)
+      - Biome lint passes with zero errors
+      - Smoke-test route renders AppShell with LeftRail and Header visible
+
+  - id: m1
+    name: Dashboard Page
+    description: |
+      Fully complete the Dashboard page: project list (active / past tabs),
+      project card (name, code, current step, last-touched date), create-new
+      project flow (Intake → scratch or doc-first path), status transitions
+      (archive / complete). LeftRail becomes real navigation. All data served
+      by in-memory server functions; TanStack Query for client cache.
+    dependencies: [m0]
+    estimated_duration: 2 days
+    tasks_file: docs/planning/mini-app/implementation/tasks/milestone-m1.tasks.yaml
+    success_criteria:
+      - Dashboard route renders a list of seed projects
+      - Active / Past tabs filter correctly
+      - Each project card shows name, auto-generated code, step, last-touched
+      - "New project" opens Intake and creates a project record in server state
+      - Archive and Complete status transitions work and reflect in list
+      - LeftRail nav links route to correct project pages
+      - Integration tests cover list, create, and status-transition flows
+
+  - id: m2
+    name: Project Page — Build Mode
+    description: |
+      Fully complete the Project page in Build mode: Intake path-selection
+      sub-view (scratch vs doc-first), planning interview thread (QuestionCard,
+      OptionStack, Composer), SpectrumStepper and Header wired to real step
+      state, answer submission, and step advancement. All step state persisted
+      in in-memory server functions. Mock question content used (AI wired in M4).
+    dependencies: [m1]
+    estimated_duration: 2–3 days
+    tasks_file: docs/planning/mini-app/implementation/tasks/milestone-m2.tasks.yaml
+    success_criteria:
+      - Project route loads with correct breadcrumb and stage indicator
+      - SpectrumStepper reflects live step status (complete / now / pending)
+      - New project shows Intake; existing project resumes at current step
+      - PM can select an option or type a freeform answer in the Composer
+      - Submitting an answer advances the step and updates the stepper
+      - Mock questions exist for all 10 planning steps
+      - Integration tests cover step load, answer submit, and step advance
+
+  - id: m3
+    name: Project Page — Review Mode
+    description: |
+      Fully complete the Review mode: DocBrowser connected to real artifact
+      server functions, artifact list per project, per-artifact view with
+      syntax highlighting, download-as-file action, and copy-to-clipboard.
+      ModeToggle switches between Build and Review without page reload.
+    dependencies: [m2]
+    estimated_duration: 1–2 days
+    tasks_file: docs/planning/mini-app/implementation/tasks/milestone-m3.tasks.yaml
+    success_criteria:
+      - Mode toggle switches Build ↔ Review with no layout flash
+      - DocBrowser lists all generated artifacts for the project
+      - Selecting an artifact renders its content with YAML syntax highlighting
+      - Download button saves artifact as a .yaml or .md file
+      - Copy-to-clipboard copies raw artifact content
+      - Integration tests cover artifact list, view, download, and copy flows
+
+  - id: m4
+    name: AI Integration — Bedrock Streaming
+    description: |
+      Wire AWS Bedrock (Claude Sonnet 4.5 via InvokeModelWithResponseStream)
+      into the existing interview thread. Mock OIDC auth session server fn.
+      Replace mock questions with AI-generated questions. AI artifact
+      generation server fn creates real artifact content after each planning
+      step is completed. Streaming tokens render progressively in ThreadView.
+    dependencies: [m3]
+    estimated_duration: 2–3 days
+    tasks_file: docs/planning/mini-app/implementation/tasks/milestone-m4.tasks.yaml
+    success_criteria:
+      - /api/auth/session returns a valid mock OIDC claims object
+      - /api/ai/interview streams tokens progressively to the client
+      - Interview thread shows AI-generated questions (not static mock)
+      - Completing a step triggers /api/ai/generate and stores artifact
+      - Generated artifact appears in Review mode DocBrowser
+      - Bedrock model ID and region sourced from environment variables
+      - Integration tests cover streaming response shape and artifact generation
+
+  - id: m5
+    name: Deploy Prep
+    description: |
+      Production-ready Dockerfile (multi-stage Node.js build), seed data
+      module with realistic demo projects pre-loaded, .env.example documenting
+      all required environment variables, and Docker health-check endpoint.
+      Verifies the full happy-path works inside a Docker container locally.
+    dependencies: [m4]
+    estimated_duration: 1 day
+    tasks_file: docs/planning/mini-app/implementation/tasks/milestone-m5.tasks.yaml
+    success_criteria:
+      - docker build succeeds with no errors
+      - docker run starts the server and serves the app on the configured port
+      - Seed data pre-loads realistic demo projects visible on the Dashboard
+      - /health endpoint returns 200 OK
+      - .env.example lists every required env var with a description
+      - README documents local Docker setup steps

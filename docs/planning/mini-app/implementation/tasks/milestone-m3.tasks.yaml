@@ -1,0 +1,382 @@
+milestone: m3
+name: Project Page — Review Mode
+generated: "2026-05-05"
+
+style_anchors:
+  - path: src/components/doc-browser/DocBrowser.tsx
+    description: |
+      The review-mode container. DocList on the left, CodePreview on the
+      right. Wire to real artifact data — do not restructure the layout.
+  - path: src/components/doc-browser/DocItem.tsx
+    description: |
+      Single artifact list item. Props should extend to include artifact id,
+      type, and status. Follow existing active-state styling.
+  - path: src/components/doc-browser/yaml-highlight.tsx
+    description: |
+      YAML syntax highlighter used in CodePreview. Already handles coloring.
+      No changes needed — just pass artifact content as the source string.
+
+global_constraints:
+  allowed_patterns:
+    - "ONLY createServerFn for artifact CRUD"
+    - "ONLY TanStack Query for client artifact state"
+    - "ONLY Tailwind semantic tokens"
+    - "File download via programmatic <a> click with blob URL — no server endpoint"
+    - "Clipboard via navigator.clipboard.writeText"
+  forbidden_patterns:
+    - "No new artifact storage layer — reuse in-memory pattern from M1/M2"
+    - "No new UI component libraries"
+    - "No routing changes — ModeToggle already navigates in M2"
+  tdd_required: true
+  max_task_duration_minutes: 90
+  commit_strategy: "Commit after each task"
+  drift_policy:
+    stop_criteria:
+      - Introduces dependency not listed in allowed_patterns
+      - Edits touch >3 files not in this task's files section
+      - Lint or type errors introduced that cannot be resolved within task scope
+      - Test fails and model proposes modifying the test instead of fixing implementation
+    on_detect: |
+      STOP immediately. Do not continue editing.
+      Summarize: (1) what you intended, (2) what you found, (3) which files were touched.
+      Revert: git checkout -- .
+      Create incident note: docs/drift-incidents/YYYY-MM-DD-<task-id>.md
+    allowed_deviations:
+      - Whitespace-only edits
+      - Single-line refactor within targeted file if type-checked and in-scope
+
+quality_gates:
+  - stage: pre-commit
+    commands:
+      - "pnpm biome check --write ."
+      - "pnpm tsc --noEmit"
+      - "pnpm test --run"
+  - stage: task-completion
+    criteria:
+      - All tests passing
+      - No TypeScript errors
+      - DocBrowser shows real artifacts in browser
+
+tasks:
+  - id: m3-001
+    name: Artifact types and in-memory artifact store
+    description: |
+      TypeScript types for planning artifacts and the in-memory store keyed
+      by projectId + artifactKey. Artifact keys match the 10 planning steps.
+    estimate_minutes: 45
+    type: code
+    dependencies: []
+    files:
+      create:
+        - src/features/artifacts/types.ts
+        - src/features/artifacts/store.ts
+        - src/features/artifacts/store.test.ts
+      modify: []
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Artifacts are generated per planning step. Each artifact has a key
+      (e.g. "business-requirements"), a label, content (YAML or Markdown
+      string), and a status (generating | ready | error).
+
+      **Implementation Steps:**
+      1. `src/features/artifacts/types.ts`:
+         ```typescript
+         export type ArtifactStatus = 'generating' | 'ready' | 'error'
+         export type ArtifactFormat = 'yaml' | 'markdown'
+
+         export interface Artifact {
+           id: string
+           projectId: string
+           key: string         // e.g. 'business-requirements'
+           label: string       // e.g. 'Business Requirements'
+           format: ArtifactFormat
+           content: string     // raw YAML or Markdown
+           status: ArtifactStatus
+           generatedAt: string
+         }
+         ```
+      2. `src/features/artifacts/store.ts`:
+         - Map<projectId, Map<key, Artifact>>
+         - `listArtifacts(projectId)`: returns Artifact[]
+         - `getArtifact(projectId, key)`: returns Artifact | undefined
+         - `upsertArtifact(artifact)`: create or update
+         - `seedArtifacts(projectId)`: creates 3–4 realistic mock artifacts
+           (business-requirements.yaml, technical-requirements.yaml,
+           milestones.yaml content) for demo purposes
+
+      **TDD Checklist:**
+      - [ ] Test: listArtifacts returns empty array for new project
+      - [ ] Test: upsertArtifact creates then retrieves correctly
+      - [ ] Test: seedArtifacts creates expected artifact keys
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/artifacts/store.test.ts"
+      expected_output: tsc clean, all artifact store tests pass
+      on_failure: Verify Map<projectId, Map<key>> initialization; check key uniqueness
+
+  - id: m3-002
+    name: Artifact server functions and hooks
+    description: |
+      createServerFn wrappers for artifact list and get. TanStack Query hooks
+      for client consumption. Read-only in M3 — write comes in M4 (AI generate).
+    estimate_minutes: 60
+    type: code
+    dependencies: [m3-001]
+    files:
+      create:
+        - src/features/artifacts/server.ts
+        - src/features/artifacts/server.test.ts
+        - src/features/artifacts/hooks.ts
+      modify: []
+      touch_only:
+        - src/features/artifacts/store.ts
+    instructions: |
+      **Objective:**
+      Server fns expose artifact data. Hooks cache artifact lists per project.
+
+      **Implementation Steps:**
+      1. `src/features/artifacts/server.ts`:
+         ```typescript
+         export const $listArtifacts = createServerFn({ method: 'GET' })
+           .validator((d: unknown) => {
+             if (typeof d !== 'object' || d === null) throw new Error('invalid input')
+             const input = d as Record<string, unknown>
+             if (typeof input.projectId !== 'string' || !input.projectId)
+               throw new Error('projectId required')
+             return { projectId: input.projectId }
+           })
+           .handler(({ data }) => {
+             // Lazy seed if empty (for demo projects created in M1 seed)
+             if (listArtifacts(data.projectId).length === 0) {
+               seedArtifacts(data.projectId)
+             }
+             return listArtifacts(data.projectId)
+           })
+
+         export const $getArtifact = createServerFn({ method: 'GET' })
+           .validator((d: unknown) => {
+             if (typeof d !== 'object' || d === null) throw new Error('invalid input')
+             const input = d as Record<string, unknown>
+             if (typeof input.projectId !== 'string' || !input.projectId)
+               throw new Error('projectId required')
+             if (typeof input.key !== 'string' || !input.key)
+               throw new Error('key required')
+             return { projectId: input.projectId, key: input.key }
+           })
+           .handler(({ data }) => {
+             const artifact = getArtifact(data.projectId, data.key)
+             if (!artifact) throw new Error('Artifact not found')
+             return artifact
+           })
+         ```
+      2. `src/features/artifacts/hooks.ts`:
+         - `useArtifacts(projectId)` → useQuery
+         - `useArtifact(projectId, key)` → useQuery (enabled when key truthy)
+
+      **TDD Checklist:**
+      - [ ] Test: $listArtifacts lazy-seeds and returns artifacts
+      - [ ] Test: $getArtifact returns correct artifact by key
+      - [ ] Test: $getArtifact throws on unknown key
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/artifacts/server.test.ts"
+      expected_output: tsc clean, all artifact server tests pass
+      on_failure: Check lazy seed guard; verify createServerFn validator types
+
+  - id: m3-003
+    name: Wire DocBrowser to real artifact data
+    description: |
+      DocBrowser in review mode shows real artifacts for the current project.
+      DocList on the left is clickable. CodePreview shows selected artifact
+      content with YAML syntax highlighting.
+    estimate_minutes: 90
+    type: code
+    dependencies: [m3-002]
+    files:
+      create:
+        - src/features/artifacts/components/ArtifactBrowser.tsx
+        - src/features/artifacts/components/ArtifactBrowser.test.tsx
+      modify:
+        - app/routes/project/$projectId.review.tsx
+      touch_only:
+        - src/components/doc-browser/DocBrowser.tsx
+        - src/components/doc-browser/DocList.tsx
+        - src/components/doc-browser/DocItem.tsx
+        - src/components/doc-browser/CodePreview.tsx
+        - src/components/doc-browser/yaml-highlight.tsx
+        - src/features/artifacts/hooks.ts
+    instructions: |
+      **Objective:**
+      Wire the existing DocBrowser component to real data. ArtifactBrowser
+      is a thin data-fetching wrapper around DocBrowser's presentational
+      components.
+
+      **Implementation Steps:**
+      1. `ArtifactBrowser.tsx`:
+         - Calls `useArtifacts(projectId)` for the list
+         - Calls `useArtifact(projectId, selectedKey)` for content
+         - Tracks `selectedKey` in local useState (first artifact selected by default)
+         - Passes data down to DocBrowser's sub-components:
+           - DocList receives artifact list as items
+           - DocItem receives artifact label, format badge, status
+           - CodePreview receives artifact.content + artifact.format
+      2. If DocBrowser's existing props don't match the data shape, extend
+         them — do not restructure the component internals, only add props.
+      3. Review route: `$projectId.review.tsx` renders ArtifactBrowser.
+      4. Loading state: show muted "Loading artifacts…" in DocList area.
+      5. Empty state: if no artifacts, show "No artifacts yet — complete
+         a planning step to generate your first artifact."
+
+      **TDD Checklist:**
+      - [ ] Test: renders artifact list from useArtifacts
+      - [ ] Test: selecting DocItem updates CodePreview content
+      - [ ] Test: empty state shown when artifact list is empty
+      - [ ] Test: loading state shown while fetching
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/artifacts/components/ArtifactBrowser.test.tsx"
+      expected_output: tsc clean, all ArtifactBrowser tests pass
+      on_failure: Check DocBrowser prop interface; verify yaml-highlight receives string
+
+  - id: m3-004
+    name: Download artifact action
+    description: |
+      Download button saves the current artifact as a file. YAML artifacts
+      download as .yaml, Markdown as .md. Uses blob URL — no server endpoint.
+    estimate_minutes: 45
+    type: code
+    dependencies: [m3-003]
+    files:
+      create:
+        - src/features/artifacts/utils/download.ts
+        - src/features/artifacts/utils/download.test.ts
+      modify:
+        - src/features/artifacts/components/ArtifactBrowser.tsx
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Browser-native file download. Pure utility function — easy to test
+      and reuse.
+
+      **Implementation Steps:**
+      1. `src/features/artifacts/utils/download.ts`:
+         ```typescript
+         export function downloadArtifact(artifact: Artifact): void {
+           const ext = artifact.format === 'yaml' ? 'yaml' : 'md'
+           const filename = `${artifact.key}.${ext}`
+           const blob = new Blob([artifact.content], { type: 'text/plain' })
+           const url = URL.createObjectURL(blob)
+           const a = document.createElement('a')
+           a.href = url
+           a.download = filename
+           a.click()
+           URL.revokeObjectURL(url)
+         }
+         ```
+      2. Add a Download button to ArtifactBrowser when an artifact is selected.
+         Use Button variant="secondary" from the design system.
+         Position in the CodePreview header area.
+      3. `download.test.ts`: mock document.createElement and URL APIs.
+         Test that filename extension matches format.
+
+      **TDD Checklist:**
+      - [ ] Test: yaml format → .yaml extension
+      - [ ] Test: markdown format → .md extension
+      - [ ] Test: blob created with artifact content
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/artifacts/utils/download.test.ts"
+      expected_output: tsc clean, download tests pass
+      on_failure: Mock browser APIs in Vitest jsdom environment; check blob URL cleanup
+
+  - id: m3-005
+    name: Copy-to-clipboard action
+    description: |
+      Copy button copies the raw artifact content to the clipboard.
+      Shows a brief "Copied!" confirmation state.
+    estimate_minutes: 30
+    type: code
+    dependencies: [m3-004]
+    files:
+      create: []
+      modify:
+        - src/features/artifacts/components/ArtifactBrowser.tsx
+      touch_only: []
+    instructions: |
+      **Objective:**
+      One-click clipboard copy with brief visual confirmation.
+      navigator.clipboard.writeText — no library needed.
+
+      **Implementation Steps:**
+      1. Add a "Copy" button next to the Download button in ArtifactBrowser.
+      2. On click: `navigator.clipboard.writeText(artifact.content)`
+      3. Button label toggles to "Copied!" for 1500ms then reverts.
+         Use setTimeout in useEffect cleanup pattern:
+         ```typescript
+         const [copied, setCopied] = useState(false)
+         function handleCopy() {
+           navigator.clipboard.writeText(artifact.content)
+           setCopied(true)
+           setTimeout(() => setCopied(false), 1500)
+         }
+         ```
+      4. No test needed for this task (navigator.clipboard is hard to test
+         in jsdom without significant mocking; visual verification is sufficient).
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+      expected_output: tsc clean; copy button works in browser with confirmation flash
+      on_failure: Add navigator.clipboard mock to vitest setup if tsc complains about types
+
+  - id: m3-006
+    name: Code review — M3 Review Mode
+    description: |
+      Full code review of all M3 work. Verify artifact data flow, DocBrowser
+      wiring, and download/clipboard implementations.
+    estimate_minutes: 60
+    type: code-review
+    dependencies: [m3-001, m3-002, m3-003, m3-004, m3-005]
+    files:
+      create:
+        - code-reviews/2026-05-05-4-code-review.yaml
+      modify: []
+      touch_only:
+        - src/features/artifacts/
+        - app/routes/project/$projectId.review.tsx
+    instructions: |
+      **Review Checklist:**
+      1. **Artifact Data Flow:**
+         - [ ] Server fns validate input and handle missing artifact gracefully
+         - [ ] Lazy seed does not duplicate artifacts on repeated calls
+         - [ ] useArtifact only fetches when key is selected (enabled guard)
+      2. **DocBrowser Fidelity:**
+         - [ ] YAML syntax highlighting renders correctly in browser
+         - [ ] Selected DocItem shows active state per design system
+         - [ ] No layout shifts when switching artifacts
+      3. **Download:**
+         - [ ] Correct file extension per format
+         - [ ] Blob URL revoked after click (no memory leak)
+      4. **Clipboard:**
+         - [ ] Copied! state reverts correctly
+         - [ ] No console errors on copy
+      5. **Mode Toggle:**
+         - [ ] Switching build ↔ review does not reset selected artifact
+         - [ ] URL reflects mode (/build vs /review)
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm biome check ."
+        - "pnpm test --run"
+      expected_output: All quality gates pass
+      on_failure: Document and fix before starting M4

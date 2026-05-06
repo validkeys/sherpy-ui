@@ -1,0 +1,764 @@
+milestone: m4
+name: AI Integration — Bedrock Streaming
+generated: "2026-05-05"
+
+style_anchors:
+  - path: src/features/planning/server.ts
+    description: |
+      Pattern for createServerFn. AI server fns follow the same validator +
+      handler structure. Streaming fn is the exception — it returns a
+      ReadableStream from the handler instead of a plain value.
+  - path: src/features/planning/components/InterviewThread.tsx
+    description: |
+      The component that receives AI-generated question text. In M4 it must
+      handle a streaming string — render tokens as they arrive.
+
+global_constraints:
+  allowed_patterns:
+    - "ONLY @aws-sdk/client-bedrock-runtime for Bedrock calls"
+    - "ONLY InvokeModelWithResponseStream for AI streaming"
+    - "ONLY environment variables for model ID, region, and AWS config"
+    - "Model ID: us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    - "ONLY createServerFn for non-streaming server-side AI logic; streaming uses Nitro API routes (app/api/) returning Response with ReadableStream body"
+    - "ONLY TanStack Query for non-streaming client state"
+    - "Streaming: use fetch + ReadableStream directly on the client for SSE"
+  forbidden_patterns:
+    - "No hardcoded model IDs in source — always from env vars"
+    - "No hardcoded AWS credentials — use AWS profile/SSO locally, IRSA in prod"
+    - "No AI SDK abstractions (LangChain, Vercel AI SDK, etc.) — AWS SDK v3 only"
+    - "No streaming via WebSocket — use HTTP streaming"
+  tdd_required: true
+  max_task_duration_minutes: 90
+  commit_strategy: "Commit after each task"
+  drift_policy:
+    stop_criteria:
+      - Introduces dependency not listed in allowed_patterns
+      - Edits touch >3 files not in this task's files section
+      - Lint or type errors introduced that cannot be resolved within task scope
+      - Test fails and model proposes modifying the test instead of fixing implementation
+    on_detect: |
+      STOP immediately. Do not continue editing.
+      Summarize: (1) what you intended, (2) what you found, (3) which files were touched.
+      Revert: git checkout -- .
+      Create incident note: docs/drift-incidents/YYYY-MM-DD-<task-id>.md
+    allowed_deviations:
+      - Whitespace-only edits
+      - Single-line refactor within targeted file if type-checked and in-scope
+
+quality_gates:
+  - stage: pre-commit
+    commands:
+      - "pnpm biome check --write ."
+      - "pnpm tsc --noEmit"
+      - "pnpm test --run"
+  - stage: task-completion
+    criteria:
+      - No TypeScript errors
+      - Biome passes
+      - AI streaming visible in browser (tokens appear progressively)
+
+tasks:
+  - id: m4-001
+    name: AWS Bedrock setup and environment configuration
+    description: |
+      Install AWS SDK v3 Bedrock runtime package. Document all required
+      environment variables. Verify AWS credential chain works locally.
+    estimate_minutes: 45
+    type: config
+    dependencies: []
+    files:
+      create:
+        - .env.example
+        - src/lib/bedrock.ts
+      modify:
+        - package.json
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Establish the Bedrock client as a shared singleton. Environment
+      variables are the only configuration surface — no hardcoded values.
+
+      **Implementation Steps:**
+      1. Install: `pnpm add @aws-sdk/client-bedrock-runtime`
+      2. Create `.env.example`:
+         ```
+         # AWS Bedrock
+         AWS_REGION=us-east-1
+         BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+
+         # App
+         PORT=3000
+         SEED_DATA=true
+         ```
+      3. `src/lib/bedrock.ts`:
+         ```typescript
+         import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime'
+
+         // Singleton — module-level, shared across server fn invocations
+         export const bedrockClient = new BedrockRuntimeClient({
+           region: process.env.AWS_REGION ?? 'us-east-1',
+         })
+
+         export const BEDROCK_MODEL_ID =
+           process.env.BEDROCK_MODEL_ID ??
+           'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
+         ```
+      4. Do NOT add dotenv — TanStack Start / Vinxi reads .env automatically.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "node -e \"require('@aws-sdk/client-bedrock-runtime')\" && echo OK"
+      expected_output: tsc clean; AWS SDK imports without error
+      on_failure: Check AWS SDK version compatibility with Node.js version
+
+  - id: m4-002
+    name: Mock OIDC auth session server function
+    description: |
+      /api/auth/session returns a user claims object matching Okta OIDC
+      ID token shape. Client stores session in React context. Swap-ready:
+      replacing the handler body is all that's needed for real Okta later.
+    estimate_minutes: 45
+    type: code
+    dependencies: [m4-001]
+    files:
+      create:
+        - src/features/auth/types.ts
+        - src/features/auth/server.ts
+        - src/features/auth/server.test.ts
+        - src/features/auth/AuthContext.tsx
+        - src/features/auth/hooks.ts
+        - src/features/auth/index.ts
+      modify:
+        - app/routes/__root.tsx
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Mock OIDC session that mirrors Okta's claims shape so the swap is
+      trivially a server fn body replacement with no client changes.
+
+      **Implementation Steps:**
+      1. `src/features/auth/types.ts`:
+         ```typescript
+         export interface UserSession {
+           sub: string       // user identifier
+           email: string
+           name: string
+           groups: string[]  // Okta groups
+         }
+         ```
+      2. `src/features/auth/server.ts`:
+         ```typescript
+         export const $getSession = createServerFn({ method: 'GET' })
+           .handler((): UserSession => ({
+             sub: 'mock-user-001',
+             email: 'pm@example.com',
+             name: 'Kyle Davis',
+             groups: ['sherpy-users'],
+           }))
+         ```
+      3. `AuthContext.tsx` — React context holding UserSession.
+         `AuthProvider` calls useQuery({ queryFn: $getSession }) and
+         provides session via context.
+      4. `hooks.ts` — `useSession()` reads from context (throws if outside provider).
+      5. Wrap `__root.tsx` with `<AuthProvider>` inside QueryClientProvider.
+
+      **TDD Checklist:**
+      - [ ] Test: $getSession returns valid UserSession shape
+      - [ ] Test: useSession throws when used outside AuthProvider
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/auth/server.test.ts"
+      expected_output: tsc clean, auth tests pass
+      on_failure: Check AuthProvider wrapping order in __root.tsx
+
+  - id: m4-003
+    name: AI interview server function — non-streaming
+    description: |
+      /api/ai/interview generates the next interview question for a given
+      project and step context. Non-streaming first pass — validates the
+      Bedrock call works before adding streaming complexity.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m4-002]
+    files:
+      create:
+        - src/features/ai/server.ts
+        - src/features/ai/server.test.ts
+        - src/features/ai/prompts.ts
+      modify: []
+      touch_only:
+        - src/lib/bedrock.ts
+        - src/features/planning/types.ts
+    instructions: |
+      **Objective:**
+      Confirm end-to-end Bedrock call before streaming. This fn will be
+      replaced by the streaming version in m4-004 but validates the prompt
+      and response parsing first.
+
+      **Implementation Steps:**
+      1. `src/features/ai/prompts.ts`:
+         - `buildInterviewPrompt(stepName, stepNumber, previousAnswers)` →
+           returns the system + user message array for Claude.
+         - System prompt: "You are Sherpy, an expert PM planning assistant.
+           Ask one focused question at a time. Be concise."
+         - User message: context about the current planning step and prior answers.
+      2. `src/features/ai/server.ts`:
+         ```typescript
+         import { InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
+         import { bedrockClient, BEDROCK_MODEL_ID } from '@/lib/bedrock'
+
+         export const $generateQuestion = createServerFn({ method: 'POST' })
+           .validator((d: unknown) => {
+             if (typeof d !== 'object' || d === null) throw new Error('invalid input')
+             const input = d as Record<string, unknown>
+             if (typeof input.projectId !== 'string' || !input.projectId)
+               throw new Error('projectId required')
+             if (typeof input.stepNumber !== 'number')
+               throw new Error('stepNumber must be a number')
+             if (!Array.isArray(input.previousAnswers))
+               throw new Error('previousAnswers must be an array')
+             return {
+               projectId: input.projectId,
+               stepNumber: input.stepNumber,
+               previousAnswers: input.previousAnswers as string[],
+             }
+           })
+           .handler(async ({ data }) => {
+             const body = {
+               anthropic_version: 'bedrock-2023-05-31',
+               max_tokens: 512,
+               messages: buildInterviewPrompt(
+                 STEP_NAMES[data.stepNumber],
+                 data.stepNumber,
+                 data.previousAnswers
+               ),
+             }
+             const cmd = new InvokeModelCommand({
+               modelId: BEDROCK_MODEL_ID,
+               contentType: 'application/json',
+               body: JSON.stringify(body),
+             })
+             const res = await bedrockClient.send(cmd)
+             const result = JSON.parse(new TextDecoder().decode(res.body))
+             return { question: result.content[0].text as string }
+           })
+         ```
+      3. Add STEP_NAMES constant (1-10 step names from business-requirements.yaml).
+
+      **TDD Checklist:**
+      - [ ] Test: buildInterviewPrompt includes step name in output
+      - [ ] Test: buildInterviewPrompt includes previous answers
+      - [ ] Mock Bedrock client in server.test.ts — do not make real API calls in tests
+      - [ ] Test: $generateQuestion returns { question: string }
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/ai/server.test.ts"
+      expected_output: tsc clean, all AI server tests pass (with mocked Bedrock)
+      on_failure: Check Bedrock response body decoding; verify InvokeModelCommand shape
+
+  - id: m4-004
+    name: Streaming AI response — server side
+    description: |
+      Replace non-streaming question generation with InvokeModelWithResponseStream.
+      Server fn returns a ReadableStream of text chunks that the client
+      consumes incrementally.
+    estimate_minutes: 90
+    type: code
+    dependencies: [m4-003]
+    files:
+      create:
+        - src/features/ai/streaming.ts
+      modify:
+        - src/features/ai/server.ts
+      touch_only:
+        - src/lib/bedrock.ts
+    instructions: |
+      **Objective:**
+      Progressive token delivery. The PM sees the question being typed out
+      in real time — critical for the interview UX per business requirements.
+
+      **Implementation Steps:**
+      1. `src/features/ai/streaming.ts`:
+         ```typescript
+         import {
+           InvokeModelWithResponseStreamCommand,
+           type ResponseStream,
+         } from '@aws-sdk/client-bedrock-runtime'
+         import { bedrockClient, BEDROCK_MODEL_ID } from '@/lib/bedrock'
+
+         export async function streamQuestion(
+           messages: Array<{ role: string; content: string }>
+         ): Promise<ReadableStream<string>> {
+           const cmd = new InvokeModelWithResponseStreamCommand({
+             modelId: BEDROCK_MODEL_ID,
+             contentType: 'application/json',
+             body: JSON.stringify({
+               anthropic_version: 'bedrock-2023-05-31',
+               max_tokens: 512,
+               messages,
+             }),
+           })
+           const res = await bedrockClient.send(cmd)
+
+           return new ReadableStream<string>({
+             async start(controller) {
+               for await (const event of res.body as ResponseStream) {
+                 if (event.chunk?.bytes) {
+                   const chunk = JSON.parse(
+                     new TextDecoder().decode(event.chunk.bytes)
+                   )
+                   if (chunk.type === 'content_block_delta') {
+                     controller.enqueue(chunk.delta.text)
+                   }
+                 }
+               }
+               controller.close()
+             },
+           })
+         }
+         ```
+      2. Create a dedicated streaming server fn route (not createServerFn —
+         use TanStack Start's event handler or a Nitro route):
+         `app/api/ai/interview.ts` — POST handler that:
+         - Validates input (projectId, stepNumber, previousAnswers)
+         - Calls streamQuestion()
+         - Returns Response with ReadableStream body and Content-Type: text/event-stream
+
+      **TDD Checklist:**
+      - [ ] Mock InvokeModelWithResponseStreamCommand in vitest — do not make real calls
+      - [ ] Test: streamQuestion yields chunks from mocked ResponseStream
+      - [ ] Test: stream closes (controller.close()) when ResponseStream is exhausted
+      - [ ] Test: Nitro route responds with Content-Type: text/event-stream header
+      - [ ] Test: malformed JSON in chunk bytes is caught and does not crash the stream
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+      expected_output: tsc clean; streaming endpoint exists and returns text/event-stream
+      on_failure: Check Nitro API route path conventions; verify ResponseStream iteration
+
+  - id: m4-005
+    name: Client streaming consumer — incremental token render
+    description: |
+      Client hook that fetches the streaming endpoint and renders tokens
+      progressively into InterviewThread. Replaces useQuery for question
+      fetching with a streaming fetch hook.
+    estimate_minutes: 90
+    type: code
+    dependencies: [m4-004]
+    files:
+      create:
+        - src/features/ai/hooks.ts
+        - src/features/ai/hooks.test.ts
+      modify:
+        - src/features/planning/components/InterviewThread.tsx
+      touch_only:
+        - src/features/ai/streaming.ts
+    instructions: |
+      **Objective:**
+      InterviewThread streams the AI question character-by-character (or
+      token-by-token). The existing QuestionCard renders the accumulated text.
+
+      **Implementation Steps:**
+      1. `src/features/ai/hooks.ts`:
+         ```typescript
+         export function useStreamingQuestion(params: {
+           projectId: string
+           stepNumber: number
+           previousAnswers: string[]
+           enabled: boolean
+         }) {
+           const [text, setText] = useState('')
+           const [loading, setLoading] = useState(false)
+           const [error, setError] = useState<Error | null>(null)
+
+           useEffect(() => {
+             if (!params.enabled) return
+             let cancelled = false
+             setLoading(true)
+             setText('')
+
+             fetch('/api/ai/interview', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify(params),
+             }).then(async (res) => {
+               const reader = res.body!.getReader()
+               const decoder = new TextDecoder()
+               while (true) {
+                 const { done, value } = await reader.read()
+                 if (done || cancelled) break
+                 setText(prev => prev + decoder.decode(value))
+               }
+               setLoading(false)
+             }).catch(err => {
+               if (!cancelled) setError(err)
+               setLoading(false)
+             })
+
+             return () => { cancelled = true }
+           }, [params.projectId, params.stepNumber, params.enabled])
+
+           return { text, loading, error }
+         }
+         ```
+      2. Update `InterviewThread.tsx`:
+         - Use `useStreamingQuestion` for the current step's question
+         - Pass accumulated `text` to QuestionCard
+         - Show loading indicator (pulsing cursor or skeleton) while streaming
+         - Disable Composer submit while AI is still generating
+
+      **TDD Checklist:**
+      - [ ] Test: hook accumulates chunks correctly
+      - [ ] Test: cancelled = true prevents state updates after unmount
+      - [ ] Test: error state set on fetch failure
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/ai/hooks.test.ts"
+      expected_output: tsc clean, streaming hook tests pass
+      on_failure: Mock fetch in Vitest; check TextDecoder availability in test env
+
+  - id: m4-006
+    name: AI artifact generation server function
+    description: |
+      After a planning step is completed (answer submitted), trigger artifact
+      generation via Bedrock. Generated artifact stored in artifacts store
+      and immediately visible in Review mode.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m4-005]
+    files:
+      create: []
+      modify:
+        - src/features/ai/server.ts
+        - src/features/planning/server.ts
+        - src/features/artifacts/store.ts
+      touch_only:
+        - src/features/ai/prompts.ts
+    instructions: |
+      **Objective:**
+      Completing a step triggers artifact generation. This is the connection
+      between the interview (Build mode) and the doc browser (Review mode).
+
+      **Implementation Steps:**
+      1. Add to `src/features/ai/prompts.ts`:
+         `buildArtifactPrompt(stepName, stepNumber, answers)` → returns
+         a prompt asking Claude to generate the appropriate planning artifact
+         (YAML for most steps, Markdown for summaries) based on collected answers.
+      2. Add to `src/features/ai/server.ts`:
+         ```typescript
+         export const $generateArtifact = createServerFn({ method: 'POST' })
+           .validator((d: unknown) => {
+             if (typeof d !== 'object' || d === null) throw new Error('invalid input')
+             const input = d as Record<string, unknown>
+             if (typeof input.projectId !== 'string' || !input.projectId)
+               throw new Error('projectId required')
+             if (typeof input.stepNumber !== 'number')
+               throw new Error('stepNumber must be a number')
+             if (!Array.isArray(input.answers))
+               throw new Error('answers must be an array')
+             return {
+               projectId: input.projectId,
+               stepNumber: input.stepNumber,
+               answers: input.answers as string[],
+             }
+           })
+           .handler(async ({ data }) => {
+             const messages = buildArtifactPrompt(
+               STEP_NAMES[data.stepNumber], data.stepNumber, data.answers
+             )
+             // Non-streaming — artifact generated fully before storing
+             const content = await generateText(messages) // reuse non-streaming helper
+             const artifact: Artifact = {
+               id: nanoid(8),
+               projectId: data.projectId,
+               key: STEP_ARTIFACT_KEYS[data.stepNumber],
+               label: STEP_NAMES[data.stepNumber],
+               format: 'yaml',
+               content,
+               status: 'ready',
+               generatedAt: new Date().toISOString(),
+             }
+             upsertArtifact(artifact)
+             return artifact
+           })
+         ```
+      3. Call `$generateArtifact` inside `$submitAnswer` in `planning/server.ts`
+         after advancing the step. Fire and store — client invalidates artifact
+         query after submit completes.
+      4. Add STEP_ARTIFACT_KEYS mapping (step number → artifact key string).
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/ai/server.test.ts"
+      expected_output: tsc clean, artifact generation tests pass (mocked Bedrock)
+      on_failure: Check upsertArtifact cross-feature import; verify STEP_ARTIFACT_KEYS covers 1-10
+
+  - id: m4-009
+    name: Artifact inline edit
+    description: |
+      PM can edit artifact content directly in the CodePreview area. Toggling
+      edit mode replaces the syntax-highlighted view with a pre-filled textarea.
+      Saving calls $updateArtifact and persists the change to the artifact store.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m4-006]
+    files:
+      create: []
+      modify:
+        - src/features/artifacts/server.ts
+        - src/features/artifacts/hooks.ts
+        - src/features/artifacts/components/ArtifactBrowser.tsx
+      touch_only:
+        - src/features/artifacts/store.ts
+    instructions: |
+      **Objective:**
+      Closes the artifact editing requirement from business-requirements.yaml
+      (ai_interaction.artifact_phase.post_generation). PM can correct AI-generated
+      artifacts without leaving the app.
+
+      **Implementation Steps:**
+      1. Add `$updateArtifact` to `src/features/artifacts/server.ts`:
+         ```typescript
+         export const $updateArtifact = createServerFn({ method: 'POST' })
+           .validator((d: unknown) => {
+             if (typeof d !== 'object' || d === null) throw new Error('invalid input')
+             const input = d as Record<string, unknown>
+             if (typeof input.projectId !== 'string' || !input.projectId)
+               throw new Error('projectId required')
+             if (typeof input.key !== 'string' || !input.key)
+               throw new Error('key required')
+             if (typeof input.content !== 'string')
+               throw new Error('content required')
+             return { projectId: input.projectId, key: input.key, content: input.content }
+           })
+           .handler(({ data }) => {
+             const existing = getArtifact(data.projectId, data.key)
+             if (!existing) throw new Error('Artifact not found')
+             const updated = { ...existing, content: data.content }
+             upsertArtifact(updated)
+             return updated
+           })
+         ```
+      2. Add `useUpdateArtifact()` to `src/features/artifacts/hooks.ts`:
+         - useMutation wrapping $updateArtifact
+         - onSuccess: invalidate useArtifact(projectId, key) query
+      3. In `ArtifactBrowser.tsx`:
+         - Add `editMode: boolean` state (default false)
+         - "Edit" button in CodePreview header — toggles editMode
+         - When editMode=true: render `<textarea>` pre-filled with artifact.content
+         - "Save" button calls useUpdateArtifact(); on success setEditMode(false)
+         - "Cancel" button: setEditMode(false) without saving
+
+      **TDD Checklist:**
+      - [ ] Test: Edit button toggles textarea into view
+      - [ ] Test: Save calls useUpdateArtifact with correct projectId, key, content
+      - [ ] Test: Cancel returns to read-only view without calling mutation
+      - [ ] Test: $updateArtifact throws on unknown artifact key
+      - [ ] Run: pnpm test --run src/features/artifacts/components/ArtifactBrowser.test.tsx
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/artifacts/components/ArtifactBrowser.test.tsx"
+      expected_output: tsc clean; edit/save/cancel cycle works in browser
+      on_failure: Verify $updateArtifact imported correctly; check textarea value binding
+
+  - id: m4-010
+    name: AI-targeted artifact refinement
+    description: |
+      "Refine with AI" button opens a Composer-style panel in ArtifactBrowser.
+      PM types a refinement instruction (e.g. "Make acceptance criteria more specific").
+      Server fn sends current artifact content + instruction to Bedrock and returns
+      updated content. Saved to store, view refreshes automatically.
+    estimate_minutes: 90
+    type: code
+    dependencies: [m4-009]
+    files:
+      create:
+        - src/features/artifacts/components/RefinementComposer.tsx
+        - src/features/artifacts/components/RefinementComposer.test.tsx
+      modify:
+        - src/features/ai/server.ts
+        - src/features/ai/prompts.ts
+        - src/features/artifacts/components/ArtifactBrowser.tsx
+      touch_only:
+        - src/features/artifacts/server.ts
+        - src/features/artifacts/store.ts
+    instructions: |
+      **Objective:**
+      Completes the "collaborative doc co-authoring (human + AI loop)" requirement.
+      PM directs AI to make targeted changes to a specific artifact.
+
+      **Implementation Steps:**
+      1. Add `buildRefinementPrompt(artifactLabel, currentContent, instruction)` to
+         `src/features/ai/prompts.ts`:
+         - System: "You are Sherpy. Refine the following planning artifact per the
+           PM's instruction. Return only the updated artifact content — no explanation."
+         - User: current artifact content + PM instruction.
+      2. Add `$refineArtifact` to `src/features/ai/server.ts`:
+         ```typescript
+         export const $refineArtifact = createServerFn({ method: 'POST' })
+           .validator((d: unknown) => {
+             if (typeof d !== 'object' || d === null) throw new Error('invalid input')
+             const input = d as Record<string, unknown>
+             if (typeof input.projectId !== 'string' || !input.projectId)
+               throw new Error('projectId required')
+             if (typeof input.key !== 'string' || !input.key)
+               throw new Error('key required')
+             if (typeof input.instruction !== 'string' || !input.instruction.trim())
+               throw new Error('instruction required')
+             return {
+               projectId: input.projectId,
+               key: input.key,
+               instruction: input.instruction.trim(),
+             }
+           })
+           .handler(async ({ data }) => {
+             const artifact = getArtifact(data.projectId, data.key)
+             if (!artifact) throw new Error('Artifact not found')
+             const messages = buildRefinementPrompt(
+               artifact.label, artifact.content, data.instruction
+             )
+             const refinedContent = await generateText(messages)  // non-streaming helper from m4-003
+             const updated = { ...artifact, content: refinedContent }
+             upsertArtifact(updated)
+             return updated
+           })
+         ```
+      3. `RefinementComposer.tsx`:
+         - Text input + "Refine" submit button + "Cancel" button
+         - Shown inline below CodePreview when open
+         - On submit: calls $refineArtifact; shows loading state during Bedrock call
+         - On success: dismiss composer; TanStack Query invalidation refreshes CodePreview
+      4. Add "Refine with AI" button to ArtifactBrowser (alongside Edit/Download/Copy)
+         — toggles RefinementComposer open.
+
+      **TDD Checklist:**
+      - [ ] Test: buildRefinementPrompt includes artifact content in user message
+      - [ ] Test: buildRefinementPrompt includes instruction in user message
+      - [ ] Mock Bedrock client in $refineArtifact tests — no real API calls
+      - [ ] Test: $refineArtifact saves refined content and returns updated artifact
+      - [ ] Test: RefinementComposer calls $refineArtifact with correct args on submit
+      - [ ] Test: RefinementComposer shows loading state while Bedrock call is in flight
+      - [ ] Run: pnpm test --run src/features/artifacts/components/RefinementComposer.test.tsx
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/artifacts/components/RefinementComposer.test.tsx"
+        - "pnpm test --run src/features/ai/server.test.ts"
+      expected_output: tsc clean; AI refinement updates artifact content in browser
+      on_failure: Check generateText helper imported in $refineArtifact; verify Bedrock mock in tests
+
+  - id: m4-007
+    name: End-to-end AI wiring and manual walkthrough
+    description: |
+      Wire all M4 pieces together. Full manual walkthrough: create project →
+      receive AI question (streaming) → submit answer → see artifact in Review.
+      Fix any integration gaps found during walkthrough.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m4-010]
+    files:
+      create: []
+      modify:
+        - src/features/planning/components/InterviewThread.tsx
+      touch_only:
+        - src/features/ai/hooks.ts
+        - src/features/ai/server.ts
+        - src/features/artifacts/components/ArtifactBrowser.tsx
+        - src/features/artifacts/components/RefinementComposer.tsx
+    instructions: |
+      **Objective:**
+      The full happy path must work end-to-end with real Bedrock calls.
+      Document any bugs found and fix them in this task.
+
+      **Manual Walkthrough Checklist:**
+      1. [ ] Create a new project → Intake renders
+      2. [ ] Select "Start from scratch" → Build mode loads
+      3. [ ] AI question streams token-by-token in QuestionCard
+      4. [ ] Submit a freeform answer via Composer
+      5. [ ] SpectrumStepper advances to step 2
+      6. [ ] Step 2 AI question starts streaming
+      7. [ ] Toggle to Review mode → DocBrowser shows artifact from step 1
+      8. [ ] Download the artifact → correct filename
+      9. [ ] Copy artifact → "Copied!" flash
+      10. [ ] Click Edit → textarea appears pre-filled with artifact content
+      11. [ ] Type new content → click Save → CodePreview shows updated content
+      12. [ ] Click "Refine with AI" → RefinementComposer opens
+      13. [ ] Type instruction → click Refine → loading state shows → refined content appears
+      14. [ ] Toggle back to Build mode → thread history shows step 1
+
+      Fix any bugs found before committing.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm biome check ."
+      expected_output: tsc clean; full walkthrough checklist completed
+      on_failure: Fix each item in the walkthrough before marking complete
+
+  - id: m4-008
+    name: Code review — M4 AI Integration
+    description: |
+      Full code review of all M4 work. Focus on security, streaming
+      correctness, error handling, and environment variable discipline.
+    estimate_minutes: 60
+    type: code-review
+    dependencies: [m4-001, m4-002, m4-003, m4-004, m4-005, m4-006, m4-007, m4-009, m4-010]
+    files:
+      create:
+        - code-reviews/2026-05-05-5-code-review.yaml
+      modify: []
+      touch_only:
+        - src/features/ai/
+        - src/features/auth/
+        - src/features/artifacts/
+        - src/lib/bedrock.ts
+        - app/api/
+    instructions: |
+      **Review Checklist:**
+      1. **Security:**
+         - [ ] No AWS credentials in source — only env vars and default credential chain
+         - [ ] No model ID hardcoded in source
+         - [ ] Bedrock API errors caught and returned as safe error messages
+         - [ ] User input not injected into prompts without sanitization
+         - [ ] All server fn validators use runtime type checks (no `data as Type` assertions)
+      2. **Streaming:**
+         - [ ] Stream cleanup (cancelled flag) prevents state updates after unmount
+         - [ ] Content-Type: text/event-stream set on streaming response
+         - [ ] Client reader released on completion
+      3. **Auth:**
+         - [ ] Session shape matches Okta OIDC token structure
+         - [ ] AuthProvider wraps all routes requiring session
+      4. **Error Handling:**
+         - [ ] Bedrock rate-limit errors surfaced to UI as friendly message
+         - [ ] Network errors during streaming handled gracefully
+      5. **Artifact Generation:**
+         - [ ] Artifact stored before $submitAnswer returns
+         - [ ] Duplicate artifact keys overwrite (upsert) correctly
+      6. **Artifact Editing:**
+         - [ ] $updateArtifact throws on unknown key (no silent create)
+         - [ ] Edit → Cancel discards changes (no mutation called)
+         - [ ] Edit and Refine buttons disabled while save/refine is in flight
+      7. **AI Refinement:**
+         - [ ] $refineArtifact validates instruction is non-empty
+         - [ ] buildRefinementPrompt keeps artifact content separate from instruction
+         - [ ] Refined content overwrites existing artifact (not duplicated)
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm biome check ."
+        - "pnpm test --run"
+      expected_output: All quality gates pass
+      on_failure: Document and fix before starting M5

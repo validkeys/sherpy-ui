@@ -1,0 +1,452 @@
+milestone: m2
+name: Project Page — Build Mode
+generated: "2026-05-05"
+
+style_anchors:
+  - path: src/components/thread/ThreadView.tsx
+    description: |
+      The primary interview UI container. Build mode renders inside this
+      component. Props: divider, question, options, composer, askbackMessages.
+      Do not restructure — wire real data to existing prop interface.
+  - path: src/components/spectrum-stepper/SpectrumStepper.tsx
+    description: |
+      Botanical-colored step indicator. stages[] array drives rendering.
+      Status: 'complete' | 'now' | 'pending'. Wire to real step state.
+  - path: src/components/thread/QuestionCard.tsx
+    description: |
+      Renders the AI question with question number n and text. Used as the
+      `question` prop of ThreadView. Shape: { n: number, text: string }.
+
+global_constraints:
+  allowed_patterns:
+    - "ONLY createServerFn for step state persistence"
+    - "ONLY TanStack Query for client state"
+    - "ONLY TanStack Router for navigation and params"
+    - "ONLY Tailwind semantic tokens — no inline styles"
+    - "Mock question content is fine for M2 — AI wired in M4"
+  forbidden_patterns:
+    - "No useState for step data — server fn is source of truth"
+    - "No direct DOM manipulation"
+    - "No new component libraries"
+  tdd_required: true
+  max_task_duration_minutes: 90
+  commit_strategy: "Commit after each task"
+  drift_policy:
+    stop_criteria:
+      - Introduces dependency not listed in allowed_patterns
+      - Edits touch >3 files not in this task's files section
+      - Lint or type errors introduced that cannot be resolved within task scope
+      - Test fails and model proposes modifying the test instead of fixing implementation
+    on_detect: |
+      STOP immediately. Do not continue editing.
+      Summarize: (1) what you intended, (2) what you found, (3) which files were touched.
+      Revert: git checkout -- .
+      Create incident note: docs/drift-incidents/YYYY-MM-DD-<task-id>.md
+    allowed_deviations:
+      - Whitespace-only edits
+      - Single-line refactor within targeted file if type-checked and in-scope
+
+quality_gates:
+  - stage: pre-commit
+    commands:
+      - "pnpm biome check --write ."
+      - "pnpm tsc --noEmit"
+      - "pnpm test --run"
+  - stage: task-completion
+    criteria:
+      - All tests passing
+      - No TypeScript errors
+      - Feature works end-to-end in browser
+
+tasks:
+  - id: m2-001
+    name: Step types and in-memory step store
+    description: |
+      TypeScript types for planning steps, answers, and the per-project
+      step state. In-memory store keyed by projectId.
+    estimate_minutes: 45
+    type: code
+    dependencies: []
+    files:
+      create:
+        - src/features/planning/types.ts
+        - src/features/planning/store.ts
+        - src/features/planning/store.test.ts
+      modify: []
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Step state tracks which planning step a project is on, what answers
+      have been given, and the mock question for each step.
+
+      **Implementation Steps:**
+      1. `src/features/planning/types.ts`:
+         ```typescript
+         export type StepStatus = 'complete' | 'now' | 'pending'
+
+         export interface StepAnswer {
+           value: string      // freeform text or option letter
+           submittedAt: string
+         }
+
+         export interface PlanningStep {
+           stepNumber: number  // 1-10
+           name: string
+           status: StepStatus
+           question: string    // mock question text — replaced by AI in M4
+           options?: Array<{ letter: string; title: string; body: string; recommended?: boolean }>
+           answer?: StepAnswer
+           artifactKey?: string // set after AI generates artifact in M4
+         }
+
+         export interface ProjectStepState {
+           projectId: string
+           currentStep: number   // 1-10
+           steps: PlanningStep[]
+         }
+         ```
+      2. `src/features/planning/store.ts`:
+         - Map<projectId, ProjectStepState>
+         - `initProjectSteps(projectId, entryPath)` — creates 10 steps with
+           mock questions; step 1 is 'now', rest are 'pending'. If entryPath
+           is 'doc-first', step 1 (Gap Analysis) starts pre-seeded.
+         - `getStepState(projectId)` — returns state or throws
+         - `submitAnswer(projectId, stepNumber, answer)` — saves answer,
+           marks step complete, advances currentStep, sets next step to 'now'
+         - `getStep(projectId, stepNumber)` — returns single step
+      3. Mock question content for all 10 Sherpy planning steps (use the
+         actual step names from business-requirements.yaml).
+
+      **TDD Checklist:**
+      - [ ] Test: initProjectSteps creates 10 steps, step 1 is 'now'
+      - [ ] Test: submitAnswer marks step complete and advances currentStep
+      - [ ] Test: submitAnswer on final step keeps currentStep at 10
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/planning/store.test.ts"
+      expected_output: tsc clean, all step store tests pass
+      on_failure: Verify step numbering is 1-based; check Map initialization
+
+  - id: m2-002
+    name: Planning server functions
+    description: |
+      createServerFn wrappers: getStepState, submitAnswer, getStep.
+      Called from client via TanStack Query hooks.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m2-001]
+    files:
+      create:
+        - src/features/planning/server.ts
+        - src/features/planning/server.test.ts
+        - src/features/planning/hooks.ts
+      modify: []
+      touch_only:
+        - src/features/planning/store.ts
+        - src/features/projects/store.ts
+    instructions: |
+      **Objective:**
+      Server fns for step state. Also initialize step state when a project
+      is first loaded if it hasn't been initialized yet (lazy init pattern).
+
+      **Implementation Steps:**
+      1. `src/features/planning/server.ts`:
+         ```typescript
+         export const $getStepState = createServerFn({ method: 'GET' })
+           .validator((d: unknown) => {
+             if (typeof d !== 'object' || d === null) throw new Error('invalid input')
+             const input = d as Record<string, unknown>
+             if (typeof input.projectId !== 'string' || !input.projectId)
+               throw new Error('projectId required')
+             return { projectId: input.projectId }
+           })
+           .handler(({ data }) => {
+             // Lazy-init if not yet initialized
+             if (!hasStepState(data.projectId)) {
+               const project = getProject(data.projectId) // from projects store
+               if (!project) throw new Error('Project not found')
+               initProjectSteps(data.projectId, project.entryPath)
+             }
+             return getStepState(data.projectId)
+           })
+
+         export const $submitAnswer = createServerFn({ method: 'POST' })
+           .validator((d: unknown) => {
+             if (typeof d !== 'object' || d === null) throw new Error('invalid input')
+             const input = d as Record<string, unknown>
+             if (typeof input.projectId !== 'string' || !input.projectId)
+               throw new Error('projectId required')
+             if (typeof input.stepNumber !== 'number')
+               throw new Error('stepNumber must be a number')
+             if (typeof input.answer !== 'string' || !input.answer.trim())
+               throw new Error('answer required')
+             return {
+               projectId: input.projectId,
+               stepNumber: input.stepNumber,
+               answer: input.answer.trim(),
+             }
+           })
+           .handler(({ data }) => submitAnswer(
+             data.projectId, data.stepNumber, data.answer
+           ))
+         ```
+      2. `src/features/planning/hooks.ts`:
+         - `useStepState(projectId)` → useQuery
+         - `useSubmitAnswer()` → useMutation, invalidates step state query
+
+      **TDD Checklist:**
+      - [ ] Test: $getStepState lazy-inits and returns 10 steps
+      - [ ] Test: $submitAnswer advances step and returns updated state
+      - [ ] Test: $submitAnswer on unknown projectId throws
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/planning/server.test.ts"
+      expected_output: tsc clean, all planning server tests pass
+      on_failure: Check cross-feature store imports; verify createServerFn validator shape
+
+  - id: m2-003
+    name: Project route with nested build/review routing
+    description: |
+      Create /project/:projectId route. Nested child routes for build
+      mode (/project/:id/build) and review mode (/project/:id/review).
+      Default to /build. This is the parent shell route.
+    estimate_minutes: 45
+    type: code
+    dependencies: [m2-002]
+    files:
+      create:
+        - app/routes/project/$projectId.tsx
+        - app/routes/project/$projectId.build.tsx
+        - app/routes/project/$projectId.review.tsx
+      modify:
+        - src/features/projects/components/CreateProjectFlow.tsx
+        - src/features/projects/hooks.ts  # add useProject(projectId) hook
+      touch_only: []
+    instructions: |
+      **Objective:**
+      TanStack Router file-based routing for project pages. Parent route
+      provides the two-column AppShell layout; child routes render into
+      the main content area.
+
+      **Implementation Steps:**
+      1. `app/routes/project/$projectId.tsx`:
+         - Load project via useProject(projectId) (add this hook to projects/hooks.ts)
+         - Render the two-column layout: LeftRail + main
+         - Main area: Header + SpectrumStepper + <Outlet />
+         - Pass stepState to Header and SpectrumStepper (wired in m2-004)
+      2. `app/routes/project/$projectId.build.tsx`:
+         - Renders the interview ThreadView area (wired in m2-005)
+      3. `app/routes/project/$projectId.review.tsx`:
+         - Renders DocBrowser placeholder (fully wired in M3)
+      4. Update CreateProjectFlow: after successful create, navigate to
+         `/project/${id}/build` instead of /dashboard.
+
+      **TDD Note:** Routing tasks are not unit-testable without a full router context.
+      Validation is a browser smoke test — confirm /project/:id/build renders without errors.
+      tsc --noEmit is the primary quality gate here.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+      expected_output: tsc clean; /project/:id/build route renders in browser
+      on_failure: Check TanStack Router file-based routing conventions for nested routes
+
+  - id: m2-004
+    name: Wire Header and SpectrumStepper to real step state
+    description: |
+      Header breadcrumb, stage counter, and stage name sourced from live step
+      state. SpectrumStepper stages array built from ProjectStepState. Clicking
+      a completed stage does NOT advance — read-only stepper for now.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m2-003]
+    files:
+      create: []
+      modify:
+        - app/routes/project/$projectId.tsx
+      touch_only:
+        - src/components/header/Header.tsx
+        - src/components/spectrum-stepper/SpectrumStepper.tsx
+        - src/features/planning/hooks.ts
+    instructions: |
+      **Objective:**
+      Project page shows real step progress — not demo data. Header and
+      stepper update live when an answer is submitted.
+
+      **Implementation Steps:**
+      1. In `$projectId.tsx`, call `useStepState(projectId)`.
+      2. Build the `stages` array for SpectrumStepper:
+         ```typescript
+         const stages: Stage[] = stepState.steps.map(s => ({
+           id: s.stepNumber.toString(),
+           num: s.stepNumber,
+           name: s.name,
+           status: s.status,
+         }))
+         ```
+      3. Pass to Header:
+         - `stageNum`: currentStep
+         - `stageTotal`: 10
+         - `stageName`: current step name
+         - `breadcrumb`: [{ label: project.name }, { label: `run-01` }]
+      4. ModeToggle wired: mode state lives in the parent route component.
+         onModeChange navigates to /project/:id/build or /project/:id/review.
+
+      **TDD Note:** Header and Stepper wiring is integration-tested in m2-005 (InterviewThread
+      tests verify end-to-end step state rendering). Browser smoke test is sufficient here —
+      confirm SpectrumStepper shows correct step colors and Header shows step name.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+      expected_output: tsc clean; Header shows correct step name; stepper reflects state
+      on_failure: Verify useStepState returns data shape matching Stage type
+
+  - id: m2-005
+    name: Interview thread wired to step state
+    description: |
+      Build mode renders current step's question and options in ThreadView.
+      Previous steps show as answered messages in the thread scroll area.
+      Composer is wired to submit answers.
+    estimate_minutes: 90
+    type: code
+    dependencies: [m2-004]
+    files:
+      create:
+        - src/features/planning/components/InterviewThread.tsx
+        - src/features/planning/components/InterviewThread.test.tsx
+        - src/features/planning/components/AnsweredMessage.tsx
+      modify:
+        - app/routes/project/$projectId.build.tsx
+      touch_only:
+        - src/components/thread/ThreadView.tsx
+        - src/components/thread/QuestionCard.tsx
+        - src/components/thread/OptionStack.tsx
+        - src/components/thread/OptionCard.tsx
+        - src/components/thread/Composer.tsx
+        - src/components/thread/ThreadDivider.tsx
+        - src/features/planning/hooks.ts
+    instructions: |
+      **Objective:**
+      The interview thread is the core PM UX. Current step's question +
+      options in the bottom card. Completed steps appear as a scrollable
+      history above with ThreadDivider between steps.
+
+      **Implementation Steps:**
+      1. `InterviewThread.tsx` receives `stepState: ProjectStepState` as prop.
+      2. Thread history: map completed steps → AnsweredMessage (step name +
+         answer text, styled as Message component or similar).
+         Add ThreadDivider between completed step groups.
+      3. Current step block:
+         - QuestionCard with n={currentStep} and text={currentStepQuestion}
+         - If options exist: OptionStack + OptionCards
+         - Composer with onSubmit calling useSubmitAnswer()
+      4. `AnsweredMessage.tsx` — simple display of a submitted answer:
+         - Reuse ChattedPill or Message component from thread/
+         - Shows step name + answer value
+      5. After submit: TanStack Query invalidation refreshes stepState →
+         thread history updates automatically.
+
+      **TDD Checklist:**
+      - [ ] Test: renders question for current step
+      - [ ] Test: completed steps appear in history
+      - [ ] Test: submitting via Composer calls useSubmitAnswer with correct args
+      - [ ] Test: no history shown when on step 1
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/planning/components/InterviewThread.test.tsx"
+      expected_output: tsc clean, all InterviewThread tests pass
+      on_failure: Verify stepState shape; check ThreadView prop types match
+
+  - id: m2-006
+    name: Intake sub-view for new projects
+    description: |
+      When a project's currentStep is 1 AND no answers exist yet, show the
+      Intake path-selection view instead of the interview thread. Selecting
+      a path records the entryPath choice and starts step 1.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m2-005]
+    files:
+      create:
+        - src/features/planning/components/ProjectIntake.tsx
+        - src/features/planning/components/ProjectIntake.test.tsx
+      modify:
+        - app/routes/project/$projectId.build.tsx
+      touch_only:
+        - src/components/intake/Intake.tsx
+        - src/components/intake/PathCard.tsx
+    instructions: |
+      **Objective:**
+      First visit to a new project shows the Intake flow (already built in
+      CreateProjectFlow for dashboard). Here it gates access to step 1 until
+      the PM picks their path, confirming intent.
+
+      **Implementation Steps:**
+      1. `ProjectIntake.tsx`: wraps the existing Intake + PathCard components.
+         - "Start from scratch" → submit answer to step 1 with value 'scratch'
+         - "Start with requirements doc" → submit answer to step 1 with value 'doc-first'
+         Both immediately advance to the interview thread at step 2.
+      2. In `$projectId.build.tsx`:
+         ```tsx
+         const showIntake = stepState.currentStep === 1 && !stepState.steps[0].answer
+         return showIntake ? <ProjectIntake /> : <InterviewThread stepState={stepState} />
+         ```
+
+      **TDD Checklist:**
+      - [ ] Test: shows intake when step 1 has no answer
+      - [ ] Test: shows thread when step 1 is answered
+      - [ ] Test: selecting path submits answer and transitions to thread
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm test --run src/features/planning/components/ProjectIntake.test.tsx"
+      expected_output: tsc clean, all intake tests pass
+      on_failure: Verify step answer check logic; re-test with seed data
+
+  - id: m2-007
+    name: Code review — M2 Build Mode
+    description: |
+      Full code review of all M2 work. Verify step state architecture,
+      component wiring, and test coverage for the interview flow.
+    estimate_minutes: 60
+    type: code-review
+    dependencies: [m2-001, m2-002, m2-003, m2-004, m2-005, m2-006]
+    files:
+      create:
+        - code-reviews/2026-05-05-3-code-review.yaml
+      modify: []
+      touch_only:
+        - src/features/planning/
+        - app/routes/project/
+    instructions: |
+      **Review Checklist:**
+      1. **Step State Architecture:**
+         - [ ] Server fn is sole source of truth for step state
+         - [ ] Lazy init works correctly for new and returning projects
+         - [ ] submitAnswer side effects are clean (no double-advance)
+      2. **Thread UI:**
+         - [ ] History renders completed steps correctly
+         - [ ] Current step card matches design system (border-emph, shadow)
+         - [ ] Composer submit triggers mutation and refreshes thread
+      3. **Routing:**
+         - [ ] /project/:id defaults to /build
+         - [ ] ModeToggle navigates between /build and /review
+      4. **Tests:**
+         - [ ] Step store fully covered
+         - [ ] InterviewThread tests cover history + current step
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm biome check ."
+        - "pnpm test --run"
+      expected_output: All quality gates pass
+      on_failure: Document and fix before starting M3

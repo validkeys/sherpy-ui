@@ -1,0 +1,609 @@
+milestone: m0
+name: Repo Migration & TanStack Start Scaffold
+generated: "2026-05-05"
+
+style_anchors:
+  - path: _ref/src/components/ui/card.tsx
+    description: |
+      Canonical card component pattern: cn() + data-slot attributes +
+      Tailwind semantic tokens (bg-surface, border-border-1, text-fg-2).
+      All ported components must follow this pattern exactly.
+  - path: _ref/src/styles/tokens.css
+    description: |
+      Full design-token source of truth. Must be copied verbatim into
+      src/styles/tokens.css in the new project. Do not alter variable names.
+  - path: _ref/src/index.css
+    description: |
+      Tailwind v4 @theme inline block that maps tokens to utility classes.
+      Must be copied verbatim. The @custom-variant dark rule is required.
+
+global_constraints:
+  allowed_patterns:
+    - "ONLY pnpm as package manager"
+    - "ONLY Biome for lint and format (no ESLint, no Prettier)"
+    - "ONLY TanStack Start (Router + Vinxi + Nitro) — no Vite SPA config"
+    - "ONLY Tailwind v4 with @theme inline — no tailwind.config.js"
+    - "ONLY TypeScript strict mode"
+    - "Copy components verbatim from _ref/ — no rewrites during migration"
+  forbidden_patterns:
+    - "Do not create any tailwind.config.js or tailwind.config.ts"
+    - "Do not use ESLint or Prettier — Biome only"
+    - "Do not modify component logic while porting — port first, fix later"
+    - "Do not add new features in M0 — migration only"
+  tdd_required: false
+  max_task_duration_minutes: 90
+  commit_strategy: "Commit after each task with conventional commit message"
+  drift_policy:
+    stop_criteria:
+      - Introduces dependency not listed in allowed_patterns
+      - Edits touch >3 files not in this task's files section
+      - Lint or type errors introduced that cannot be resolved within task scope
+      - Test fails and model proposes modifying the test instead of fixing implementation
+    on_detect: |
+      STOP immediately. Do not continue editing.
+      Summarize: (1) what you intended, (2) what you found, (3) which files were touched.
+      Revert: git checkout -- .
+      Create incident note: docs/drift-incidents/YYYY-MM-DD-<task-id>.md
+    allowed_deviations:
+      - Whitespace-only edits
+      - Single-line refactor within targeted file if type-checked and in-scope
+
+quality_gates:
+  - stage: pre-commit
+    commands:
+      - "pnpm biome check --write ."
+      - "pnpm tsc --noEmit"
+  - stage: task-completion
+    criteria:
+      - No TypeScript errors
+      - Biome lint passes
+      - Dev server starts without errors
+
+tasks:
+  - id: m0-001
+    name: Copy repo to _ref/ and clean workspace
+    description: |
+      Preserve the entire existing Vite/Storybook project as a read-only
+      reference at _ref/. Then remove Vite/Storybook config and source files
+      from the workspace root to make room for TanStack Start.
+    estimate_minutes: 30
+    type: config
+    dependencies: []
+    files:
+      create:
+        - _ref/  # entire current project copied here
+      modify:
+        - .gitignore
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Create a clean slate for TanStack Start while keeping the original
+      code accessible at _ref/ for component porting in later tasks.
+
+      **Implementation Steps:**
+      1. Copy the entire workspace into _ref/:
+         ```bash
+         mkdir _ref
+         cp -r src _ref/src
+         cp -r public _ref/public
+         cp package.json _ref/package.json
+         cp pnpm-lock.yaml _ref/pnpm-lock.yaml
+         cp tsconfig*.json _ref/
+         cp vite.config.ts _ref/
+         cp index.html _ref/
+         cp eslint.config.js _ref/ 2>/dev/null || true
+         cp components.json _ref/ 2>/dev/null || true
+         ```
+      2. Add _ref/ to .gitignore — it is reference-only and not tracked.
+      3. Do NOT delete anything yet — that happens in m0-002 after scaffold.
+      4. Commit with message: `chore: copy vite project to _ref/ for reference`
+
+    validation:
+      commands:
+        - "ls _ref/src/components/ui/button.tsx"
+        - "ls _ref/src/styles/tokens.css"
+      expected_output: Both files exist in _ref/
+      on_failure: Re-run copy commands, verify source paths
+
+  - id: m0-002
+    name: Scaffold TanStack Start project
+    description: |
+      Initialize a fresh TanStack Start project in the workspace root.
+      Configure TypeScript strict mode, install core dependencies, and
+      replace ESLint with Biome.
+    estimate_minutes: 90
+    type: config
+    dependencies: [m0-001]
+    files:
+      create:
+        - app.config.ts
+        - app/root.tsx
+        - app/routes/__root.tsx
+        - app/routes/index.tsx
+        - tsconfig.json
+        - biome.json
+        - package.json
+        - vitest.config.ts
+        - src/test-setup.ts
+      modify: []
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Install TanStack Start and configure the project foundation.
+      Biome replaces ESLint+Prettier. TypeScript in strict mode.
+
+      **Implementation Steps:**
+      1. Remove old Vite/Storybook files from workspace root:
+         ```bash
+         rm -f vite.config.ts index.html eslint.config.js
+         rm -rf .storybook storybook-static dist
+         rm -rf src/  # will be recreated in m0-003+
+         ```
+      2. Install TanStack Start and core deps:
+         ```bash
+         pnpm add @tanstack/start @tanstack/react-router \
+           @tanstack/react-query react react-dom
+         pnpm add -D typescript @types/react @types/react-dom \
+           @biomejs/biome vite vinxi \
+           vitest @vitest/coverage-v8 jsdom \
+           @vitejs/plugin-react \
+           @testing-library/react @testing-library/jest-dom @testing-library/user-event
+         ```
+      3. Create `app.config.ts`:
+         ```typescript
+         import { defineConfig } from '@tanstack/start/config'
+         export default defineConfig({
+           server: { preset: 'node-server' },
+         })
+         ```
+      4. Create `tsconfig.json` with strict mode:
+         ```json
+         {
+           "compilerOptions": {
+             "strict": true,
+             "target": "ES2022",
+             "lib": ["ES2022", "DOM", "DOM.Iterable"],
+             "module": "ESNext",
+             "moduleResolution": "Bundler",
+             "jsx": "react-jsx",
+             "baseUrl": ".",
+             "paths": { "@/*": ["./src/*"] },
+             "skipLibCheck": true
+           }
+         }
+         ```
+      5. Create `biome.json`:
+         ```json
+         {
+           "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+           "organizeImports": { "enabled": true },
+           "linter": {
+             "enabled": true,
+             "rules": { "recommended": true }
+           },
+           "formatter": {
+             "enabled": true,
+             "indentStyle": "space",
+             "indentWidth": 2
+           }
+         }
+         ```
+      6. Update package.json scripts:
+         ```json
+         {
+           "scripts": {
+             "dev": "vinxi dev",
+             "build": "vinxi build",
+             "start": "vinxi start",
+             "typecheck": "tsc --noEmit",
+             "lint": "biome check .",
+             "lint:fix": "biome check --write ."
+           }
+         }
+         ```
+      7. Create minimal `app/routes/__root.tsx` and `app/routes/index.tsx`
+         with placeholder content so the router initializes.
+      8. Run `pnpm dev` — confirm dev server starts on localhost:3000.
+      9. Create `vitest.config.ts`:
+         ```typescript
+         import { defineConfig } from 'vitest/config'
+         import react from '@vitejs/plugin-react'
+         export default defineConfig({
+           plugins: [react()],
+           test: {
+             environment: 'jsdom',
+             setupFiles: ['./src/test-setup.ts'],
+             coverage: {
+               provider: 'v8',
+               thresholds: { lines: 70, functions: 70, branches: 70 },
+               exclude: ['_ref/**', 'app/routes/**', '**/*.stories.*'],
+             },
+           },
+           resolve: {
+             alias: { '@': new URL('./src', import.meta.url).pathname },
+           },
+         })
+         ```
+      10. Create `src/test-setup.ts`:
+          ```typescript
+          import '@testing-library/jest-dom'
+          ```
+      11. Add test scripts to package.json:
+          ```json
+          "test": "vitest",
+          "test:coverage": "vitest run --coverage"
+          ```
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm biome check ."
+        - "pnpm dev --help"
+      expected_output: No TS errors, no Biome errors, dev command found
+      on_failure: Check pnpm-lock.yaml for version conflicts; verify app.config.ts syntax
+
+  - id: m0-003
+    name: Port design system — tokens and Tailwind config
+    description: |
+      Copy tokens.css and index.css verbatim from _ref/. Install Tailwind v4
+      and configure it for TanStack Start. Verify utility classes resolve.
+    estimate_minutes: 45
+    type: config
+    dependencies: [m0-002]
+    files:
+      create:
+        - src/styles/tokens.css
+        - src/index.css
+      modify:
+        - app/routes/__root.tsx
+        - package.json
+    instructions: |
+      **Objective:**
+      Restore the Sherpy botanical design system exactly as it existed in the
+      Vite project. No token changes, no color changes, no naming changes.
+
+      **Implementation Steps:**
+      1. Install Tailwind v4:
+         ```bash
+         pnpm add tailwindcss @tailwindcss/vite tw-animate-css
+         pnpm add @fontsource-variable/geist @fontsource-variable/bodoni-moda
+         ```
+      2. Create `src/styles/tokens.css` — copy verbatim from
+         `_ref/src/styles/tokens.css` (no edits).
+      3. Create `src/index.css` — copy verbatim from `_ref/src/index.css`.
+         The @import of fonts, @import tailwindcss, @theme inline block,
+         and @keyframes must all be preserved exactly.
+      4. In `app/routes/__root.tsx`, import `../src/index.css` so styles
+         apply globally.
+      5. Add Tailwind Vite plugin to `app.config.ts`:
+         ```typescript
+         import tailwindcss from '@tailwindcss/vite'
+         export default defineConfig({
+           server: { preset: 'node-server' },
+           vite: { plugins: [tailwindcss()] },
+         })
+         ```
+      6. Verify: add a `<div className="bg-surface text-fg-1">test</div>` to
+         the index route — confirm it renders with the correct paper-white
+         background in the browser.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "grep -r 'bg-surface' src/index.css"
+      expected_output: tsc clean; bg-surface found in CSS
+      on_failure: Verify @theme inline block is intact and @tailwindcss imported
+
+  - id: m0-004
+    name: Port shared UI primitives
+    description: |
+      Copy src/components/ui/, src/lib/utils.ts, and src/components/theme-provider/
+      from _ref/ into the new project. Install peer deps (base-ui, cva, clsx,
+      tailwind-merge, lucide-react).
+    estimate_minutes: 60
+    type: code
+    dependencies: [m0-003]
+    files:
+      create:
+        - src/lib/utils.ts
+        - src/components/ui/button.tsx
+        - src/components/ui/button-variants.ts
+        - src/components/ui/badge.tsx
+        - src/components/ui/badge-variants.ts
+        - src/components/ui/card.tsx
+        - src/components/theme-provider/ThemeProvider.tsx
+        - src/components/theme-provider/ThemeToggle.tsx
+        - src/components/theme-provider/theme-context.ts
+        - src/components/theme-provider/index.ts
+      modify: []
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Re-establish the primitive component layer. Copy verbatim from _ref/.
+      Do not refactor or rename anything — exact copies only.
+
+      **Implementation Steps:**
+      1. Install peer dependencies:
+         ```bash
+         pnpm add @base-ui/react class-variance-authority clsx \
+           tailwind-merge lucide-react
+         ```
+      2. Copy these files verbatim from _ref/src/ to src/:
+         - lib/utils.ts
+         - components/ui/button.tsx
+         - components/ui/button-variants.ts
+         - components/ui/badge.tsx
+         - components/ui/badge-variants.ts
+         - components/ui/card.tsx
+         - components/theme-provider/ThemeProvider.tsx
+         - components/theme-provider/ThemeToggle.tsx
+         - components/theme-provider/theme-context.ts
+         - components/theme-provider/index.ts
+      3. Update all @/ path aliases — they should resolve correctly since
+         tsconfig.json maps @/ → ./src/.
+      4. Run `pnpm tsc --noEmit` — all files must compile clean.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "ls src/components/ui/button.tsx src/lib/utils.ts"
+      expected_output: tsc clean, files exist
+      on_failure: Check @/ alias in tsconfig.json; verify import paths in copied files
+
+  - id: m0-005
+    name: Port layout and shell components
+    description: |
+      Copy AppShell, Header, LeftRail, ModeToggle, and SpectrumStepper from
+      _ref/. These are the structural frame used by every page.
+    estimate_minutes: 60
+    type: code
+    dependencies: [m0-004]
+    files:
+      create:
+        - src/components/app-shell/AppShell.tsx
+        - src/components/app-shell/index.ts
+        - src/components/header/Header.tsx
+        - src/components/header/index.ts
+        - src/components/left-rail/LeftRail.tsx
+        - src/components/left-rail/index.ts
+        - src/components/mode-toggle/ModeToggle.tsx
+        - src/components/mode-toggle/index.ts
+        - src/components/spectrum-stepper/SpectrumStepper.tsx
+        - src/components/spectrum-stepper/index.ts
+      modify: []
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Port the structural shell components. Copy verbatim from _ref/.
+      These files will be wired to real data in M1–M3; for now they
+      use the same hardcoded demo props as the original.
+
+      **Implementation Steps:**
+      1. Copy these files verbatim from _ref/src/ to src/:
+         - components/app-shell/AppShell.tsx + index.ts
+         - components/header/Header.tsx + index.ts
+         - components/left-rail/LeftRail.tsx + index.ts
+         - components/mode-toggle/ModeToggle.tsx + index.ts
+         - components/spectrum-stepper/SpectrumStepper.tsx + index.ts
+      2. Fix any import paths that reference Storybook or test fixtures —
+         replace with direct imports or remove if unused.
+      3. Run `pnpm tsc --noEmit` — must be clean.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+      expected_output: tsc clean
+      on_failure: Check for Storybook-specific imports; remove or stub them
+
+  - id: m0-006a
+    name: Port Thread components
+    description: |
+      Copy all thread/ components from _ref/. These drive the interview UI in M2.
+    estimate_minutes: 45
+    type: code
+    dependencies: [m0-005]
+    files:
+      create:
+        - src/components/thread/AskbackAside.tsx
+        - src/components/thread/ChattedPill.tsx
+        - src/components/thread/Composer.tsx
+        - src/components/thread/Message.tsx
+        - src/components/thread/OptionCard.tsx
+        - src/components/thread/OptionStack.tsx
+        - src/components/thread/QuestionCard.tsx
+        - src/components/thread/RecommendedBadge.tsx
+        - src/components/thread/SuggestionChip.tsx
+        - src/components/thread/ThreadDivider.tsx
+        - src/components/thread/ThreadView.tsx
+        - src/components/thread/index.ts
+      modify: []
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Copy Thread component family verbatim from _ref/. Remove Storybook
+      and fixture imports. Keep all component interfaces (props) intact.
+
+      **Implementation Steps:**
+      1. Copy all listed files from _ref/src/components/thread/ to src/components/thread/.
+      2. For each file:
+         - Remove any imports from *.stories.tsx files
+         - Remove any import of fixtures.ts files
+         - Keep the component interface (props) intact
+      3. Run `pnpm tsc --noEmit` — must be clean.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "grep -r '.stories' src/components/thread/ || echo 'clean'"
+      expected_output: tsc clean; no .stories imports in thread/
+      on_failure: Hunt Storybook imports with grep; stub missing types inline
+
+  - id: m0-006b
+    name: Port Intake and DocBrowser components
+    description: |
+      Copy intake/ and doc-browser/ components from _ref/.
+      Intake is used in M1 (create-project) and M2. DocBrowser drives M3 (Review mode).
+    estimate_minutes: 45
+    type: code
+    dependencies: [m0-005]
+    files:
+      create:
+        - src/components/intake/Intake.tsx
+        - src/components/intake/PathCard.tsx
+        - src/components/intake/index.ts
+        - src/components/doc-browser/CodePreview.tsx
+        - src/components/doc-browser/DocBrowser.tsx
+        - src/components/doc-browser/DocItem.tsx
+        - src/components/doc-browser/DocList.tsx
+        - src/components/doc-browser/yaml-highlight.tsx
+        - src/components/doc-browser/index.ts
+      modify: []
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Copy Intake and DocBrowser component families verbatim from _ref/.
+      Remove Storybook and fixture imports. Keep all props intact.
+
+      **Implementation Steps:**
+      1. Copy intake/ files from _ref/src/components/intake/ to src/components/intake/.
+      2. Copy doc-browser/ files from _ref/src/components/doc-browser/ to src/components/doc-browser/.
+      3. For each file: remove *.stories.tsx imports and fixtures.ts imports.
+      4. Run `pnpm tsc --noEmit` — must be clean.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "grep -r '.stories' src/components/intake/ src/components/doc-browser/ || echo 'clean'"
+      expected_output: tsc clean; no .stories imports
+      on_failure: Hunt Storybook imports with grep; stub missing types inline
+
+  - id: m0-006c
+    name: Port Worksheet components
+    description: |
+      Copy worksheet/ components from _ref/. Used in M2/M3 for step-content display.
+    estimate_minutes: 30
+    type: code
+    dependencies: [m0-005]
+    files:
+      create:
+        - src/components/worksheet/DropZone.tsx
+        - src/components/worksheet/MergeProgress.tsx
+        - src/components/worksheet/StatusPill.tsx
+        - src/components/worksheet/Worksheet.tsx
+        - src/components/worksheet/WorksheetRow.tsx
+        - src/components/worksheet/index.ts
+      modify: []
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Copy Worksheet component family verbatim from _ref/. Remove Storybook
+      and fixture imports. Keep all props intact.
+
+      **Implementation Steps:**
+      1. Copy all listed files from _ref/src/components/worksheet/ to src/components/worksheet/.
+      2. Remove any *.stories.tsx imports and fixtures.ts imports.
+      3. Run `pnpm tsc --noEmit` — must be clean.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "grep -r '.stories' src/components/worksheet/ || echo 'clean'"
+      expected_output: tsc clean; no .stories imports in worksheet/
+      on_failure: Hunt Storybook imports with grep; stub missing types inline
+
+  - id: m0-007
+    name: Wire smoke-test route and verify shell renders
+    description: |
+      Mount AppShell in the root route with its demo props. Confirm the full
+      shell (LeftRail + Header + SpectrumStepper + ThreadView placeholder)
+      renders in the browser without errors.
+    estimate_minutes: 45
+    type: code
+    dependencies: [m0-006a, m0-006b, m0-006c]
+    files:
+      create: []
+      modify:
+        - app/routes/__root.tsx
+        - app/routes/index.tsx
+      touch_only: []
+    instructions: |
+      **Objective:**
+      Visual smoke test — the shell must render with the same appearance
+      as the old Storybook demo before any route logic is added.
+
+      **Implementation Steps:**
+      1. In `app/routes/__root.tsx`, wrap the outlet with ThemeProvider:
+         ```tsx
+         import { ThemeProvider } from '@/components/theme-provider'
+         export function RootComponent() {
+           return (
+             <ThemeProvider>
+               <Outlet />
+             </ThemeProvider>
+           )
+         }
+         ```
+      2. In `app/routes/index.tsx`, render AppShell with its existing
+         hardcoded demo props (same as _ref/src/components/app-shell/AppShell.tsx).
+      3. Run `pnpm dev`, open browser, confirm:
+         - LeftRail with Sherpy logo renders on the left
+         - Header with breadcrumb renders at top
+         - SpectrumStepper renders with botanical colors
+         - ThreadView placeholder area visible
+         - Dark/light theme toggle works
+      4. Fix any runtime errors before proceeding.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm biome check ."
+      expected_output: tsc clean, Biome clean, shell renders in browser
+      on_failure: Check browser console for runtime errors; verify ThemeProvider wraps root
+
+  - id: m0-008
+    name: Code review — M0 migration
+    description: |
+      Review all ported files for correctness, missing imports, and
+      Storybook residue. Verify design token fidelity against _ref/.
+    estimate_minutes: 60
+    type: code-review
+    dependencies: [m0-001, m0-002, m0-003, m0-004, m0-005, m0-006a, m0-006b, m0-006c, m0-007]
+    files:
+      create:
+        - code-reviews/2026-05-05-1-code-review.yaml
+      modify: []
+      touch_only:
+        - src/
+        - app/
+        - _ref/src/styles/tokens.css
+    instructions: |
+      **Objective:**
+      Verify the migration is complete and faithful. Every component that
+      existed in _ref/ must be present and compile-clean in src/.
+
+      **Review Checklist:**
+      1. **Style Token Fidelity:**
+         - [ ] tokens.css is byte-for-byte identical to _ref/ version
+         - [ ] index.css @theme inline block is intact
+         - [ ] Dark mode @custom-variant present
+      2. **Component Completeness:**
+         - [ ] All components from _ref/src/components/ are present in src/components/
+         - [ ] No *.stories.tsx files in src/
+         - [ ] No fixtures.ts imports in running components
+      3. **TypeScript:**
+         - [ ] tsc --noEmit passes with zero errors
+         - [ ] No `any` type assertions introduced during porting
+      4. **Biome:**
+         - [ ] biome check . passes with zero errors
+      5. **Runtime:**
+         - [ ] pnpm dev starts without errors
+         - [ ] Shell renders in browser (visual check documented)
+
+      **Output Format:** See milestone-m0 skill instructions for YAML format.
+
+    validation:
+      commands:
+        - "pnpm tsc --noEmit"
+        - "pnpm biome check ."
+      expected_output: All quality gates pass
+      on_failure: Document failures in review; do not proceed to M1 until resolved
