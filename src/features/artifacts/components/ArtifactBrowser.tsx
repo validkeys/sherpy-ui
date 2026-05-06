@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CodePreview } from "@/components/doc-browser/CodePreview";
 import { type DocGroup, DocList } from "@/components/doc-browser/DocList";
 import { useArtifact, useArtifacts } from "../hooks";
@@ -19,6 +19,7 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
   const artifactsQuery = useArtifacts(projectId);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Auto-select first artifact
   const effectiveSelectedKey =
@@ -26,12 +27,30 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
 
   const artifactQuery = useArtifact(projectId, effectiveSelectedKey);
 
-  const handleCopy = (artifact: typeof artifactQuery.data) => {
+  const handleCopy = useCallback((artifact: typeof artifactQuery.data) => {
     if (!artifact) return;
+
+    // Clear any existing timeout
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current);
+    }
+
     navigator.clipboard.writeText(artifact.content);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+
+    copyTimeoutRef.current = setTimeout(() => {
+      setCopied(false);
+    }, 1500);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const groups: DocGroup[] = useMemo(() => {
     if (!artifactsQuery.data) return [];
