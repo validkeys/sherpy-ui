@@ -2,10 +2,10 @@ import { nanoid } from "nanoid";
 import type { CreateProjectInput, Project } from "./types";
 
 const store = new Map<string, Project>();
-let codeCounter = 42;
+const counterRef = { value: 42 };
 
 function nextCode(): string {
-  return `SHR-${String(codeCounter++).padStart(4, "0")}`;
+  return `SHR-${String(counterRef.value++).padStart(4, "0")}`;
 }
 
 export function listProjects(): Project[] {
@@ -51,5 +51,11 @@ export function getProject(id: string): Project | undefined {
 
 export function _resetStore(): void {
   store.clear();
-  codeCounter = 42;
+  counterRef.value = 42;
+}
+
+// Seed demo data unless explicitly disabled
+if (process.env.SEED_DATA !== "false") {
+  const { seedStore } = await import("./seed");
+  seedStore(store, counterRef);
 }
