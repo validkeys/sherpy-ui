@@ -1,10 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "../../src/components/app-shell";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   component: IndexPage,
 });
 
 function IndexPage() {
-  return <AppShell />;
+  return <Navigate to="/dashboard" />;
 }
