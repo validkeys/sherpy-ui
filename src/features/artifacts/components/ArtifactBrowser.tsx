@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useArtifacts, useArtifact } from '../hooks'
 import { DocList, type DocGroup } from '@/components/doc-browser/DocList'
 import { CodePreview } from '@/components/doc-browser/CodePreview'
-import type { Artifact } from '../types'
+import { downloadArtifact } from '../utils/download'
 
 interface ArtifactBrowserProps {
 	projectId: string
@@ -94,6 +94,7 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
 					)}
 					fileSize={`${(selectedArtifact.content.length / 1024).toFixed(1)} KB`}
 					sourceCode={selectedArtifact.content}
+					onDownload={() => downloadArtifact(selectedArtifact)}
 				/>
 			) : (
 				<div className="flex items-center justify-center text-fg-4 font-mono text-[12px]">
