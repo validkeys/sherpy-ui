@@ -21,13 +21,27 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
+  // Prefetch business-requirements (always first in seed data)
+  const firstArtifactQuery = useArtifact(projectId, "business-requirements");
+
   // Auto-select first artifact
   const effectiveSelectedKey =
     selectedKey ?? artifactsQuery.data?.[0]?.key ?? null;
 
-  const artifactQuery = useArtifact(projectId, effectiveSelectedKey);
+  const customArtifactQuery = useArtifact(
+    projectId,
+    effectiveSelectedKey !== "business-requirements"
+      ? effectiveSelectedKey
+      : null,
+  );
 
-  const handleCopy = useCallback((artifact: typeof artifactQuery.data) => {
+  // Use prefetched if it matches, otherwise use custom query
+  const selectedArtifact =
+    effectiveSelectedKey === "business-requirements"
+      ? firstArtifactQuery.data
+      : customArtifactQuery.data;
+
+  const handleCopy = useCallback((artifact: typeof firstArtifactQuery.data) => {
     if (!artifact) return;
 
     // Clear any existing timeout
@@ -76,8 +90,6 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
       },
     ];
   }, [artifactsQuery.data]);
-
-  const selectedArtifact = artifactQuery.data;
 
   // Determine content based on state
   let content: React.ReactNode;
