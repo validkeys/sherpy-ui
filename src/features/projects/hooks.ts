@@ -1,8 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { $createProject, $listProjects, $updateProjectStatus } from "./server";
+import {
+  $createProject,
+  $getProject,
+  $listProjects,
+  $updateProjectStatus,
+} from "./server";
 import type { CreateProjectInput } from "./types";
 
 export const projectsQueryKey = ["projects"] as const;
+
+export function useProject(projectId: string) {
+  return useQuery({
+    queryKey: ["project", projectId],
+    queryFn: () => $getProject({ data: { id: projectId } }),
+  });
+}
 
 export function useProjects() {
   return useQuery({

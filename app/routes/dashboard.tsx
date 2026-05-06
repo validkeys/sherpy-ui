@@ -20,9 +20,8 @@ function DashboardComponent() {
       <CreateProjectFlow
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onCreated={(_id) => {
+        onCreated={() => {
           setCreateOpen(false);
-          // navigate({ to: "/project/$id", params: { id: _id } }); // enable when route exists
         }}
       />
     </div>

@@ -16,6 +16,8 @@ meta:
 milestones:
   - id: m0
     name: Repo Migration & TanStack Start Scaffold
+    status: completed
+    completed_date: "2026-05-06"
     description: |
       Copy the existing Vite/Storybook repo to _ref/ as a read-only reference.
       Scaffold a fresh TanStack Start project in the workspace root.
@@ -36,6 +38,8 @@ milestones:
 
   - id: m1
     name: Dashboard Page
+    status: completed
+    completed_date: "2026-05-06"
     description: |
       Fully complete the Dashboard page: project list (active / past tabs),
       project card (name, code, current step, last-touched date), create-new
