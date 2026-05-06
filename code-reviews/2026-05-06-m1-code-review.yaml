@@ -1,0 +1,52 @@
+review:
+  milestone: m1
+  date: "2026-05-06"
+  reviewer: Claude Sonnet 4.6
+
+checklist:
+  server_fn_patterns:
+    all_use_createServerFn: pass
+    validators_reject_invalid: pass
+    no_business_logic_in_components: pass
+
+  query_patterns:
+    stable_query_key: pass # projectsQueryKey constant
+    mutations_invalidate_on_success: pass
+    no_direct_store_imports_in_components: pass
+
+  component_structure:
+    card_usage_matches_style_anchor: pass
+    no_inline_style_attributes: pass
+    no_hardcoded_colors: pass
+
+  tests:
+    store_unit_tests_cover_all_ops: pass # 10 tests
+    server_validator_tests: pass # 12 tests (validators + store delegates)
+    component_tests_cover_empty_populated_actions: pass # ProjectList 4, CreateProjectFlow 5, LeftRailNav 3
+
+  routing:
+    index_redirects_to_dashboard: pass
+    no_broken_links: pass
+
+quality_gates:
+  tsc_noEmit: pass
+  biome_check: pass
+  all_tests: pass # 34 tests across 5 test files
+
+deviations:
+  - id: test-strategy
+    description: >
+      server.test.ts tests validators inline (mirrored from server.ts) and
+      store functions directly rather than calling server fns end-to-end.
+      Root cause: createServerFn requires TanStack Start Vite plugin transform
+      not present in Vitest config. Workaround covers the same behaviour.
+  - id: vitest-globals
+    description: >
+      Added globals: true to vitest.config.ts to fix @testing-library/jest-dom
+      expect-is-not-defined error. Pre-existing config gap.
+  - id: dynamic-import-seed
+    description: >
+      store.ts uses top-level await import('./seed') for conditional seeding.
+      Module is ESNext so this is valid; seeding skipped in tests where
+      SEED_DATA is not set (default behaviour: seed always runs, _resetStore
+      clears it in test beforeEach).

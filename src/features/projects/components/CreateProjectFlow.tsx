@@ -109,7 +109,6 @@ export function CreateProjectFlow({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. billing-platform"
                 className="text-sm border border-border-1 rounded-md px-3 py-2 bg-surface text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-border-2"
-                autoFocus
               />
               {nameError && <p className="text-xs text-fg-3">{nameError}</p>}
             </div>
