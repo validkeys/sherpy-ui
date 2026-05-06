@@ -80,6 +80,8 @@ milestones:
 
   - id: m3
     name: Project Page — Review Mode
+    status: completed
+    completed_date: "2026-05-06"
     description: |
       Fully complete the Review mode: DocBrowser connected to real artifact
       server functions, artifact list per project, per-artifact view with
