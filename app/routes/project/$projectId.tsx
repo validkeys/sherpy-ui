@@ -11,6 +11,7 @@ import {
   SpectrumStepper,
   type Stage,
 } from "@/components/spectrum-stepper/SpectrumStepper";
+import { useStepState } from "@/features/planning/hooks";
 import { useProject } from "@/features/projects/hooks";
 
 export const Route = createFileRoute("/project/$projectId")({
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/project/$projectId")({
   component: ProjectComponent,
 });
 
-const PLACEHOLDER_STAGES: Stage[] = Array.from({ length: 10 }, (_, i) => ({
+const FALLBACK_STAGES: Stage[] = Array.from({ length: 10 }, (_, i) => ({
   id: String(i + 1),
   num: i + 1,
   name: `Step ${i + 1}`,
@@ -34,6 +35,7 @@ function ProjectComponent() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
   const { data: project } = useProject(projectId);
+  const { data: stepState } = useStepState(projectId);
 
   const { pathname } = useLocation();
   const mode = pathname.endsWith("/review") ? "review" : "build";
@@ -48,19 +50,33 @@ function ProjectComponent() {
     });
   }
 
+  const stages: Stage[] = stepState
+    ? stepState.steps.map((s) => ({
+        id: String(s.stepNumber),
+        num: s.stepNumber,
+        name: s.name,
+        status: s.status,
+      }))
+    : FALLBACK_STAGES;
+
+  const currentStep = stepState?.currentStep ?? 1;
+  const currentStepName =
+    stepState?.steps.find((s) => s.stepNumber === currentStep)?.name ??
+    "Loading…";
+
   return (
     <div className="grid grid-cols-[var(--left-rail-width)_1fr] h-screen min-h-[760px]">
       <LeftRail />
       <main className="flex flex-col bg-page overflow-hidden">
         <Header
           breadcrumb={[{ label: project?.name ?? "…" }, { label: "run-01" }]}
-          stageNum={1}
+          stageNum={currentStep}
           stageTotal={10}
-          stageName="Gap Analysis"
+          stageName={currentStepName}
           mode={mode}
           onModeChange={handleModeChange}
         />
-        <SpectrumStepper stages={PLACEHOLDER_STAGES} activeIndex={0} />
+        <SpectrumStepper stages={stages} activeIndex={currentStep - 1} />
         <Outlet />
       </main>
     </div>
