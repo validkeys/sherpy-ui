@@ -1,1 +1,1 @@
-export { ModeToggle, type Mode } from './ModeToggle'
+export { type Mode, ModeToggle } from "./ModeToggle";

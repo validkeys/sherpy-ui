@@ -1,43 +1,43 @@
-import { cn } from '@/lib/utils'
+import { cn } from "@/lib/utils";
 
-export type DropZoneVariant = 'idle' | 'dragover' | 'uploading'
+export type DropZoneVariant = "idle" | "dragover" | "uploading";
 
 export interface DropZoneProps {
-  variant?: DropZoneVariant
+  variant?: DropZoneVariant;
 }
 
-export function DropZone({ variant = 'idle' }: DropZoneProps) {
-  const isDragover = variant === 'dragover'
-  const isUploading = variant === 'uploading'
+export function DropZone({ variant = "idle" }: DropZoneProps) {
+  const isDragover = variant === "dragover";
+  const isUploading = variant === "uploading";
 
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center gap-2.5 p-6 rounded-[10px] text-center',
-        'border-2 border-dashed transition-colors duration-150',
-        isDragover ? 'border-border-emph bg-surface' : 'border-fg-4 bg-sunken',
-        isUploading && 'border-bot-2 bg-bot-2-soft',
+        "flex flex-col items-center justify-center gap-2.5 p-6 rounded-[10px] text-center",
+        "border-2 border-dashed transition-colors duration-150",
+        isDragover ? "border-border-emph bg-surface" : "border-fg-4 bg-sunken",
+        isUploading && "border-bot-2 bg-bot-2-soft",
       )}
     >
       <div
         aria-hidden
         className={cn(
-          'text-[36px] leading-none opacity-60 select-none',
-          isUploading && 'animate-spin',
+          "text-[36px] leading-none opacity-60 select-none",
+          isUploading && "animate-spin",
         )}
       >
-        {isUploading ? '↻' : '↓'}
+        {isUploading ? "↻" : "↓"}
       </div>
 
       <div className="font-serif text-[20px] text-fg-1 tracking-[-0.01em]">
-        {isUploading ? 'Uploading…' : 'Drop the filled worksheet here'}
+        {isUploading ? "Uploading…" : "Drop the filled worksheet here"}
       </div>
 
       {!isUploading && (
         <>
           <p className="text-[12px] text-fg-3 max-w-[360px] leading-snug m-0">
-            Markdown, Word, or paste from Confluence. Sherpy will merge the answers
-            row-by-row and flag anything that still needs your eyes.
+            Markdown, Word, or paste from Confluence. Sherpy will merge the
+            answers row-by-row and flag anything that still needs your eyes.
           </p>
           <div className="flex gap-2 mt-1">
             <button
@@ -56,5 +56,5 @@ export function DropZone({ variant = 'idle' }: DropZoneProps) {
         </>
       )}
     </div>
-  )
+  );
 }

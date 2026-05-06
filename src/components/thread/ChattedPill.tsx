@@ -1,6 +1,6 @@
 export interface ChattedPillProps {
-  count: number
-  onClick?: () => void
+  count: number;
+  onClick?: () => void;
 }
 
 export function ChattedPill({ count, onClick }: ChattedPillProps) {
@@ -14,5 +14,5 @@ export function ChattedPill({ count, onClick }: ChattedPillProps) {
       <span>chatted · {count} msgs</span>
       <span className="text-fg-3">· view</span>
     </button>
-  )
+  );
 }

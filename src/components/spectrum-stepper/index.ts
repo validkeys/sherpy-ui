@@ -1,2 +1,2 @@
-export { SpectrumStepper } from './SpectrumStepper'
-export type { Stage, SpectrumStepperProps } from './SpectrumStepper'
+export type { SpectrumStepperProps, Stage } from "./SpectrumStepper";
+export { SpectrumStepper } from "./SpectrumStepper";

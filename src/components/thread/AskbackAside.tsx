@@ -1,25 +1,25 @@
-import { Activity } from 'react'
-import { cn } from '@/lib/utils'
+import { Activity } from "react";
+import { cn } from "@/lib/utils";
 
 export interface AskbackMsg {
-  who: 'user' | 'assistant'
-  body: string
-  streaming?: boolean
+  who: "user" | "assistant";
+  body: string;
+  streaming?: boolean;
 }
 
 export interface AskbackAsideProps {
-  open: boolean
-  messages: AskbackMsg[]
-  onClose?: () => void
+  open: boolean;
+  messages: AskbackMsg[];
+  onClose?: () => void;
 }
 
 export function AskbackAside({ open, messages, onClose }: AskbackAsideProps) {
   return (
-    <Activity mode={open ? 'visible' : 'hidden'}>
+    <Activity mode={open ? "visible" : "hidden"}>
       <div
         className={cn(
-          'border-[1.5px] border-bot-2 rounded-[8px] bg-bot-2-soft',
-          'px-3 py-2.5 flex flex-col gap-2',
+          "border-[1.5px] border-bot-2 rounded-[8px] bg-bot-2-soft",
+          "px-3 py-2.5 flex flex-col gap-2",
         )}
       >
         <div className="flex items-center justify-between">
@@ -36,14 +36,17 @@ export function AskbackAside({ open, messages, onClose }: AskbackAsideProps) {
         </div>
 
         {messages.map((msg, i) => (
-          <div key={i} className="flex gap-2 items-start text-[12.5px] text-fg-1">
+          <div
+            key={i}
+            className="flex gap-2 items-start text-[12.5px] text-fg-1"
+          >
             <span
               className={cn(
-                'font-mono text-[10px] pt-0.5 min-w-[28px] font-medium',
-                'text-bot-2',
+                "font-mono text-[10px] pt-0.5 min-w-[28px] font-medium",
+                "text-bot-2",
               )}
             >
-              {msg.who === 'user' ? 'YOU' : 'S'}
+              {msg.who === "user" ? "YOU" : "S"}
             </span>
             <span className="flex-1 leading-[1.5]">
               {msg.body}
@@ -67,5 +70,5 @@ export function AskbackAside({ open, messages, onClose }: AskbackAsideProps) {
         </div>
       </div>
     </Activity>
-  )
+  );
 }

@@ -1,26 +1,26 @@
-import { ModeToggle, type Mode } from '@/components/mode-toggle'
-import { ThemeToggle } from '@/components/theme-provider'
-import { Button } from '@/components/ui/button'
+import { type Mode, ModeToggle } from "@/components/mode-toggle";
+import { ThemeToggle } from "@/components/theme-provider";
+import { Button } from "@/components/ui/button";
 
 interface BreadcrumbItem {
-  label: string
-  href?: string
+  label: string;
+  href?: string;
 }
 
 export interface SkipAction {
-  label: string
-  onClick?: () => void
+  label: string;
+  onClick?: () => void;
 }
 
 export interface HeaderProps {
-  breadcrumb: BreadcrumbItem[]
-  stageNum: number
-  stageTotal: number
-  stageName: string
-  mode: Mode
-  artifactCount?: number
-  onModeChange: (mode: Mode) => void
-  skipAction?: SkipAction
+  breadcrumb: BreadcrumbItem[];
+  stageNum: number;
+  stageTotal: number;
+  stageName: string;
+  mode: Mode;
+  artifactCount?: number;
+  onModeChange: (mode: Mode) => void;
+  skipAction?: SkipAction;
 }
 
 export function Header({
@@ -54,7 +54,7 @@ export function Header({
 
       <div className="flex items-center gap-2 font-mono text-[11px] text-fg-3">
         <span className="text-fg-4">
-          stage {String(stageNum).padStart(2, '0')} of {stageTotal}
+          stage {String(stageNum).padStart(2, "0")} of {stageTotal}
         </span>
         <span className="text-fg-4">·</span>
         <span className="text-fg-1 font-medium">{stageName}</span>
@@ -71,9 +71,13 @@ export function Header({
             {skipAction.label} →
           </Button>
         )}
-        <ModeToggle mode={mode} artifactCount={artifactCount} onModeChange={onModeChange} />
+        <ModeToggle
+          mode={mode}
+          artifactCount={artifactCount}
+          onModeChange={onModeChange}
+        />
         <ThemeToggle />
       </div>
     </header>
-  )
+  );
 }

@@ -1,17 +1,25 @@
-import { cn } from '@/lib/utils'
+import { cn } from "@/lib/utils";
 
 export interface QuestionCardProps {
-  n: number
-  total?: number
-  text: string
-  dimmed?: boolean
+  n: number;
+  total?: number;
+  text: string;
+  dimmed?: boolean;
 }
 
-export function QuestionCard({ n, total, text, dimmed = false }: QuestionCardProps) {
-  const num = String(n).padStart(2, '0')
-  const label = total != null ? `Question ${num} / ${String(total).padStart(2, '0')}` : `Question ${num}`
+export function QuestionCard({
+  n,
+  total,
+  text,
+  dimmed = false,
+}: QuestionCardProps) {
+  const num = String(n).padStart(2, "0");
+  const label =
+    total != null
+      ? `Question ${num} / ${String(total).padStart(2, "0")}`
+      : `Question ${num}`;
   return (
-    <div className={cn('flex flex-col gap-2.5', dimmed && 'opacity-55')}>
+    <div className={cn("flex flex-col gap-2.5", dimmed && "opacity-55")}>
       <span className="font-mono text-[10.5px] text-fg-1 tracking-[0.04em] font-semibold">
         {label}
       </span>
@@ -19,5 +27,5 @@ export function QuestionCard({ n, total, text, dimmed = false }: QuestionCardPro
         {text}
       </div>
     </div>
-  )
+  );
 }

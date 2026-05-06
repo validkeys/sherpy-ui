@@ -1,61 +1,78 @@
-import { Home, Compass, Plus, CheckCircle2, FileText } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { CheckCircle2, Compass, FileText, Home, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
-  label: string
-  icon: React.ReactNode
-  active?: boolean
-  count?: number
+  label: string;
+  icon: React.ReactNode;
+  active?: boolean;
+  count?: number;
 }
 
 interface NavSection {
-  eyebrow: string
-  items: NavItem[]
+  eyebrow: string;
+  items: NavItem[];
 }
 
 interface UserInfo {
-  initials: string
-  name: string
-  handle: string
+  initials: string;
+  name: string;
+  handle: string;
 }
 
 interface LeftRailProps {
-  user?: UserInfo
-  className?: string
+  user?: UserInfo;
+  className?: string;
 }
 
 const DEFAULT_NAV: NavSection[] = [
   {
-    eyebrow: 'Workspace',
+    eyebrow: "Workspace",
     items: [
-      { label: 'sherpy-web', icon: <Home size={15} strokeWidth={1.5} />, active: true, count: 5 },
-      { label: 'billing-platform', icon: <Compass size={15} strokeWidth={1.5} /> },
-      { label: 'New project', icon: <Plus size={15} strokeWidth={1.5} /> },
+      {
+        label: "sherpy-web",
+        icon: <Home size={15} strokeWidth={1.5} />,
+        active: true,
+        count: 5,
+      },
+      {
+        label: "billing-platform",
+        icon: <Compass size={15} strokeWidth={1.5} />,
+      },
+      { label: "New project", icon: <Plus size={15} strokeWidth={1.5} /> },
     ],
   },
   {
-    eyebrow: 'Recent runs',
+    eyebrow: "Recent runs",
     items: [
-      { label: 'biz-req-04', icon: <CheckCircle2 size={15} strokeWidth={1.5} /> },
-      { label: 'biz-req-03', icon: <CheckCircle2 size={15} strokeWidth={1.5} /> },
-      { label: 'style-anchors', icon: <FileText size={15} strokeWidth={1.5} /> },
+      {
+        label: "biz-req-04",
+        icon: <CheckCircle2 size={15} strokeWidth={1.5} />,
+      },
+      {
+        label: "biz-req-03",
+        icon: <CheckCircle2 size={15} strokeWidth={1.5} />,
+      },
+      {
+        label: "style-anchors",
+        icon: <FileText size={15} strokeWidth={1.5} />,
+      },
     ],
   },
-]
+];
 
 const DEFAULT_USER: UserInfo = {
-  initials: 'KW',
-  name: 'Kyle Welsby',
-  handle: '@validkeys',
-}
+  initials: "KW",
+  name: "Kyle Welsby",
+  handle: "@validkeys",
+};
 
 export function LeftRail({ user = DEFAULT_USER, className }: LeftRailProps) {
   return (
     <aside
       className={cn(
-        'flex flex-col gap-[18px] bg-sunken border-r border-border-1',
-        'px-[14px] py-4 min-w-0',
-        className
+        "flex flex-col gap-[18px] bg-sunken border-r border-border-1",
+        "px-[14px] py-4 min-w-0",
+        className,
       )}
     >
       {/* Brand block */}
@@ -85,7 +102,9 @@ export function LeftRail({ user = DEFAULT_USER, className }: LeftRailProps) {
             opacity="0.45"
           />
         </svg>
-        <span className="text-[16px] font-medium text-fg-1 tracking-[-0.02em]">sherpy</span>
+        <span className="text-[16px] font-medium text-fg-1 tracking-[-0.02em]">
+          sherpy
+        </span>
         <span className="ml-auto font-mono text-[10px] text-fg-4 border border-border-1 rounded px-[6px] py-[2px] bg-surface">
           v0.4.2
         </span>
@@ -103,11 +122,13 @@ export function LeftRail({ user = DEFAULT_USER, className }: LeftRailProps) {
         </div>
         <div className="flex flex-col leading-[1.2] min-w-0">
           <span className="text-[12px] text-fg-1 truncate">{user.name}</span>
-          <span className="text-[11px] text-fg-4 font-mono truncate">{user.handle}</span>
+          <span className="text-[11px] text-fg-4 font-mono truncate">
+            {user.handle}
+          </span>
         </div>
       </div>
     </aside>
-  )
+  );
 }
 
 function NavSectionGroup({ section }: { section: NavSection }) {
@@ -120,7 +141,7 @@ function NavSectionGroup({ section }: { section: NavSection }) {
         <NavItemRow key={item.label} item={item} />
       ))}
     </div>
-  )
+  );
 }
 
 function NavItemRow({ item }: { item: NavItem }) {
@@ -128,19 +149,21 @@ function NavItemRow({ item }: { item: NavItem }) {
     <button
       type="button"
       className={cn(
-        'flex items-center gap-[10px] text-[13px] rounded-sm cursor-pointer w-full text-left',
-        'transition-colors duration-[140ms] ease-out',
-        'focus-visible:outline-none focus-visible:shadow-focus',
+        "flex items-center gap-[10px] text-[13px] rounded-sm cursor-pointer w-full text-left",
+        "transition-colors duration-[140ms] ease-out",
+        "focus-visible:outline-none focus-visible:shadow-focus",
         item.active
-          ? 'bg-surface text-fg-1 border border-border-1 shadow-xs px-[7px] py-[5px]'
-          : 'text-fg-2 px-2 py-[6px] hover:bg-border-1 hover:text-fg-1'
+          ? "bg-surface text-fg-1 border border-border-1 shadow-xs px-[7px] py-[5px]"
+          : "text-fg-2 px-2 py-[6px] hover:bg-border-1 hover:text-fg-1",
       )}
     >
       {item.icon}
       <span className="truncate">{item.label}</span>
       {item.count !== undefined && (
-        <span className="ml-auto font-mono text-[10px] text-fg-4">{item.count}</span>
+        <span className="ml-auto font-mono text-[10px] text-fg-4">
+          {item.count}
+        </span>
       )}
     </button>
-  )
+  );
 }

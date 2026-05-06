@@ -1,33 +1,42 @@
-import { cn } from '@/lib/utils'
-import { RecommendedBadge } from './RecommendedBadge'
+import { cn } from "@/lib/utils";
+import { RecommendedBadge } from "./RecommendedBadge";
 
 export interface OptionCardProps {
-  letter: string
-  title: string
-  body?: string
-  recommended?: boolean
-  selected?: boolean
-  onClick?: () => void
+  letter: string;
+  title: string;
+  body?: string;
+  recommended?: boolean;
+  selected?: boolean;
+  onClick?: () => void;
 }
 
-export function OptionCard({ letter, title, body, recommended = false, selected = false, onClick }: OptionCardProps) {
+export function OptionCard({
+  letter,
+  title,
+  body,
+  recommended = false,
+  selected = false,
+  onClick,
+}: OptionCardProps) {
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onClick}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.()}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick?.()}
       className={cn(
-        'flex gap-3 items-start px-3.5 py-3 rounded-[8px] border-[1.5px] cursor-pointer transition-colors',
-        'focus-visible:outline-none focus-visible:shadow-focus',
-        selected ? 'border-border-emph bg-sunken' : 'border-border-2 bg-surface',
+        "flex gap-3 items-start px-3.5 py-3 rounded-[8px] border-[1.5px] cursor-pointer transition-colors",
+        "focus-visible:outline-none focus-visible:shadow-focus",
+        selected
+          ? "border-border-emph bg-sunken"
+          : "border-border-2 bg-surface",
       )}
     >
       <div
         className={cn(
-          'w-[22px] h-[22px] rounded-xs shrink-0 border-[1.5px] border-border-emph',
-          'font-mono text-[11px] font-semibold grid place-items-center',
-          selected ? 'bg-inverse text-fg-on-inverse' : 'bg-surface text-fg-1',
+          "w-[22px] h-[22px] rounded-xs shrink-0 border-[1.5px] border-border-emph",
+          "font-mono text-[11px] font-semibold grid place-items-center",
+          selected ? "bg-inverse text-fg-on-inverse" : "bg-surface text-fg-1",
         )}
       >
         {letter}
@@ -45,5 +54,5 @@ export function OptionCard({ letter, title, body, recommended = false, selected 
         </div>
       </div>
     </div>
-  )
+  );
 }

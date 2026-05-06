@@ -1,26 +1,32 @@
-import { cn } from '@/lib/utils'
+import { cn } from "@/lib/utils";
 
 export interface PathCardProps {
-  title: string
-  subtitle: string
-  meta?: string
-  recommended?: boolean
-  onClick?: () => void
+  title: string;
+  subtitle: string;
+  meta?: string;
+  recommended?: boolean;
+  onClick?: () => void;
 }
 
-export function PathCard({ title, subtitle, meta, recommended = false, onClick }: PathCardProps) {
+export function PathCard({
+  title,
+  subtitle,
+  meta,
+  recommended = false,
+  onClick,
+}: PathCardProps) {
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onClick}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.()}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick?.()}
       className={cn(
-        'px-3.5 pt-3.5 pb-3 rounded-[6px] border-[1.5px] flex flex-col gap-1 cursor-pointer',
-        'focus-visible:outline-none focus-visible:shadow-focus',
+        "px-3.5 pt-3.5 pb-3 rounded-[6px] border-[1.5px] flex flex-col gap-1 cursor-pointer",
+        "focus-visible:outline-none focus-visible:shadow-focus",
         recommended
-          ? 'border-border-emph bg-sunken'
-          : 'border-border-2 bg-surface',
+          ? "border-border-emph bg-sunken"
+          : "border-border-2 bg-surface",
       )}
     >
       <div className="flex items-baseline justify-between gap-2">
@@ -33,10 +39,12 @@ export function PathCard({ title, subtitle, meta, recommended = false, onClick }
           )}
         </div>
         {meta && (
-          <span className="font-mono text-[9.5px] text-fg-3 shrink-0">{meta}</span>
+          <span className="font-mono text-[9.5px] text-fg-3 shrink-0">
+            {meta}
+          </span>
         )}
       </div>
       <p className="text-[11.5px] text-fg-3 leading-snug m-0">{subtitle}</p>
     </div>
-  )
+  );
 }

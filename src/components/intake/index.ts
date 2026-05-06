@@ -1,5 +1,4 @@
-export { Intake } from './Intake'
-export type { IntakeProps } from './Intake'
-export { PathCard } from './PathCard'
-export type { PathCardProps } from './PathCard'
-export { INTAKE_PATHS_TWO_PATH } from './fixtures'
+export type { IntakeProps } from "./Intake";
+export { Intake } from "./Intake";
+export type { PathCardProps } from "./PathCard";
+export { PathCard } from "./PathCard";

@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react";
 
 export interface IntakeProps {
-  prompt: ReactNode
-  paths: ReactNode
-  meta?: ReactNode
+  prompt: ReactNode;
+  paths: ReactNode;
+  meta?: ReactNode;
 }
 
 export function Intake({ prompt, paths, meta }: IntakeProps) {
@@ -15,5 +15,5 @@ export function Intake({ prompt, paths, meta }: IntakeProps) {
         {meta && <div className="mt-1">{meta}</div>}
       </div>
     </div>
-  )
+  );
 }

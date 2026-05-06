@@ -1,11 +1,11 @@
-import { cn } from '@/lib/utils'
+import { cn } from "@/lib/utils";
 
 export interface MergeProgressProps {
-  value: number // 0–100
+  value: number; // 0–100
 }
 
 export function MergeProgress({ value }: MergeProgressProps) {
-  const pct = Math.max(0, Math.min(100, value))
+  const pct = Math.max(0, Math.min(100, value));
   return (
     <div
       role="progressbar"
@@ -17,11 +17,11 @@ export function MergeProgress({ value }: MergeProgressProps) {
     >
       <div
         className={cn(
-          'h-full w-[--pct] rounded-pill transition-[width] duration-500 ease-out',
-          pct === 100 ? 'bg-success' : 'bg-accent animate-pulse',
+          "h-full w-[--pct] rounded-pill transition-[width] duration-500 ease-out",
+          pct === 100 ? "bg-success" : "bg-accent animate-pulse",
         )}
-        style={{ '--pct': `${pct}%` } as React.CSSProperties}
+        style={{ "--pct": `${pct}%` } as React.CSSProperties}
       />
     </div>
-  )
+  );
 }

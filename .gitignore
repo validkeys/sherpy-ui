@@ -27,3 +27,4 @@ dist-ssr
 storybook-static
 .sandbox
 .pnpm-store
+_ref/

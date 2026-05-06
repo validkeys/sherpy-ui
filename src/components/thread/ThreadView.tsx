@@ -1,21 +1,21 @@
-import { useState, type ReactNode } from 'react'
-import { AskbackAside, type AskbackMsg } from './AskbackAside'
+import { type ReactNode, useState } from "react";
+import { AskbackAside, type AskbackMsg } from "./AskbackAside";
 
 export interface ThreadViewProps {
-  divider?: ReactNode
-  messages?: ReactNode
+  divider?: ReactNode;
+  messages?: ReactNode;
   /** When provided together with composer, renders inside the bordered bottom card */
-  question?: ReactNode
-  options?: ReactNode
+  question?: ReactNode;
+  options?: ReactNode;
   /**
    * Rendered at the bottom of the view.
    * When question/options are present: rendered inside the bordered card.
    * When question/options are absent: rendered directly (full-height capable).
    */
-  composer: ReactNode
-  askbackMessages?: AskbackMsg[]
-  askbackOpen?: boolean
-  onAskbackOpenChange?: (open: boolean) => void
+  composer: ReactNode;
+  askbackMessages?: AskbackMsg[];
+  askbackOpen?: boolean;
+  onAskbackOpenChange?: (open: boolean) => void;
 }
 
 export function ThreadView({
@@ -28,11 +28,11 @@ export function ThreadView({
   askbackOpen,
   onAskbackOpenChange,
 }: ThreadViewProps) {
-  const [internalOpen, setInternalOpen] = useState(false)
-  const open = askbackOpen ?? internalOpen
-  const setOpen = onAskbackOpenChange ?? setInternalOpen
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = askbackOpen ?? internalOpen;
+  const setOpen = onAskbackOpenChange ?? setInternalOpen;
 
-  const hasQuestionBlock = question != null || options != null
+  const hasQuestionBlock = question != null || options != null;
 
   return (
     <div className="flex-1 flex flex-col min-h-0 px-8 py-2">
@@ -65,11 +65,9 @@ export function ThreadView({
               onClose={() => setOpen(false)}
             />
           )}
-          <div className="flex-1 flex flex-col min-h-0">
-            {composer}
-          </div>
+          <div className="flex-1 flex flex-col min-h-0">{composer}</div>
         </div>
       )}
     </div>
-  )
+  );
 }

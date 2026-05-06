@@ -1,26 +1,26 @@
-import { useState } from 'react'
-import { Download } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { YamlHighlight } from './yaml-highlight'
+import { Download } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { YamlHighlight } from "./yaml-highlight";
 
-type Tab = 'Source' | 'Outline' | 'Diff' | 'Gaps'
+type Tab = "Source" | "Outline" | "Diff" | "Gaps";
 
 interface CodePreviewProps {
-  filePath: string
-  fileName: string
-  streaming?: boolean
-  stageName: string
-  stageColor: string
-  version: string
-  lastEdited: string
-  fileSize: string
-  sha?: string
-  gapCount?: number
-  diffLabel?: string
-  sourceCode: string
+  filePath: string;
+  fileName: string;
+  streaming?: boolean;
+  stageName: string;
+  stageColor: string;
+  version: string;
+  lastEdited: string;
+  fileSize: string;
+  sha?: string;
+  gapCount?: number;
+  diffLabel?: string;
+  sourceCode: string;
 }
 
-const TABS: Tab[] = ['Source', 'Outline', 'Diff', 'Gaps']
+const TABS: Tab[] = ["Source", "Outline", "Diff", "Gaps"];
 
 export function CodePreview({
   filePath,
@@ -36,7 +36,7 @@ export function CodePreview({
   diffLabel,
   sourceCode,
 }: CodePreviewProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('Source')
+  const [activeTab, setActiveTab] = useState<Tab>("Source");
 
   const TAB_CONTENT: Record<Tab, React.ReactNode> = {
     Source: <YamlHighlight code={sourceCode} />,
@@ -52,15 +52,17 @@ export function CodePreview({
     ),
     Gaps: (
       <div className="flex-1 flex items-center justify-center text-fg-4 font-mono text-[12px]">
-        {gapCount > 0 ? `${gapCount} gap${gapCount !== 1 ? 's' : ''}` : 'no gaps'}
+        {gapCount > 0
+          ? `${gapCount} gap${gapCount !== 1 ? "s" : ""}`
+          : "no gaps"}
       </div>
     ),
-  }
+  };
 
   function tabLabel(tab: Tab): string {
-    if (tab === 'Diff' && diffLabel) return `Diff · ${diffLabel}`
-    if (tab === 'Gaps' && gapCount > 0) return `Gaps · ${gapCount}`
-    return tab
+    if (tab === "Diff" && diffLabel) return `Diff · ${diffLabel}`;
+    if (tab === "Gaps" && gapCount > 0) return `Gaps · ${gapCount}`;
+    return tab;
   }
 
   return (
@@ -83,7 +85,7 @@ export function CodePreview({
           <span className="flex items-center gap-[6px] font-mono text-[11px] text-fg-3">
             <span
               className="w-[6px] h-[6px] rounded-full flex-shrink-0 bg-[--stage-color]"
-              style={{ '--stage-color': stageColor } as React.CSSProperties}
+              style={{ "--stage-color": stageColor } as React.CSSProperties}
             />
             {stageName}
           </span>
@@ -118,10 +120,10 @@ export function CodePreview({
             type="button"
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'font-mono text-[11px] tracking-[0.04em] px-[10px] py-2 cursor-pointer border-b-2 -mb-px transition-colors duration-[140ms]',
+              "font-mono text-[11px] tracking-[0.04em] px-[10px] py-2 cursor-pointer border-b-2 -mb-px transition-colors duration-[140ms]",
               activeTab === tab
-                ? 'text-fg-1 border-border-emph'
-                : 'text-fg-3 border-transparent hover:text-fg-1',
+                ? "text-fg-1 border-border-emph"
+                : "text-fg-3 border-transparent hover:text-fg-1",
             )}
           >
             {tabLabel(tab)}
@@ -137,7 +139,8 @@ export function CodePreview({
       {/* Footer */}
       <div className="flex items-center gap-2 px-[22px] py-[10px] border-t border-border-1 bg-surface flex-shrink-0">
         <span className="font-mono text-[10px] text-fg-4 mr-auto">
-          {fileSize} · {version} · auto-saved{sha ? ` · sha ${sha}` : ''} · {lastEdited}
+          {fileSize} · {version} · auto-saved{sha ? ` · sha ${sha}` : ""} ·{" "}
+          {lastEdited}
         </span>
         <button
           type="button"
@@ -154,5 +157,5 @@ export function CodePreview({
         </button>
       </div>
     </div>
-  )
+  );
 }

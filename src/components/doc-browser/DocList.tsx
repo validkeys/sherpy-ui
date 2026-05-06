@@ -1,21 +1,21 @@
-import { useState, useMemo } from 'react'
-import { Search } from 'lucide-react'
-import { DocItem, type DocItemData } from './DocItem'
+import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { DocItem, type DocItemData } from "./DocItem";
 
 export interface DocGroup {
-  label: string
-  stageColor: string
-  docs: DocItemData[]
+  label: string;
+  stageColor: string;
+  docs: DocItemData[];
 }
 
 interface DocListProps {
-  groups: DocGroup[]
-  activeDoc?: string
-  onDocClick?: (name: string) => void
+  groups: DocGroup[];
+  activeDoc?: string;
+  onDocClick?: (name: string) => void;
 }
 
 export function DocList({ groups, activeDoc, onDocClick }: DocListProps) {
-  const [filter, setFilter] = useState('')
+  const [filter, setFilter] = useState("");
 
   const filtered = useMemo(
     () =>
@@ -28,7 +28,7 @@ export function DocList({ groups, activeDoc, onDocClick }: DocListProps) {
         }))
         .filter((g) => g.docs.length > 0),
     [groups, filter],
-  )
+  );
 
   const { totalCount, streamingCount } = useMemo(
     () => ({
@@ -39,7 +39,7 @@ export function DocList({ groups, activeDoc, onDocClick }: DocListProps) {
       ),
     }),
     [groups],
-  )
+  );
 
   return (
     <aside className="flex flex-col min-w-0 bg-sunken border-r border-border-1 overflow-hidden">
@@ -49,7 +49,7 @@ export function DocList({ groups, activeDoc, onDocClick }: DocListProps) {
           Documents
         </span>
         <span className="font-mono text-[11px] text-fg-3">
-          {totalCount} file{totalCount !== 1 ? 's' : ''}
+          {totalCount} file{totalCount !== 1 ? "s" : ""}
           {streamingCount > 0 && ` · ${streamingCount} streaming`}
         </span>
       </div>
@@ -79,7 +79,9 @@ export function DocList({ groups, activeDoc, onDocClick }: DocListProps) {
             <div className="flex items-center gap-2 px-2 py-[6px] font-mono text-[10px] tracking-[0.06em] text-fg-4">
               <span
                 className="w-[6px] h-[6px] rounded-full flex-shrink-0 bg-[--stage-color]"
-                style={{ '--stage-color': group.stageColor } as React.CSSProperties}
+                style={
+                  { "--stage-color": group.stageColor } as React.CSSProperties
+                }
               />
               {group.label}
             </div>
@@ -95,5 +97,5 @@ export function DocList({ groups, activeDoc, onDocClick }: DocListProps) {
         ))}
       </div>
     </aside>
-  )
+  );
 }
