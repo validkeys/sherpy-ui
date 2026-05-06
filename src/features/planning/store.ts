@@ -96,13 +96,11 @@ export function getStepState(projectId: string): ProjectStepState {
   return state;
 }
 
-export function getStep(
-  projectId: string,
-  stepNumber: number,
-): PlanningStep {
+export function getStep(projectId: string, stepNumber: number): PlanningStep {
   const state = getStepState(projectId);
   const step = state.steps.find((s) => s.stepNumber === stepNumber);
-  if (!step) throw new Error(`Step ${stepNumber} not found for project: ${projectId}`);
+  if (!step)
+    throw new Error(`Step ${stepNumber} not found for project: ${projectId}`);
   return step;
 }
 
@@ -112,6 +110,7 @@ export function submitAnswer(
   answer: string,
 ): ProjectStepState {
   const state = getStepState(projectId);
+  if (stepNumber !== state.currentStep) return state;
   const stepIndex = state.steps.findIndex((s) => s.stepNumber === stepNumber);
   if (stepIndex === -1)
     throw new Error(`Step ${stepNumber} not found for project: ${projectId}`);
@@ -122,7 +121,8 @@ export function submitAnswer(
   };
 
   const updatedSteps = state.steps.map((s, i) => {
-    if (i === stepIndex) return { ...s, status: "complete" as const, answer: stepAnswer };
+    if (i === stepIndex)
+      return { ...s, status: "complete" as const, answer: stepAnswer };
     if (i === stepIndex + 1 && s.status === "pending")
       return { ...s, status: "now" as const };
     return s;

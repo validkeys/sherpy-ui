@@ -43,6 +43,7 @@ export const $submitAnswer = createServerFn({ method: "POST" })
       answer: d.answer.trim(),
     };
   })
-  .handler(({ data }) =>
-    submitAnswer(data.projectId, data.stepNumber, data.answer),
-  );
+  .handler(async ({ data }) => {
+    await initStore();
+    return submitAnswer(data.projectId, data.stepNumber, data.answer);
+  });

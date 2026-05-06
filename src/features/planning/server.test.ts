@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { _resetStore as resetProjects, createProject } from "../projects/store";
+import { createProject, _resetStore as resetProjects } from "../projects/store";
 import {
-  _resetStore as resetPlanning,
   getStepState,
   hasStepState,
   initProjectSteps,
+  _resetStore as resetPlanning,
   submitAnswer,
 } from "./store";
 
@@ -61,8 +61,11 @@ describe("$getStepState validator", () => {
   });
 });
 
+// NOTE: full lazy-init path (project lookup → initProjectSteps) lives in the
+// $getStepState server fn handler. It cannot be exercised in Vitest without
+// the TanStack Start Vite plugin transform. Only the store-level guard is tested here.
 describe("$getStepState lazy-init (store delegate)", () => {
-  it("lazy-inits step state and returns 10 steps", () => {
+  it("returns 10 steps when already initialized", () => {
     const project = createProject({ name: "Test", entryPath: "scratch" });
     expect(hasStepState(project.id)).toBe(false);
     initProjectSteps(project.id, project.entryPath);
@@ -73,6 +76,14 @@ describe("$getStepState lazy-init (store delegate)", () => {
   it("throws when project not found", () => {
     expect(() => getStepState("no-such")).toThrow(
       "No step state for project: no-such",
+    );
+  });
+
+  it("throws when step state not found (lazy-init not triggered at store level)", () => {
+    const project = createProject({ name: "Test", entryPath: "scratch" });
+    expect(hasStepState(project.id)).toBe(false);
+    expect(() => getStepState(project.id)).toThrow(
+      `No step state for project: ${project.id}`,
     );
   });
 });
@@ -119,5 +130,17 @@ describe("$submitAnswer (store delegate)", () => {
     expect(() => submitAnswer("no-such", 1, "x")).toThrow(
       "No step state for project: no-such",
     );
+  });
+
+  it("ignores out-of-order submit — does not regress currentStep", () => {
+    initProjectSteps("p1", "scratch");
+    submitAnswer("p1", 1, "step 1 answer");
+    // currentStep is now 2
+    const before = getStepState("p1");
+    expect(before.currentStep).toBe(2);
+
+    // submit stale step 1 again
+    const after = submitAnswer("p1", 1, "stale re-submit");
+    expect(after.currentStep).toBe(2); // must not regress
   });
 });
