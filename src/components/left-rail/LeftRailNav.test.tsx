@@ -10,12 +10,6 @@ vi.mock("@/features/projects/hooks", () => ({
   useProjects: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  useRouterState: vi.fn(() => ({ pathname: "/dashboard" })),
-}));
-
-import { useRouterState } from "@tanstack/react-router";
-
 function makeProject(overrides: Partial<Project> = {}): Project {
   return {
     id: "proj-1",
@@ -39,9 +33,6 @@ const mockOnNewProject = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(useRouterState).mockReturnValue({
-    pathname: "/dashboard",
-  } as unknown as ReturnType<typeof useRouterState>);
 });
 
 describe("LeftRailNav", () => {
@@ -70,17 +61,16 @@ describe("LeftRailNav", () => {
     expect(mockOnNewProject).toHaveBeenCalledOnce();
   });
 
-  it("active project route gets active nav item class", () => {
-    vi.mocked(useRouterState).mockReturnValue({
-      pathname: "/project/proj-1",
-    } as unknown as ReturnType<typeof useRouterState>);
+  // Active-state styling is deferred until /project/$id route exists (CR-A02)
+  it("project button renders as a button element", () => {
     vi.mocked(useProjects).mockReturnValue({
-      data: [makeProject({ id: "proj-1", name: "Active Route Project" })],
+      data: [makeProject({ id: "proj-1", name: "My Project" })],
     } as unknown as ReturnType<typeof useProjects>);
 
     wrap(<LeftRailNav onNewProject={mockOnNewProject} />);
 
-    const btn = screen.getByText("Active Route Project").closest("button");
-    expect(btn?.className).toContain("bg-surface");
+    const btn = screen.getByText("My Project").closest("button");
+    expect(btn).toBeInTheDocument();
+    expect(btn?.tagName).toBe("BUTTON");
   });
 });

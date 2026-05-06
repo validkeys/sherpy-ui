@@ -11,7 +11,7 @@ interface ProjectListProps {
 
 export function ProjectList({ onProjectClick }: ProjectListProps) {
   const [activeTab, setActiveTab] = useState<Tab>("active");
-  const { data: projects, isLoading } = useProjects();
+  const { data: projects, isLoading, isError, refetch } = useProjects();
   const { mutate: updateStatus } = useUpdateProjectStatus();
 
   const activeProjects = projects?.filter((p) => p.status === "active") ?? [];
@@ -42,6 +42,8 @@ export function ProjectList({ onProjectClick }: ProjectListProps) {
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {isLoading ? (
           <p className="text-sm text-fg-3">Loading…</p>
+        ) : isError ? (
+          <ErrorState onRetry={refetch} />
         ) : shown.length === 0 ? (
           <EmptyState tab={activeTab} />
         ) : (
@@ -100,6 +102,21 @@ function EmptyState({ tab }: { tab: Tab }) {
       <p className="text-sm text-fg-3">
         {tab === "active" ? "No active projects" : "No past projects"}
       </p>
+    </div>
+  );
+}
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-40 gap-3">
+      <p className="text-sm text-fg-3">Failed to load projects</p>
+      <button
+        type="button"
+        onClick={() => onRetry()}
+        className="text-xs text-fg-2 hover:text-fg-1 border border-border-1 rounded px-3 py-1.5 transition-colors"
+      >
+        Retry
+      </button>
     </div>
   );
 }

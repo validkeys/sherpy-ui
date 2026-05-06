@@ -69,6 +69,7 @@ export function ProjectCard({
         <CardFooter className="gap-2">
           <button
             type="button"
+            aria-label={`Archive ${project.name}`}
             className="text-xs text-fg-3 hover:text-fg-1 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
@@ -79,6 +80,7 @@ export function ProjectCard({
           </button>
           <button
             type="button"
+            aria-label={`Complete ${project.name}`}
             className="text-xs text-fg-3 hover:text-fg-1 transition-colors"
             onClick={(e) => {
               e.stopPropagation();

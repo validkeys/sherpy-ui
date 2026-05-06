@@ -11,11 +11,16 @@ export function useProjects() {
   });
 }
 
+function toErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : "Something went wrong";
+}
+
 export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateProjectInput) => $createProject({ data: input }),
     onSuccess: () => qc.invalidateQueries({ queryKey: projectsQueryKey }),
+    onError: (err) => console.error("[useCreateProject]", toErrorMessage(err)),
   });
 }
 
@@ -25,5 +30,7 @@ export function useUpdateProjectStatus() {
     mutationFn: (vars: { id: string; status: "archived" | "complete" }) =>
       $updateProjectStatus({ data: vars }),
     onSuccess: () => qc.invalidateQueries({ queryKey: projectsQueryKey }),
+    onError: (err) =>
+      console.error("[useUpdateProjectStatus]", toErrorMessage(err)),
   });
 }
