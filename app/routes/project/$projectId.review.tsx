@@ -1,13 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
+import { ArtifactBrowser } from '@/features/artifacts/components/ArtifactBrowser'
 
-export const Route = createFileRoute("/project/$projectId/review")({
-  component: ReviewComponent,
-});
+export const Route = createFileRoute('/project/$projectId/review')({
+	component: ReviewComponent,
+})
 
 function ReviewComponent() {
-  return (
-    <div className="flex-1 flex items-center justify-center text-fg-4 text-sm font-mono">
-      doc browser — wired in M3
-    </div>
-  );
+	const { projectId } = Route.useParams()
+
+	return <ArtifactBrowser projectId={projectId} />
 }
