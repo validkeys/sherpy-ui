@@ -1,5 +1,5 @@
 import { FileText, MessageCircle } from "lucide-react";
-import { useEffect, useEffectEvent } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 export type Mode = "build" | "review";
@@ -17,14 +17,22 @@ export function ModeToggle({
   onModeChange,
   className,
 }: ModeToggleProps) {
-  const handleKeyDown = useEffectEvent((e: KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "r") {
-      e.preventDefault();
-      onModeChange(mode === "build" ? "review" : "build");
-    }
+  const onModeChangeRef = useRef(onModeChange);
+  const modeRef = useRef(mode);
+  useEffect(() => {
+    onModeChangeRef.current = onModeChange;
+    modeRef.current = mode;
   });
 
   useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "r") {
+        e.preventDefault();
+        onModeChangeRef.current(
+          modeRef.current === "build" ? "review" : "build",
+        );
+      }
+    }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);

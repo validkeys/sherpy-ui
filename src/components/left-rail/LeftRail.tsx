@@ -45,9 +45,9 @@ const RECENT_RUNS_NAV: NavSection = {
 };
 
 const DEFAULT_USER: UserInfo = {
-  initials: "KW",
-  name: "Kyle Welsby",
-  handle: "@validkeys",
+  initials: "DU",
+  name: "Demo User",
+  handle: "@demo",
 };
 
 export function LeftRail({

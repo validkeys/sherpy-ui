@@ -16,13 +16,11 @@ export function PathCard({
   onClick,
 }: PathCardProps) {
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={onClick}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick?.()}
       className={cn(
-        "px-3.5 pt-3.5 pb-3 rounded-[6px] border-[1.5px] flex flex-col gap-1 cursor-pointer",
+        "px-3.5 pt-3.5 pb-3 rounded-[6px] border-[1.5px] flex flex-col gap-1 cursor-pointer text-left w-full",
         "focus-visible:outline-none focus-visible:shadow-focus",
         recommended
           ? "border-border-emph bg-sunken"
@@ -45,6 +43,6 @@ export function PathCard({
         )}
       </div>
       <p className="text-[11.5px] text-fg-3 leading-snug m-0">{subtitle}</p>
-    </div>
+    </button>
   );
 }

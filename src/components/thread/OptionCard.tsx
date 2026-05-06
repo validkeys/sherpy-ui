@@ -19,13 +19,11 @@ export function OptionCard({
   onClick,
 }: OptionCardProps) {
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={onClick}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick?.()}
       className={cn(
-        "flex gap-3 items-start px-3.5 py-3 rounded-[8px] border-[1.5px] cursor-pointer transition-colors",
+        "flex gap-3 items-start px-3.5 py-3 rounded-[8px] border-[1.5px] cursor-pointer transition-colors text-left w-full",
         "focus-visible:outline-none focus-visible:shadow-focus",
         selected
           ? "border-border-emph bg-sunken"
@@ -53,6 +51,6 @@ export function OptionCard({
           ? why this
         </div>
       </div>
-    </div>
+    </button>
   );
 }

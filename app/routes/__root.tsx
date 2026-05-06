@@ -5,16 +5,16 @@ import {
   Outlet,
   Scripts,
 } from "@tanstack/react-router";
+import { useState } from "react";
 import { ThemeProvider } from "../../src/components/theme-provider";
 import "../../src/index.css";
-
-const queryClient = new QueryClient();
 
 export const Route = createRootRoute({
   component: RootComponent,
 });
 
 function RootComponent() {
+  const [queryClient] = useState(() => new QueryClient());
   return (
     <html lang="en">
       <head>

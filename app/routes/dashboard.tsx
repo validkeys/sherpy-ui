@@ -12,7 +12,7 @@ function DashboardComponent() {
   const [createOpen, setCreateOpen] = useState(false);
 
   return (
-    <div className="grid grid-cols-[240px_1fr] h-screen min-h-[760px]">
+    <div className="grid grid-cols-[var(--left-rail-width)_1fr] h-screen min-h-[760px]">
       <LeftRail onNewProject={() => setCreateOpen(true)} />
       <main className="flex flex-col bg-page overflow-hidden">
         <ProjectList />
@@ -20,6 +20,10 @@ function DashboardComponent() {
       <CreateProjectFlow
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        onCreated={(_id) => {
+          setCreateOpen(false);
+          // navigate({ to: "/project/$id", params: { id: _id } }); // enable when route exists
+        }}
       />
     </div>
   );

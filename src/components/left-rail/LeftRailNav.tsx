@@ -1,4 +1,3 @@
-import { useRouterState } from "@tanstack/react-router";
 import { FolderOpen, Plus } from "lucide-react";
 import { useProjects } from "@/features/projects/hooks";
 import { cn } from "@/lib/utils";
@@ -9,7 +8,6 @@ interface LeftRailNavProps {
 
 export function LeftRailNav({ onNewProject }: LeftRailNavProps) {
   const { data: projects } = useProjects();
-  const location = useRouterState({ select: (s) => s.location });
 
   const activeProjects = projects?.filter((p) => p.status === "active") ?? [];
 
@@ -19,26 +17,29 @@ export function LeftRailNav({ onNewProject }: LeftRailNavProps) {
         Workspace
       </span>
 
-      {activeProjects.map((project) => {
-        const isActive = location.pathname === `/project/${project.id}`;
-        return (
-          <button
-            key={project.id}
-            type="button"
-            className={cn(
-              "flex items-center gap-[10px] text-[13px] rounded-sm cursor-pointer w-full text-left",
-              "transition-colors duration-[140ms] ease-out",
-              "focus-visible:outline-none focus-visible:shadow-focus",
-              isActive
-                ? "bg-surface text-fg-1 border border-border-1 shadow-xs px-[7px] py-[5px]"
-                : "text-fg-2 px-2 py-[6px] hover:bg-border-1 hover:text-fg-1",
-            )}
-          >
-            <FolderOpen size={15} strokeWidth={1.5} />
-            <span className="truncate">{project.name}</span>
-          </button>
-        );
-      })}
+      {activeProjects.map((project) => (
+        // TODO: convert to <Link to="/project/$id"> when route exists (CR-A02)
+        <button
+          key={project.id}
+          type="button"
+          onClick={() => {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                `[LeftRailNav] project route not yet implemented: ${project.id}`,
+              );
+            }
+          }}
+          className={cn(
+            "flex items-center gap-[10px] text-[13px] rounded-sm cursor-pointer w-full text-left",
+            "transition-colors duration-[140ms] ease-out",
+            "focus-visible:outline-none focus-visible:shadow-focus",
+            "text-fg-2 px-2 py-[6px] hover:bg-border-1 hover:text-fg-1",
+          )}
+        >
+          <FolderOpen size={15} strokeWidth={1.5} />
+          <span className="truncate">{project.name}</span>
+        </button>
+      ))}
 
       <button
         type="button"

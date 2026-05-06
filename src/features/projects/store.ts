@@ -54,8 +54,16 @@ export function _resetStore(): void {
   counterRef.value = 42;
 }
 
-// Seed demo data unless explicitly disabled
-if (process.env.SEED_DATA !== "false") {
-  const { seedStore } = await import("./seed");
-  seedStore(store, counterRef);
+// TODO(M2): replace with persistent store — this Map is process-local.
+// Vercel spawns multiple function instances; each has its own Map.
+// Writes on one instance are invisible to others.
+let _storeInitialized = false;
+
+export async function initStore(): Promise<void> {
+  if (_storeInitialized) return;
+  _storeInitialized = true;
+  if (process.env.SEED_DATA !== "false") {
+    const { seedStore } = await import("./seed");
+    seedStore(store, counterRef);
+  }
 }

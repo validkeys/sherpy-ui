@@ -5,6 +5,10 @@
 @import "@fontsource-variable/bodoni-moda";
 @import "./styles/tokens.css";
 
+:root {
+  --left-rail-width: 240px;
+}
+
 /*
   Dark mode: activated by [data-theme="dark"] on <html>.
   Matches the token override in tokens.css (:root[data-theme="dark"]).
