@@ -8,6 +8,13 @@ interface ArtifactBrowserProps {
   projectId: string;
 }
 
+const GRID_CONTAINER_CLASS =
+  "grid grid-cols-[320px_1fr] flex-1 min-h-0 border-t border-border-1 mt-6";
+const EMPTY_STATE_CLASS =
+  "flex items-center justify-center text-fg-4 font-mono text-[12px]";
+const LEFT_PANEL_CLASS =
+  "flex items-center justify-center text-fg-4 font-mono text-[12px] bg-sunken border-r border-border-1";
+
 export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
   const artifactsQuery = useArtifacts(projectId);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -51,66 +58,59 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
     ];
   }, [artifactsQuery.data]);
 
-  if (artifactsQuery.isLoading) {
-    return (
-      <div className="grid grid-cols-[320px_1fr] flex-1 min-h-0 border-t border-border-1 mt-6">
-        <div className="flex items-center justify-center text-fg-4 font-mono text-[12px] bg-sunken border-r border-border-1">
-          Loading artifacts…
-        </div>
-      </div>
-    );
-  }
-
-  if (!artifactsQuery.data || artifactsQuery.data.length === 0) {
-    return (
-      <div className="grid grid-cols-[320px_1fr] flex-1 min-h-0 border-t border-border-1 mt-6">
-        <div className="flex items-center justify-center text-fg-4 font-mono text-[12px] bg-sunken border-r border-border-1">
-          No artifacts yet
-        </div>
-        <div className="flex items-center justify-center text-fg-4 font-mono text-[12px]">
-          Complete a planning step to generate your first artifact.
-        </div>
-      </div>
-    );
-  }
-
   const selectedArtifact = artifactQuery.data;
 
-  return (
-    <div className="grid grid-cols-[320px_1fr] flex-1 min-h-0 border-t border-border-1 mt-6">
-      <DocList
-        groups={groups}
-        activeDoc={effectiveSelectedKey ?? undefined}
-        onDocClick={setSelectedKey}
-      />
-      {selectedArtifact ? (
-        <CodePreview
-          filePath={`artifacts / ${selectedArtifact.key}`}
-          fileName={selectedArtifact.label}
-          streaming={selectedArtifact.status === "generating"}
-          stageName="Planning Artifacts"
-          stageColor="var(--bot-2)"
-          version="v1"
-          lastEdited={new Date(selectedArtifact.generatedAt).toLocaleString(
-            "en-US",
-            {
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            },
-          )}
-          fileSize={`${(selectedArtifact.content.length / 1024).toFixed(1)} KB`}
-          sourceCode={selectedArtifact.content}
-          onDownload={() => downloadArtifact(selectedArtifact)}
-          onCopy={() => handleCopy(selectedArtifact)}
-          copyButtonLabel={copied ? "Copied!" : "Copy"}
-        />
-      ) : (
-        <div className="flex items-center justify-center text-fg-4 font-mono text-[12px]">
-          select a document
+  // Determine content based on state
+  let content: React.ReactNode;
+
+  if (artifactsQuery.isLoading) {
+    content = <div className={LEFT_PANEL_CLASS}>Loading artifacts…</div>;
+  } else if (!artifactsQuery.data || artifactsQuery.data.length === 0) {
+    content = (
+      <>
+        <div className={LEFT_PANEL_CLASS}>No artifacts yet</div>
+        <div className={EMPTY_STATE_CLASS}>
+          Complete a planning step to generate your first artifact.
         </div>
-      )}
-    </div>
-  );
+      </>
+    );
+  } else {
+    content = (
+      <>
+        <DocList
+          groups={groups}
+          activeDoc={effectiveSelectedKey ?? undefined}
+          onDocClick={setSelectedKey}
+        />
+        {selectedArtifact ? (
+          <CodePreview
+            filePath={`artifacts / ${selectedArtifact.key}`}
+            fileName={selectedArtifact.label}
+            streaming={selectedArtifact.status === "generating"}
+            stageName="Planning Artifacts"
+            stageColor="var(--bot-2)"
+            version="v1"
+            lastEdited={new Date(selectedArtifact.generatedAt).toLocaleString(
+              "en-US",
+              {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              },
+            )}
+            fileSize={`${(selectedArtifact.content.length / 1024).toFixed(1)} KB`}
+            sourceCode={selectedArtifact.content}
+            onDownload={() => downloadArtifact(selectedArtifact)}
+            onCopy={() => handleCopy(selectedArtifact)}
+            copyButtonLabel={copied ? "Copied!" : "Copy"}
+          />
+        ) : (
+          <div className={EMPTY_STATE_CLASS}>select a document</div>
+        )}
+      </>
+    );
+  }
+
+  return <div className={GRID_CONTAINER_CLASS}>{content}</div>;
 }
