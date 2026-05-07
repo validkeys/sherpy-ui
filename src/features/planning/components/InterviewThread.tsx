@@ -21,6 +21,12 @@ export function InterviewThread({
 }: InterviewThreadProps) {
   const [inputText, setInputText] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [optimisticAnswer, setOptimisticAnswer] = useState<{
+    stepNumber: number;
+    question: string;
+    answer: string;
+    stepName: string;
+  } | null>(null);
   const { mutate: submitAnswer, isPending } = useSubmitAnswer(projectId);
 
   // Get previous answers for current step (currently only single answer per step)
@@ -53,32 +59,68 @@ export function InterviewThread({
   function handleSubmit() {
     const answer = selectedOption ?? inputText.trim();
     if (!answer || !currentStep) return;
+
+    // Store optimistic answer to show immediately
+    setOptimisticAnswer({
+      stepNumber: currentStep.stepNumber,
+      question: questionText,
+      answer,
+      stepName: currentStep.name,
+    });
+
+    // Clear input immediately
+    setInputText("");
+    setSelectedOption(null);
+
     submitAnswer(
       { stepNumber: currentStep.stepNumber, answer },
       {
         onSuccess: () => {
-          setInputText("");
-          setSelectedOption(null);
+          // Clear optimistic answer once server confirms
+          setOptimisticAnswer(null);
+        },
+        onError: () => {
+          // If submission fails, clear optimistic answer
+          setOptimisticAnswer(null);
         },
       },
     );
   }
 
-  const messages =
-    completedSteps.length > 0
-      ? completedSteps.map((step) => (
-          <div key={step.stepNumber} className="flex flex-col gap-2">
-            <ThreadDivider label={step.name} tone="success" />
-            {step.answer && (
-              <AnsweredMessage
-                stepName={step.name}
-                question={step.question}
-                answer={step.answer.value}
-              />
-            )}
-          </div>
-        ))
-      : undefined;
+  // Build messages including optimistic answer
+  const allMessages = [];
+
+  // Add completed steps
+  for (const step of completedSteps) {
+    allMessages.push(
+      <div key={step.stepNumber} className="flex flex-col gap-2">
+        <ThreadDivider label={step.name} tone="success" />
+        {step.answer && (
+          <AnsweredMessage
+            stepName={step.name}
+            question={step.question}
+            answer={step.answer.value}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Add optimistic answer if pending
+  if (optimisticAnswer && isPending) {
+    allMessages.push(
+      <div key={`optimistic-${optimisticAnswer.stepNumber}`} className="flex flex-col gap-2">
+        <ThreadDivider label={optimisticAnswer.stepName} tone="success" />
+        <AnsweredMessage
+          stepName={optimisticAnswer.stepName}
+          question={optimisticAnswer.question}
+          answer={optimisticAnswer.answer}
+        />
+      </div>
+    );
+  }
+
+  const messages = allMessages.length > 0 ? allMessages : undefined;
 
   // Use streamed question when available, fall back to mock if streaming fails
   const questionText =
@@ -87,8 +129,14 @@ export function InterviewThread({
     (isStreaming ? "Loading question..." : currentStep?.question) ||
     "Loading question...";
 
+  // Show loading state for next question when submission is pending
   const question = currentStep ? (
-    <QuestionCard n={currentStep.stepNumber} total={10} text={questionText} />
+    <QuestionCard
+      n={currentStep.stepNumber}
+      total={10}
+      text={isPending ? "Loading next question..." : questionText}
+      dimmed={isPending}
+    />
   ) : undefined;
 
   const options = currentStep?.options?.length ? (

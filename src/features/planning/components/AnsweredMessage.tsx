@@ -28,7 +28,7 @@ export function AnsweredMessage({
         <span className="w-6 h-6 rounded-full shrink-0 grid place-items-center font-mono text-[10px] bg-surface border border-border-2 text-fg-1">
           KW
         </span>
-        <div className="flex-1 font-serif text-[16px] leading-[1.6] text-fg-1">
+        <div className="flex-1 font-serif text-[16px] leading-[1.6] text-fg-1 italic">
           {answer}
         </div>
       </div>
