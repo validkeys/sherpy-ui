@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { generateArtifact } from "../ai/server";
 import { getProject, initStore } from "../projects/store";
 import {
   getStepState,
@@ -45,5 +46,20 @@ export const $submitAnswer = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     await initStore();
-    return submitAnswer(data.projectId, data.stepNumber, data.answer);
+    const updatedState = submitAnswer(
+      data.projectId,
+      data.stepNumber,
+      data.answer,
+    );
+
+    // Generate artifact after step completion
+    // For now, we only have a single answer per step, so pass it as an array
+    try {
+      await generateArtifact(data.projectId, data.stepNumber, [data.answer]);
+    } catch (error) {
+      // Log but don't block - artifact generation is async and can fail
+      console.error("Failed to generate artifact:", error);
+    }
+
+    return updatedState;
   });

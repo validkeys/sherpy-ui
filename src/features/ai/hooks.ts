@@ -20,13 +20,14 @@ export function useStreamingQuestion(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: previousAnswers intentionally omitted - array identity causes re-fetch. In real usage, previousAnswers changes when stepNumber changes.
   useEffect(() => {
     if (!params.enabled) return;
 
-    let cancelled = false
-    setLoading(true)
-    setText('')
-    setError(null)
+    let cancelled = false;
+    setLoading(true);
+    setText("");
+    setError(null);
 
     fetch("/api/ai/interview", {
       method: "POST",
@@ -63,14 +64,7 @@ export function useStreamingQuestion(
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    params.projectId,
-    params.stepNumber,
-    params.enabled,
-    // previousAnswers intentionally omitted - array identity causes re-fetch
-    // In real usage, previousAnswers changes when stepNumber changes
-  ]);
+  }, [params.projectId, params.stepNumber, params.enabled]);
 
   return { text, loading, error };
 }

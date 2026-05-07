@@ -1,8 +1,9 @@
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as bedrockModule from "@/lib/bedrock";
-import { buildInterviewPrompt } from "./prompts";
-import { generateText } from "./server";
+import * as artifactStore from "../artifacts/store";
+import { buildArtifactPrompt, buildInterviewPrompt } from "./prompts";
+import { generateArtifact, generateText } from "./server";
 
 // Mock the bedrock client
 vi.mock("@/lib/bedrock", () => ({
@@ -11,6 +12,14 @@ vi.mock("@/lib/bedrock", () => ({
   },
   BEDROCK_MODEL_ID: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 }));
+
+// Mock nanoid
+vi.mock("nanoid", () => ({
+  nanoid: vi.fn(() => "mock-id-123"),
+}));
+
+// Spy on artifact store
+vi.spyOn(artifactStore, "upsertArtifact");
 
 describe("buildInterviewPrompt", () => {
   it("includes step name in output", () => {
@@ -31,6 +40,38 @@ describe("buildInterviewPrompt", () => {
     expect(allContent).toContain("Previous answers");
     expect(allContent).toContain("Answer one");
     expect(allContent).toContain("Answer two");
+  });
+});
+
+describe("buildArtifactPrompt", () => {
+  it("includes step name and number", () => {
+    const messages = buildArtifactPrompt("Project Vision", 1, [
+      "Build a collaborative planning tool",
+    ]);
+
+    const allContent = messages.map((m) => m.content).join(" ");
+    expect(allContent).toContain("Project Vision");
+    expect(allContent).toContain("step completed: 1");
+  });
+
+  it("includes all answers", () => {
+    const answers = [
+      "Build a collaborative planning tool",
+      "Target product managers",
+    ];
+    const messages = buildArtifactPrompt("Project Vision", 1, answers);
+
+    const allContent = messages.map((m) => m.content).join(" ");
+    expect(allContent).toContain("Answers collected");
+    expect(allContent).toContain(answers[0]);
+    expect(allContent).toContain(answers[1]);
+  });
+
+  it("requests YAML format", () => {
+    const messages = buildArtifactPrompt("Project Vision", 1, ["Test answer"]);
+
+    const allContent = messages.map((m) => m.content).join(" ");
+    expect(allContent).toContain("YAML");
   });
 });
 
@@ -91,5 +132,66 @@ describe("generateText", () => {
     expect(body.anthropic_version).toBe("bedrock-2023-05-31");
     expect(body.max_tokens).toBe(512);
     expect(body.messages).toEqual(messages);
+  });
+});
+
+describe("generateArtifact", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("generates artifact and stores it", async () => {
+    const mockArtifactContent = `version: "1.0.0"
+project_vision: Build a collaborative planning tool
+target_audience: Product managers`;
+
+    const mockResponse = {
+      body: new TextEncoder().encode(
+        JSON.stringify({
+          content: [{ text: mockArtifactContent }],
+        }),
+      ),
+    };
+
+    vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
+      mockResponse as never,
+    );
+
+    const result = await generateArtifact("test-project", 1, [
+      "Build a collaborative planning tool",
+    ]);
+
+    expect(result.projectId).toBe("test-project");
+    expect(result.key).toBe("project-vision");
+    expect(result.label).toBe("Define Project Vision");
+    expect(result.format).toBe("yaml");
+    expect(result.content).toBe(mockArtifactContent);
+    expect(result.status).toBe("ready");
+    expect(artifactStore.upsertArtifact).toHaveBeenCalledWith(result);
+  });
+
+  it("throws on invalid step number", async () => {
+    await expect(
+      generateArtifact("test-project", 99, ["Test"]),
+    ).rejects.toThrow("Invalid step number");
+  });
+
+  it("uses correct artifact key for each step", async () => {
+    const mockResponse = {
+      body: new TextEncoder().encode(
+        JSON.stringify({
+          content: [{ text: "artifact content" }],
+        }),
+      ),
+    };
+
+    vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
+      mockResponse as never,
+    );
+
+    const result = await generateArtifact("test-project", 3, ["Feature list"]);
+
+    expect(result.key).toBe("core-features");
+    expect(result.label).toBe("List Core Features");
   });
 });

@@ -1,7 +1,15 @@
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { createServerFn } from "@tanstack/react-start";
+import { nanoid } from "nanoid";
 import { BEDROCK_MODEL_ID, bedrockClient } from "@/lib/bedrock";
-import { buildInterviewPrompt, STEP_NAMES } from "./prompts";
+import { upsertArtifact } from "../artifacts/store";
+import type { Artifact } from "../artifacts/types";
+import {
+  buildArtifactPrompt,
+  buildInterviewPrompt,
+  STEP_ARTIFACT_KEYS,
+  STEP_NAMES,
+} from "./prompts";
 
 interface GenerateQuestionOutput {
   question: string;
@@ -59,3 +67,57 @@ export const $generateQuestion = createServerFn({ method: "POST" })
 
     return { question };
   });
+
+export async function generateArtifact(
+  projectId: string,
+  stepNumber: number,
+  answers: string[],
+): Promise<Artifact> {
+  const stepName = STEP_NAMES[stepNumber];
+  if (!stepName) {
+    throw new Error(`Invalid step number: ${stepNumber}`);
+  }
+
+  const artifactKey = STEP_ARTIFACT_KEYS[stepNumber];
+  if (!artifactKey) {
+    throw new Error(`No artifact key mapping for step ${stepNumber}`);
+  }
+
+  const messages = buildArtifactPrompt(stepName, stepNumber, answers);
+  const content = await generateText(messages);
+
+  const artifact: Artifact = {
+    id: nanoid(8),
+    projectId,
+    key: artifactKey,
+    label: stepName,
+    format: "yaml",
+    content,
+    status: "ready",
+    generatedAt: new Date().toISOString(),
+  };
+
+  upsertArtifact(artifact);
+  return artifact;
+}
+
+export const $generateArtifact = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => {
+    if (typeof d !== "object" || d === null) throw new Error("invalid input");
+    const input = d as Record<string, unknown>;
+    if (typeof input.projectId !== "string" || !input.projectId)
+      throw new Error("projectId required");
+    if (typeof input.stepNumber !== "number")
+      throw new Error("stepNumber must be a number");
+    if (!Array.isArray(input.answers))
+      throw new Error("answers must be an array");
+    return {
+      projectId: input.projectId,
+      stepNumber: input.stepNumber,
+      answers: input.answers as string[],
+    };
+  })
+  .handler(
+    async ({ data }): Promise<Artifact> =>
+      generateArtifact(data.projectId, data.stepNumber, data.answers),
+  );

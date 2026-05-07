@@ -17,6 +17,20 @@ interface Message {
   content: string;
 }
 
+// Mapping from step number to artifact key
+export const STEP_ARTIFACT_KEYS: Record<number, string> = {
+  1: "project-vision",
+  2: "target-audience",
+  3: "core-features",
+  4: "success-metrics",
+  5: "timeline-estimate",
+  6: "technical-requirements",
+  7: "user-flows",
+  8: "dependencies",
+  9: "risks",
+  10: "action-items",
+};
+
 export function buildInterviewPrompt(
   stepName: string,
   stepNumber: number,
@@ -43,6 +57,32 @@ export function buildInterviewPrompt(
     {
       role: "assistant",
       content: "Understood. I will help guide the planning process.",
+    },
+    { role: "user", content: userContext },
+  ];
+}
+
+export function buildArtifactPrompt(
+  stepName: string,
+  stepNumber: number,
+  answers: string[],
+): Message[] {
+  const systemContext =
+    "You are Sherpy, an expert PM planning assistant. Generate a structured planning artifact in YAML format based on the PM's answers. Return only valid YAML without any markdown code blocks or explanations.";
+
+  let userContext = `Planning step completed: ${stepNumber}. ${stepName}\n\n`;
+  userContext += "Answers collected:\n";
+  for (const [index, answer] of answers.entries()) {
+    userContext += `${index + 1}. ${answer}\n`;
+  }
+  userContext += "\n";
+  userContext += `Generate a ${stepName} artifact in YAML format. Include appropriate fields for this type of planning document. Be structured and complete.`;
+
+  return [
+    { role: "user", content: systemContext },
+    {
+      role: "assistant",
+      content: "Understood. I will generate a structured YAML artifact.",
     },
     { role: "user", content: userContext },
   ];
