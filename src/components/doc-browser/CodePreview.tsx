@@ -20,6 +20,7 @@ interface CodePreviewProps {
   sourceCode: string;
   onDownload?: () => void;
   onCopy?: () => void;
+  onEdit?: () => void;
   copyButtonLabel?: string;
 }
 
@@ -40,6 +41,7 @@ export function CodePreview({
   sourceCode,
   onDownload,
   onCopy,
+  onEdit,
   copyButtonLabel = "Copy",
 }: CodePreviewProps) {
   const [activeTab, setActiveTab] = useState<Tab>("Source");
@@ -103,6 +105,15 @@ export function CodePreview({
           >
             View diff
           </button>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="text-[12px] text-fg-2 px-[10px] py-[5px] bg-surface border border-border-2 rounded-sm cursor-pointer font-sans hover:border-border-emph hover:text-fg-1 transition-colors duration-[140ms]"
+            >
+              Edit
+            </button>
+          )}
           <button
             type="button"
             onClick={onCopy}

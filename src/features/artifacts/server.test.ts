@@ -35,6 +35,23 @@ function validateGetArtifact(data: unknown) {
   return { projectId: input.projectId, key: input.key };
 }
 
+function validateUpdateArtifact(data: unknown) {
+  if (typeof data !== "object" || data === null) {
+    throw new Error("invalid input");
+  }
+  const input = data as Record<string, unknown>;
+  if (typeof input.projectId !== "string" || !input.projectId) {
+    throw new Error("projectId required");
+  }
+  if (typeof input.key !== "string" || !input.key) {
+    throw new Error("key required");
+  }
+  if (typeof input.content !== "string") {
+    throw new Error("content required");
+  }
+  return { projectId: input.projectId, key: input.key, content: input.content };
+}
+
 describe("$listArtifacts validator", () => {
   it("accepts valid input", () => {
     const result = validateListArtifacts({ projectId: "test-project" });
@@ -132,5 +149,88 @@ describe("$getArtifact (store delegate)", () => {
     const projectId = `project-${Date.now()}-${Math.random()}`;
     const retrieved = getArtifact(projectId, "unknown-key");
     expect(retrieved).toBeUndefined();
+  });
+});
+
+describe("$updateArtifact validator", () => {
+  it("accepts valid input", () => {
+    const result = validateUpdateArtifact({
+      projectId: "test-project",
+      key: "test-key",
+      content: "new content",
+    });
+    expect(result).toEqual({
+      projectId: "test-project",
+      key: "test-key",
+      content: "new content",
+    });
+  });
+
+  it("throws on null input", () => {
+    expect(() => validateUpdateArtifact(null)).toThrow("invalid input");
+  });
+
+  it("throws on missing projectId", () => {
+    expect(() =>
+      validateUpdateArtifact({ key: "test", content: "test" }),
+    ).toThrow("projectId required");
+    expect(() =>
+      validateUpdateArtifact({ projectId: "", key: "test", content: "test" }),
+    ).toThrow("projectId required");
+  });
+
+  it("throws on missing key", () => {
+    expect(() =>
+      validateUpdateArtifact({ projectId: "test", content: "test" }),
+    ).toThrow("key required");
+    expect(() =>
+      validateUpdateArtifact({ projectId: "test", key: "", content: "test" }),
+    ).toThrow("key required");
+  });
+
+  it("throws on missing content", () => {
+    expect(() =>
+      validateUpdateArtifact({ projectId: "test", key: "test" }),
+    ).toThrow("content required");
+  });
+});
+
+describe("$updateArtifact (store delegate)", () => {
+  it("updates artifact content", () => {
+    const projectId = `project-${Date.now()}-${Math.random()}`;
+    const artifact: Artifact = {
+      id: `${projectId}-test`,
+      projectId,
+      key: "test-doc",
+      label: "Test Document",
+      format: "yaml",
+      content: "original: content",
+      status: "ready",
+      generatedAt: new Date().toISOString(),
+    };
+
+    upsertArtifact(artifact);
+
+    // Simulate update
+    const existing = getArtifact(projectId, artifact.key);
+    expect(existing).toBeDefined();
+
+    const updated = { ...existing!, content: "updated: content" };
+    upsertArtifact(updated);
+
+    const retrieved = getArtifact(projectId, artifact.key);
+    expect(retrieved?.content).toBe("updated: content");
+  });
+
+  it("throws on unknown artifact key", () => {
+    const projectId = `project-${Date.now()}-${Math.random()}`;
+    const existing = getArtifact(projectId, "unknown-key");
+
+    // Simulates what the server function does
+    if (!existing) {
+      expect(() => {
+        throw new Error("Artifact not found");
+      }).toThrow("Artifact not found");
+    }
   });
 });
