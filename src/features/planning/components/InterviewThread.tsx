@@ -122,20 +122,31 @@ export function InterviewThread({
 
   const messages = allMessages.length > 0 ? allMessages : undefined;
 
-  // Use streamed question when available, fall back to mock if streaming fails
-  const questionText =
-    streamedQuestion ||
-    (streamError ? currentStep?.question : undefined) ||
-    (isStreaming ? "Loading question..." : currentStep?.question) ||
-    "Loading question...";
+  // Determine question text priority:
+  // 1. If we have streamed text (even partial), show it
+  // 2. If pending submission, show loading message
+  // 3. If streaming failed, fall back to mock question
+  // 4. If streaming in progress but no text yet, show loading
+  // 5. Fall back to mock question
+  const questionText = streamedQuestion
+    ? streamedQuestion
+    : isPending
+      ? "Loading next question..."
+      : streamError
+        ? currentStep?.question || "Loading question..."
+        : isStreaming
+          ? "Loading question..."
+          : currentStep?.question || "Loading question...";
 
-  // Show loading state for next question when submission is pending
+  // Disable form while submitting OR while streaming the next question
+  const isLoadingQuestion = isPending || isStreaming;
+
   const question = currentStep ? (
     <QuestionCard
       n={currentStep.stepNumber}
       total={10}
-      text={isPending ? "Loading next question..." : questionText}
-      dimmed={isPending}
+      text={questionText}
+      dimmed={isPending && !streamedQuestion}
     />
   ) : undefined;
 
@@ -163,9 +174,11 @@ export function InterviewThread({
     <input
       className="flex-1 bg-transparent text-[12.5px] text-fg-1 placeholder:text-fg-4 placeholder:italic outline-none"
       placeholder={
-        selectedOption
-          ? `Option ${selectedOption} selected — or type your own`
-          : "…or type your own answer"
+        isLoadingQuestion
+          ? "Wait for question to finish loading..."
+          : selectedOption
+            ? `Option ${selectedOption} selected — or type your own`
+            : "…or type your own answer"
       }
       value={selectedOption ? selectedOptionTitle : inputText}
       onChange={(e) => {
@@ -178,7 +191,7 @@ export function InterviewThread({
           handleSubmit();
         }
       }}
-      disabled={isPending || isStreaming}
+      disabled={isLoadingQuestion}
     />
   );
 
@@ -187,11 +200,11 @@ export function InterviewThread({
       type="button"
       onClick={handleSubmit}
       disabled={
-        isPending || isStreaming || (!selectedOption && !inputText.trim())
+        isLoadingQuestion || (!selectedOption && !inputText.trim())
       }
       className="font-mono text-[11px] px-3 py-1.5 rounded-md bg-inverse text-fg-on-inverse disabled:opacity-40 disabled:cursor-not-allowed"
     >
-      {isPending ? "…" : "Submit →"}
+      {isPending ? "…" : isStreaming ? "…" : "Submit →"}
     </button>
   );
 
@@ -204,7 +217,7 @@ export function InterviewThread({
         <Composer
           input={composerInput}
           cta={composerCta}
-          disabled={isPending || isStreaming}
+          disabled={isLoadingQuestion}
         />
       }
     />
