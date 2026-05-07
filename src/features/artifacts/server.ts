@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getArtifact, listArtifacts, seedArtifacts, upsertArtifact } from "./store";
+import {
+  getArtifact,
+  listArtifacts,
+  seedArtifacts,
+  upsertArtifact,
+} from "./store";
 
 export const $listArtifacts = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => {
@@ -57,7 +62,11 @@ export const $updateArtifact = createServerFn({ method: "POST" })
     if (typeof input.content !== "string") {
       throw new Error("content required");
     }
-    return { projectId: input.projectId, key: input.key, content: input.content };
+    return {
+      projectId: input.projectId,
+      key: input.key,
+      content: input.content,
+    };
   })
   .handler(async ({ data }) => {
     const existing = getArtifact(data.projectId, data.key);

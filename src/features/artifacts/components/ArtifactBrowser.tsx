@@ -1,10 +1,10 @@
+import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CodePreview } from "@/components/doc-browser/CodePreview";
 import { type DocGroup, DocList } from "@/components/doc-browser/DocList";
+import { $refineArtifact } from "@/features/ai/server";
 import { useArtifact, useArtifacts, useUpdateArtifact } from "../hooks";
 import { downloadArtifact } from "../utils/download";
-import { $refineArtifact } from "@/features/ai/server";
-import { useMutation } from "@tanstack/react-query";
 import { RefinementComposer } from "./RefinementComposer";
 
 interface ArtifactBrowserProps {
@@ -195,7 +195,11 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
                   <span className="flex items-center gap-[6px] font-mono text-[11px] text-fg-3">
                     <span
                       className="w-[6px] h-[6px] rounded-full flex-shrink-0 bg-[--stage-color]"
-                      style={{ "--stage-color": "var(--bot-2)" } as React.CSSProperties}
+                      style={
+                        {
+                          "--stage-color": "var(--bot-2)",
+                        } as React.CSSProperties
+                      }
                     />
                     Planning Artifacts
                   </span>
@@ -232,7 +236,9 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
               {/* Footer */}
               <div className="flex items-center gap-2 px-[22px] py-[10px] border-t border-border-1 bg-surface flex-shrink-0">
                 <span className="font-mono text-[10px] text-fg-4 mr-auto">
-                  {`${(editContent.length / 1024).toFixed(1)} KB`} · v1 · editing · {new Date(selectedArtifact.generatedAt).toLocaleString(
+                  {`${(editContent.length / 1024).toFixed(1)} KB`} · v1 ·
+                  editing ·{" "}
+                  {new Date(selectedArtifact.generatedAt).toLocaleString(
                     "en-US",
                     {
                       month: "short",
@@ -253,15 +259,14 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
                 stageName="Planning Artifacts"
                 stageColor="var(--bot-2)"
                 version="v1"
-                lastEdited={new Date(selectedArtifact.generatedAt).toLocaleString(
-                  "en-US",
-                  {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  },
-                )}
+                lastEdited={new Date(
+                  selectedArtifact.generatedAt,
+                ).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
                 fileSize={`${(selectedArtifact.content.length / 1024).toFixed(1)} KB`}
                 sourceCode={selectedArtifact.content}
                 onDownload={() => downloadArtifact(selectedArtifact)}

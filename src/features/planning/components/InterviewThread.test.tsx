@@ -11,6 +11,11 @@ vi.mock("../hooks", () => ({
   stepStateQueryKey: vi.fn(),
 }));
 
+vi.mock("@/features/ai/hooks", () => ({
+  useStreamingQuestion: vi.fn(),
+}));
+
+import { useStreamingQuestion } from "@/features/ai/hooks";
 import { useSubmitAnswer } from "../hooks";
 
 const mockMutate = vi.fn();
@@ -41,6 +46,11 @@ beforeEach(() => {
     mutate: mockMutate,
     isPending: false,
   } as unknown as ReturnType<typeof useSubmitAnswer>);
+  vi.mocked(useStreamingQuestion).mockReturnValue({
+    text: "",
+    loading: false,
+    error: null,
+  });
   mockMutate.mockReset();
 });
 

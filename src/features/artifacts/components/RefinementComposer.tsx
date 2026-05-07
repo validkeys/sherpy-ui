@@ -29,7 +29,6 @@ export function RefinementComposer({
           placeholder="Describe how you want to refine this artifact..."
           className="w-full font-sans text-[13px] leading-[1.5] text-fg-1 bg-page border border-border-1 rounded p-3 resize-none focus:outline-none focus:border-border-emph min-h-[80px]"
           disabled={isLoading}
-          autoFocus
         />
         <div className="flex items-center gap-[6px] justify-end">
           <button

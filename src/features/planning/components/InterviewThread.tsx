@@ -31,13 +31,13 @@ export function InterviewThread({
     ? [currentStepData.answer.value]
     : [];
 
-  // Streaming AI question - currently for demonstration, falls back to mock
+  // Streaming AI question - enabled for M4-007 end-to-end wiring
   const { text: streamedQuestion, loading: isStreaming } = useStreamingQuestion(
     {
       projectId,
       stepNumber: stepState.currentStep,
       previousAnswers: completedAnswers,
-      enabled: false, // TODO: Enable in M4-007 when wiring end-to-end
+      enabled: true,
     },
   );
 

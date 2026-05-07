@@ -181,7 +181,7 @@ describe("ArtifactBrowser", () => {
 
   it("calls useUpdateArtifact when Save is clicked", async () => {
     const user = userEvent.setup();
-    const mutate = vi.fn((content, { onSuccess }) => onSuccess?.());
+    const mutate = vi.fn((_content, { onSuccess }) => onSuccess?.());
     const artifacts: Artifact[] = [
       {
         id: "art-1",
