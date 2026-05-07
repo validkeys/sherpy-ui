@@ -87,3 +87,23 @@ export function buildArtifactPrompt(
     { role: "user", content: userContext },
   ];
 }
+
+export function buildRefinementPrompt(
+  artifactLabel: string,
+  currentContent: string,
+  instruction: string,
+): Message[] {
+  const systemContext =
+    "You are Sherpy. Refine the following planning artifact per the PM's instruction. Return only the updated artifact content — no explanation.";
+
+  const userContext = `Artifact: ${artifactLabel}\n\nCurrent content:\n${currentContent}\n\nRefinement instruction: ${instruction}`;
+
+  return [
+    { role: "user", content: systemContext },
+    {
+      role: "assistant",
+      content: "Understood. I will refine the artifact as requested.",
+    },
+    { role: "user", content: userContext },
+  ];
+}

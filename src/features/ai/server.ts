@@ -2,11 +2,12 @@ import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { createServerFn } from "@tanstack/react-start";
 import { nanoid } from "nanoid";
 import { BEDROCK_MODEL_ID, bedrockClient } from "@/lib/bedrock";
-import { upsertArtifact } from "../artifacts/store";
+import { getArtifact, upsertArtifact } from "../artifacts/store";
 import type { Artifact } from "../artifacts/types";
 import {
   buildArtifactPrompt,
   buildInterviewPrompt,
+  buildRefinementPrompt,
   STEP_ARTIFACT_KEYS,
   STEP_NAMES,
 } from "./prompts";
@@ -121,3 +122,33 @@ export const $generateArtifact = createServerFn({ method: "POST" })
     async ({ data }): Promise<Artifact> =>
       generateArtifact(data.projectId, data.stepNumber, data.answers),
   );
+
+export const $refineArtifact = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => {
+    if (typeof d !== "object" || d === null) throw new Error("invalid input");
+    const input = d as Record<string, unknown>;
+    if (typeof input.projectId !== "string" || !input.projectId)
+      throw new Error("projectId required");
+    if (typeof input.key !== "string" || !input.key)
+      throw new Error("key required");
+    if (typeof input.instruction !== "string" || !input.instruction.trim())
+      throw new Error("instruction required");
+    return {
+      projectId: input.projectId,
+      key: input.key,
+      instruction: input.instruction.trim(),
+    };
+  })
+  .handler(async ({ data }): Promise<Artifact> => {
+    const artifact = getArtifact(data.projectId, data.key);
+    if (!artifact) throw new Error("Artifact not found");
+    const messages = buildRefinementPrompt(
+      artifact.label,
+      artifact.content,
+      data.instruction,
+    );
+    const refinedContent = await generateText(messages);
+    const updated = { ...artifact, content: refinedContent };
+    upsertArtifact(updated);
+    return updated;
+  });

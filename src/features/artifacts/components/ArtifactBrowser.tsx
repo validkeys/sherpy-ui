@@ -3,6 +3,9 @@ import { CodePreview } from "@/components/doc-browser/CodePreview";
 import { type DocGroup, DocList } from "@/components/doc-browser/DocList";
 import { useArtifact, useArtifacts, useUpdateArtifact } from "../hooks";
 import { downloadArtifact } from "../utils/download";
+import { $refineArtifact } from "@/features/ai/server";
+import { useMutation } from "@tanstack/react-query";
+import { RefinementComposer } from "./RefinementComposer";
 
 interface ArtifactBrowserProps {
   projectId: string;
@@ -22,6 +25,7 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
   const copyTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const [editMode, setEditMode] = useState(false);
   const [editContent, setEditContent] = useState("");
+  const [refineMode, setRefineMode] = useState(false);
 
   // Prefetch business-requirements (always first in seed data)
   const firstArtifactQuery = useArtifact(projectId, "business-requirements");
@@ -48,6 +52,24 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
     effectiveSelectedKey ?? "",
   );
 
+  const refineMutation = useMutation({
+    mutationFn: async (instruction: string) => {
+      if (!effectiveSelectedKey) throw new Error("No artifact selected");
+      return await $refineArtifact({
+        data: {
+          projectId,
+          key: effectiveSelectedKey,
+          instruction,
+        },
+      });
+    },
+    onSuccess: () => {
+      setRefineMode(false);
+      // Invalidate the artifact query to refetch updated content
+      void artifactsQuery.refetch();
+    },
+  });
+
   const handleEdit = useCallback(() => {
     if (selectedArtifact) {
       setEditContent(selectedArtifact.content);
@@ -66,6 +88,21 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
   const handleCancel = useCallback(() => {
     setEditMode(false);
     setEditContent("");
+  }, []);
+
+  const handleRefine = useCallback(() => {
+    setRefineMode(true);
+  }, []);
+
+  const handleRefineSubmit = useCallback(
+    (instruction: string) => {
+      refineMutation.mutate(instruction);
+    },
+    [refineMutation],
+  );
+
+  const handleRefineCancel = useCallback(() => {
+    setRefineMode(false);
   }, []);
 
   const handleCopy = useCallback((artifact: typeof firstArtifactQuery.data) => {
@@ -208,29 +245,39 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
               </div>
             </div>
           ) : (
-            <CodePreview
-              filePath={`artifacts / ${selectedArtifact.key}`}
-              fileName={selectedArtifact.label}
-              streaming={selectedArtifact.status === "generating"}
-              stageName="Planning Artifacts"
-              stageColor="var(--bot-2)"
-              version="v1"
-              lastEdited={new Date(selectedArtifact.generatedAt).toLocaleString(
-                "en-US",
-                {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                },
+            <div className="flex flex-col min-h-0 flex-1">
+              <CodePreview
+                filePath={`artifacts / ${selectedArtifact.key}`}
+                fileName={selectedArtifact.label}
+                streaming={selectedArtifact.status === "generating"}
+                stageName="Planning Artifacts"
+                stageColor="var(--bot-2)"
+                version="v1"
+                lastEdited={new Date(selectedArtifact.generatedAt).toLocaleString(
+                  "en-US",
+                  {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  },
+                )}
+                fileSize={`${(selectedArtifact.content.length / 1024).toFixed(1)} KB`}
+                sourceCode={selectedArtifact.content}
+                onDownload={() => downloadArtifact(selectedArtifact)}
+                onCopy={() => handleCopy(selectedArtifact)}
+                onEdit={handleEdit}
+                onRefine={handleRefine}
+                copyButtonLabel={copied ? "Copied!" : "Copy"}
+              />
+              {refineMode && (
+                <RefinementComposer
+                  onSubmit={handleRefineSubmit}
+                  onCancel={handleRefineCancel}
+                  isLoading={refineMutation.isPending}
+                />
               )}
-              fileSize={`${(selectedArtifact.content.length / 1024).toFixed(1)} KB`}
-              sourceCode={selectedArtifact.content}
-              onDownload={() => downloadArtifact(selectedArtifact)}
-              onCopy={() => handleCopy(selectedArtifact)}
-              onEdit={handleEdit}
-              copyButtonLabel={copied ? "Copied!" : "Copy"}
-            />
+            </div>
           )
         ) : (
           <div className={EMPTY_STATE_CLASS}>select a document</div>
