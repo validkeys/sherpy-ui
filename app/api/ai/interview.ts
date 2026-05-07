@@ -1,6 +1,10 @@
 import { defineEventHandler, readBody } from "vinxi/http";
 import { buildInterviewPrompt, STEP_NAMES } from "@/features/ai/prompts";
 import { streamQuestion } from "@/features/ai/streaming";
+import { handleMockStreamingRequest } from "@/features/ai/mock-streaming";
+
+// Set to true to use mock streaming (demonstration mode without Bedrock)
+const USE_MOCK_STREAMING = true;
 
 export default defineEventHandler(async (event) => {
   // Parse and validate input
@@ -28,7 +32,12 @@ export default defineEventHandler(async (event) => {
     throw new Error(`Invalid step number: ${stepNumber}`);
   }
 
-  // Build prompt and stream response
+  // Use mock streaming for demonstration (or when Bedrock unavailable)
+  if (USE_MOCK_STREAMING) {
+    return handleMockStreamingRequest({ projectId, stepNumber, previousAnswers });
+  }
+
+  // Build prompt and stream response from Bedrock
   const messages = buildInterviewPrompt(stepName, stepNumber, previousAnswers);
   const stream = await streamQuestion(messages);
 
