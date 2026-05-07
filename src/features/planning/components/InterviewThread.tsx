@@ -72,6 +72,7 @@ export function InterviewThread({
             {step.answer && (
               <AnsweredMessage
                 stepName={step.name}
+                question={step.question}
                 answer={step.answer.value}
               />
             )}
