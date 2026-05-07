@@ -60,10 +60,17 @@ export function InterviewThread({
     const answer = selectedOption ?? inputText.trim();
     if (!answer || !currentStep) return;
 
+    // Capture the current question text before submission
+    const currentQuestionText =
+      streamedQuestion ||
+      (streamError ? currentStep.question : undefined) ||
+      currentStep.question ||
+      "";
+
     // Store optimistic answer to show immediately
     setOptimisticAnswer({
       stepNumber: currentStep.stepNumber,
-      question: questionText,
+      question: currentQuestionText,
       answer,
       stepName: currentStep.name,
     });
@@ -123,19 +130,19 @@ export function InterviewThread({
   const messages = allMessages.length > 0 ? allMessages : undefined;
 
   // Determine question text priority:
-  // 1. If we have streamed text (even partial), show it
-  // 2. If pending submission, show loading message
+  // 1. If pending submission (before step updates), show loading immediately
+  // 2. If we have streamed text (even partial), show it
   // 3. If streaming failed, fall back to mock question
   // 4. If streaming in progress but no text yet, show loading
   // 5. Fall back to mock question
-  const questionText = streamedQuestion
-    ? streamedQuestion
-    : isPending
-      ? "Loading next question..."
+  const questionText = isPending
+    ? "Computing next question..."
+    : streamedQuestion
+      ? streamedQuestion
       : streamError
         ? currentStep?.question || "Loading question..."
         : isStreaming
-          ? "Loading question..."
+          ? "Computing..."
           : currentStep?.question || "Loading question...";
 
   // Disable form while submitting OR while streaming the next question
