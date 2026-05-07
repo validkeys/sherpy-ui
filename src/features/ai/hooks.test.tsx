@@ -29,6 +29,8 @@ describe("useStreamingQuestion", () => {
     };
 
     const mockResponse = {
+      ok: true,
+      headers: new Headers({ "content-type": "text/event-stream" }),
       body: {
         getReader: () => mockReader,
       },
@@ -111,6 +113,8 @@ describe("useStreamingQuestion", () => {
     };
 
     const mockResponse = {
+      ok: true,
+      headers: new Headers({ "content-type": "text/event-stream" }),
       body: {
         getReader: () => mockReader,
       },

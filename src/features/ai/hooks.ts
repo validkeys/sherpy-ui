@@ -39,6 +39,16 @@ export function useStreamingQuestion(
       }),
     })
       .then(async (res) => {
+        // Check if response is HTML (404/error page) instead of streaming data
+        const contentType = res.headers.get("content-type");
+        if (contentType?.includes("text/html")) {
+          throw new Error("API endpoint not available - got HTML response");
+        }
+
+        if (!res.ok) {
+          throw new Error(`API error: ${res.status} ${res.statusText}`);
+        }
+
         if (!res.body) {
           throw new Error("No response body");
         }

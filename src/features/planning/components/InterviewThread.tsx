@@ -32,14 +32,16 @@ export function InterviewThread({
     : [];
 
   // Streaming AI question - enabled for M4-007 end-to-end wiring
-  const { text: streamedQuestion, loading: isStreaming } = useStreamingQuestion(
-    {
-      projectId,
-      stepNumber: stepState.currentStep,
-      previousAnswers: completedAnswers,
-      enabled: true,
-    },
-  );
+  const {
+    text: streamedQuestion,
+    loading: isStreaming,
+    error: streamError,
+  } = useStreamingQuestion({
+    projectId,
+    stepNumber: stepState.currentStep,
+    previousAnswers: completedAnswers,
+    enabled: true,
+  });
 
   const completedSteps = stepState.steps.filter((s) => s.status === "complete");
   const currentStep = stepState.steps.find(
@@ -77,10 +79,12 @@ export function InterviewThread({
         ))
       : undefined;
 
-  // Use streamed question when available, otherwise fall back to mock
-  const questionText = isStreaming
-    ? streamedQuestion || "Loading question..."
-    : streamedQuestion || currentStep?.question || "Loading question...";
+  // Use streamed question when available, fall back to mock if streaming fails
+  const questionText =
+    streamedQuestion ||
+    (streamError ? currentStep?.question : undefined) ||
+    (isStreaming ? "Loading question..." : currentStep?.question) ||
+    "Loading question...";
 
   const question = currentStep ? (
     <QuestionCard n={currentStep.stepNumber} total={10} text={questionText} />
