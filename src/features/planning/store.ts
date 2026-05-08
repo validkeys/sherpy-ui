@@ -1,5 +1,6 @@
 import type { EntryPath } from "../projects/types";
-import type { PlanningStep, ProjectStepState, StepAnswer } from "./types";
+import type { PlanningStep, ProjectStepState, StepAnswer, StepOption } from "./types";
+import { STEP_CONFIG, getStepName } from "./step-config";
 
 const store = new Map<string, ProjectStepState>();
 
@@ -7,72 +8,82 @@ const STEPS: Array<{ name: string; question: string }> = [
   {
     name: "Gap Analysis Worksheet",
     question:
-      "Let's start by identifying any gaps in your existing requirements. Do you have a requirements document to analyze, or are you starting from scratch?",
+      "Do you have an existing requirements document to analyze, or are you starting from scratch?",
   },
   {
     name: "Business Requirements Interview",
     question:
-      "What is the primary business problem this project is solving? Describe the current pain point and the desired outcome.",
+      "I'll guide you through defining your business requirements. We'll cover problem definition, user personas, success criteria, constraints, and timeline.",
   },
   {
     name: "Technical Requirements Interview",
     question:
-      "What are the key technical constraints or non-negotiables for this project? Consider platform, integrations, performance, and security needs.",
+      "Now let's define the technical requirements. We'll cover architecture, technology stack, data model, APIs, security, testing, and deployment.",
+  },
+  {
+    name: "Style Anchors Collection",
+    question:
+      "Let's collect code examples that demonstrate approved patterns for this project.",
   },
   {
     name: "Implementation Planner",
     question:
-      "How should we break this project into milestones? What is the most critical slice of functionality to deliver first?",
+      "I'll help you break this project into milestones and tasks based on the requirements.",
   },
   {
     name: "Implementation Plan Review",
     question:
-      "Reviewing the generated implementation plan — do the milestones and task estimates feel realistic given your team's capacity?",
-  },
-  {
-    name: "Definition of Done",
-    question:
-      "What does success look like for each milestone? Define the acceptance criteria that must be met before a milestone is considered complete.",
+      "Let's review the generated implementation plan for completeness and realism.",
   },
   {
     name: "Architecture Decision Records",
     question:
-      "Are there any significant architectural decisions that need to be documented? Think about technology choices, patterns, or tradeoffs that future engineers should understand.",
+      "I'll help you document key architectural decisions from the technical requirements.",
   },
   {
     name: "Delivery Timeline",
     question:
-      "Given the milestones and team capacity, what is a realistic delivery timeline? Are there external deadlines or dependencies we need to account for?",
+      "Let's create a delivery timeline based on the milestones and your target deployment date.",
   },
   {
     name: "QA Test Plan",
     question:
-      "What are the highest-risk areas of the system that need the most test coverage? Define the testing strategy for functional, performance, and security requirements.",
+      "I'll help you generate a comprehensive QA test plan based on your requirements.",
   },
   {
     name: "Generate Summaries",
     question:
-      "We're ready to generate the final summaries. Should we produce a developer-focused technical summary, an executive overview, or both?",
+      "I'll generate developer and executive summaries of your complete project plan.",
   },
 ];
 
 function buildSteps(entryPath: EntryPath): PlanningStep[] {
-  return STEPS.map((s, i) => ({
-    stepNumber: i + 1,
-    name: s.name,
-    // doc-first skips Gap Analysis (step 1 starts as complete/pre-seeded)
-    status:
-      entryPath === "doc-first" && i === 0
-        ? ("complete" as const)
-        : i === (entryPath === "doc-first" ? 1 : 0)
-          ? ("now" as const)
-          : ("pending" as const),
-    question: s.question,
-    answer:
-      entryPath === "doc-first" && i === 0
-        ? { value: "doc-first", submittedAt: new Date().toISOString() }
-        : undefined,
-  }));
+  // Use STEP_CONFIG to ensure consistency with step configuration
+  return Object.entries(STEP_CONFIG).map(([num, config]) => {
+    const stepNumber = Number(num);
+    const legacyStep = STEPS[stepNumber - 1];
+
+    return {
+      stepNumber,
+      name: config.name,
+      // doc-first skips Gap Analysis (step 1 starts as complete/pre-seeded)
+      status:
+        entryPath === "doc-first" && stepNumber === 1
+          ? ("complete" as const)
+          : stepNumber === (entryPath === "doc-first" ? 2 : 1)
+            ? ("now" as const)
+            : ("pending" as const),
+      question: legacyStep?.question ?? "",
+      answer:
+        entryPath === "doc-first" && stepNumber === 1
+          ? {
+              question: legacyStep?.question ?? "",
+              value: "doc-first",
+              submittedAt: new Date().toISOString()
+            }
+          : undefined,
+    };
+  });
 }
 
 export function hasStepState(projectId: string): boolean {
@@ -107,6 +118,7 @@ export function getStep(projectId: string, stepNumber: number): PlanningStep {
 export function submitAnswer(
   projectId: string,
   stepNumber: number,
+  question: string,
   answer: string,
 ): ProjectStepState {
   const state = getStepState(projectId);
@@ -116,15 +128,60 @@ export function submitAnswer(
     throw new Error(`Step ${stepNumber} not found for project: ${projectId}`);
 
   const stepAnswer: StepAnswer = {
+    question,
     value: answer,
     submittedAt: new Date().toISOString(),
   };
 
   const updatedSteps = state.steps.map((s, i) => {
-    if (i === stepIndex)
-      return { ...s, status: "complete" as const, answer: stepAnswer };
-    if (i === stepIndex + 1 && s.status === "pending")
+    if (i === stepIndex) {
+      const existingAnswers = s.answers ?? [];
+      const newAnswers = [...existingAnswers, stepAnswer];
+      console.log(`[submitAnswer] Step ${stepNumber}: Adding answer. Total answers now: ${newAnswers.length}`);
+      return {
+        ...s,
+        answer: stepAnswer, // Keep for backward compatibility
+        answers: newAnswers,
+      };
+    }
+    return s;
+  });
+
+  const updated: ProjectStepState = {
+    ...state,
+    currentStep: state.currentStep,
+    steps: updatedSteps,
+  };
+  store.set(projectId, updated);
+
+  console.log(`[submitAnswer] State updated for project ${projectId}:`, {
+    currentStep: updated.currentStep,
+    stepAnswersCount: updated.steps[stepIndex]?.answers?.length,
+  });
+
+  return updated;
+}
+
+export function completeStep(
+  projectId: string,
+  stepNumber: number,
+): ProjectStepState {
+  const state = getStepState(projectId);
+  const stepIndex = state.steps.findIndex((s) => s.stepNumber === stepNumber);
+  if (stepIndex === -1)
+    throw new Error(`Step ${stepNumber} not found for project: ${projectId}`);
+
+  console.log(`[completeStep] Completing step ${stepNumber} (index ${stepIndex})`);
+
+  const updatedSteps = state.steps.map((s, i) => {
+    if (i === stepIndex) {
+      console.log(`  - Marking step ${s.stepNumber} as complete`);
+      return { ...s, status: "complete" as const };
+    }
+    if (i === stepIndex + 1 && s.status === "pending") {
+      console.log(`  - Marking step ${s.stepNumber} as now`);
       return { ...s, status: "now" as const };
+    }
     return s;
   });
 
@@ -134,6 +191,64 @@ export function submitAnswer(
     currentStep: stepIndex + 1 < 10 ? nextStep : state.currentStep,
     steps: updatedSteps,
   };
+
+  console.log(`[completeStep] Updated state:`, {
+    oldCurrentStep: state.currentStep,
+    newCurrentStep: updated.currentStep,
+    step1Status: updated.steps[0]?.status,
+    step2Status: updated.steps[1]?.status,
+  });
+
+  store.set(projectId, updated);
+  return updated;
+}
+
+export function submitAnswerAndComplete(
+  projectId: string,
+  stepNumber: number,
+  question: string,
+  answer: string,
+): ProjectStepState {
+  // Submit the answer
+  const stateAfterAnswer = submitAnswer(projectId, stepNumber, question, answer);
+  // Immediately complete the step
+  return completeStep(projectId, stepNumber);
+}
+
+export function setStepArtifact(
+  projectId: string,
+  stepNumber: number,
+  artifact: string,
+): ProjectStepState {
+  const state = getStepState(projectId);
+  const updatedSteps = state.steps.map((s) =>
+    s.stepNumber === stepNumber ? { ...s, artifact } : s,
+  );
+
+  const updated: ProjectStepState = {
+    ...state,
+    steps: updatedSteps,
+  };
+
+  store.set(projectId, updated);
+  return updated;
+}
+
+export function updateStepOptions(
+  projectId: string,
+  stepNumber: number,
+  options: StepOption[],
+): ProjectStepState {
+  const state = getStepState(projectId);
+  const updatedSteps = state.steps.map((s) =>
+    s.stepNumber === stepNumber ? { ...s, options } : s,
+  );
+
+  const updated: ProjectStepState = {
+    ...state,
+    steps: updatedSteps,
+  };
+
   store.set(projectId, updated);
   return updated;
 }

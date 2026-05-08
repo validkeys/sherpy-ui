@@ -1,8 +1,11 @@
+import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CodePreview } from "@/components/doc-browser/CodePreview";
 import { type DocGroup, DocList } from "@/components/doc-browser/DocList";
-import { useArtifact, useArtifacts } from "../hooks";
+import { $refineArtifact } from "@/features/ai/server";
+import { useArtifact, useArtifacts, useUpdateArtifact } from "../hooks";
 import { downloadArtifact } from "../utils/download";
+import { RefinementComposer } from "./RefinementComposer";
 
 interface ArtifactBrowserProps {
   projectId: string;
@@ -20,6 +23,9 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const [editMode, setEditMode] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [refineMode, setRefineMode] = useState(false);
 
   // Prefetch business-requirements (always first in seed data)
   const firstArtifactQuery = useArtifact(projectId, "business-requirements");
@@ -40,6 +46,64 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
     effectiveSelectedKey === "business-requirements"
       ? firstArtifactQuery.data
       : customArtifactQuery.data;
+
+  const updateMutation = useUpdateArtifact(
+    projectId,
+    effectiveSelectedKey ?? "",
+  );
+
+  const refineMutation = useMutation({
+    mutationFn: async (instruction: string) => {
+      if (!effectiveSelectedKey) throw new Error("No artifact selected");
+      return await $refineArtifact({
+        data: {
+          projectId,
+          key: effectiveSelectedKey,
+          instruction,
+        },
+      });
+    },
+    onSuccess: () => {
+      setRefineMode(false);
+      // Invalidate the artifact query to refetch updated content
+      void artifactsQuery.refetch();
+    },
+  });
+
+  const handleEdit = useCallback(() => {
+    if (selectedArtifact) {
+      setEditContent(selectedArtifact.content);
+      setEditMode(true);
+    }
+  }, [selectedArtifact]);
+
+  const handleSave = useCallback(() => {
+    updateMutation.mutate(editContent, {
+      onSuccess: () => {
+        setEditMode(false);
+      },
+    });
+  }, [editContent, updateMutation]);
+
+  const handleCancel = useCallback(() => {
+    setEditMode(false);
+    setEditContent("");
+  }, []);
+
+  const handleRefine = useCallback(() => {
+    setRefineMode(true);
+  }, []);
+
+  const handleRefineSubmit = useCallback(
+    (instruction: string) => {
+      refineMutation.mutate(instruction);
+    },
+    [refineMutation],
+  );
+
+  const handleRefineCancel = useCallback(() => {
+    setRefineMode(false);
+  }, []);
 
   const handleCopy = useCallback((artifact: typeof firstArtifactQuery.data) => {
     if (!artifact) return;
@@ -114,28 +178,112 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
           onDocClick={setSelectedKey}
         />
         {selectedArtifact ? (
-          <CodePreview
-            filePath={`artifacts / ${selectedArtifact.key}`}
-            fileName={selectedArtifact.label}
-            streaming={selectedArtifact.status === "generating"}
-            stageName="Planning Artifacts"
-            stageColor="var(--bot-2)"
-            version="v1"
-            lastEdited={new Date(selectedArtifact.generatedAt).toLocaleString(
-              "en-US",
-              {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              },
-            )}
-            fileSize={`${(selectedArtifact.content.length / 1024).toFixed(1)} KB`}
-            sourceCode={selectedArtifact.content}
-            onDownload={() => downloadArtifact(selectedArtifact)}
-            onCopy={() => handleCopy(selectedArtifact)}
-            copyButtonLabel={copied ? "Copied!" : "Copy"}
-          />
+          editMode ? (
+            <div className="flex flex-col min-w-0 bg-page overflow-hidden">
+              {/* Header */}
+              <div className="flex items-start gap-3 px-[22px] py-[14px] border-b border-border-1 flex-shrink-0">
+                <div className="flex flex-col gap-1 min-w-0 flex-1">
+                  <span className="font-mono text-[11px] text-fg-3 tracking-[0.02em]">
+                    {`artifacts / ${selectedArtifact.key}`}
+                  </span>
+                  <span className="flex items-center gap-[10px] text-[16px] font-medium tracking-[-0.01em] text-fg-1">
+                    {selectedArtifact.label}
+                    <span className="inline-flex items-center gap-[5px] font-mono text-[10px] font-medium px-[7px] py-[2px] rounded-full bg-accent-soft text-accent uppercase tracking-[0.04em]">
+                      editing
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-[6px] font-mono text-[11px] text-fg-3">
+                    <span
+                      className="w-[6px] h-[6px] rounded-full flex-shrink-0 bg-[--stage-color]"
+                      style={
+                        {
+                          "--stage-color": "var(--bot-2)",
+                        } as React.CSSProperties
+                      }
+                    />
+                    Planning Artifacts
+                  </span>
+                </div>
+                <div className="flex items-center gap-[6px] flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="text-[12px] text-fg-2 px-[10px] py-[5px] bg-surface border border-border-2 rounded-sm cursor-pointer font-sans hover:border-border-emph hover:text-fg-1 transition-colors duration-[140ms]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={updateMutation.isPending}
+                    className="text-[12px] font-medium px-[10px] py-[5px] bg-inverse text-fg-on-inverse border-none rounded-sm cursor-pointer font-sans disabled:opacity-50"
+                  >
+                    {updateMutation.isPending ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Edit Content */}
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col p-[22px]">
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="flex-1 w-full font-mono text-[12px] leading-[1.6] text-fg-1 bg-sunken border border-border-1 rounded p-3 resize-none focus:outline-none focus:border-border-emph"
+                  spellCheck={false}
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center gap-2 px-[22px] py-[10px] border-t border-border-1 bg-surface flex-shrink-0">
+                <span className="font-mono text-[10px] text-fg-4 mr-auto">
+                  {`${(editContent.length / 1024).toFixed(1)} KB`} · v1 ·
+                  editing ·{" "}
+                  {new Date(selectedArtifact.generatedAt).toLocaleString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    },
+                  )}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col min-h-0 flex-1">
+              <CodePreview
+                filePath={`artifacts / ${selectedArtifact.key}`}
+                fileName={selectedArtifact.label}
+                streaming={selectedArtifact.status === "generating"}
+                stageName="Planning Artifacts"
+                stageColor="var(--bot-2)"
+                version="v1"
+                lastEdited={new Date(
+                  selectedArtifact.generatedAt,
+                ).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+                fileSize={`${(selectedArtifact.content.length / 1024).toFixed(1)} KB`}
+                sourceCode={selectedArtifact.content}
+                onDownload={() => downloadArtifact(selectedArtifact)}
+                onCopy={() => handleCopy(selectedArtifact)}
+                onEdit={handleEdit}
+                onRefine={handleRefine}
+                copyButtonLabel={copied ? "Copied!" : "Copy"}
+              />
+              {refineMode && (
+                <RefinementComposer
+                  onSubmit={handleRefineSubmit}
+                  onCancel={handleRefineCancel}
+                  isLoading={refineMutation.isPending}
+                />
+              )}
+            </div>
+          )
         ) : (
           <div className={EMPTY_STATE_CLASS}>select a document</div>
         )}

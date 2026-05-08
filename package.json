@@ -11,9 +11,17 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "services": "docker compose up -d",
+    "services:down": "docker compose down",
+    "services:logs": "docker compose logs -f",
+    "services:restart": "docker compose restart",
+    "langfuse": "docker compose up -d langfuse",
+    "langfuse:logs": "docker compose logs -f langfuse",
+    "langfuse:reset": "docker compose down -v && docker compose up -d langfuse"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1044.0",
     "@base-ui/react": "^1.4.1",
     "@fontsource-variable/bodoni-moda": "^5.2.7",
     "@fontsource-variable/geist": "^5.2.8",
@@ -24,6 +32,7 @@
     "@tanstack/start-plugin-core": "^1.169.19",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "langfuse": "^3.30.3",
     "lucide-react": "^1.14.0",
     "nanoid": "^5.1.11",
     "react": "^19.2.5",

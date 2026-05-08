@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { useState } from "react";
 import { ThemeProvider } from "../../src/components/theme-provider";
+import { AuthProvider } from "../../src/features/auth";
 import "../../src/index.css";
 
 export const Route = createRootRoute({
@@ -24,9 +25,11 @@ function RootComponent() {
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <Outlet />
-          </ThemeProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <Outlet />
+            </ThemeProvider>
+          </AuthProvider>
         </QueryClientProvider>
         <Scripts />
       </body>

@@ -54,34 +54,30 @@ describe("initProjectSteps", () => {
 });
 
 describe("submitAnswer", () => {
-  it("marks step complete and advances currentStep", () => {
+  it("adds answer without completing step", () => {
     initProjectSteps("p1", "scratch");
-    const updated = submitAnswer("p1", 1, "My answer");
-    expect(updated.steps[0].status).toBe("complete");
+    const updated = submitAnswer("p1", 1, "Question 1", "My answer");
     expect(updated.steps[0].answer?.value).toBe("My answer");
-    expect(updated.steps[1].status).toBe("now");
-    expect(updated.currentStep).toBe(2);
+    expect(updated.currentStep).toBe(1); // Does not advance
   });
 
   it("records submittedAt timestamp on answer", () => {
     initProjectSteps("p1", "scratch");
-    const updated = submitAnswer("p1", 1, "answer");
+    const updated = submitAnswer("p1", 1, "Question 1", "answer");
     expect(updated.steps[0].answer?.submittedAt).toBeTruthy();
   });
 
-  it("on final step keeps currentStep at 10", () => {
+  it("supports multi-turn Q&A (multiple answers to same step)", () => {
     initProjectSteps("p1", "scratch");
-    // advance to step 10
-    for (let i = 1; i <= 9; i++) {
-      submitAnswer("p1", i, `answer ${i}`);
-    }
-    const updated = submitAnswer("p1", 10, "final answer");
-    expect(updated.currentStep).toBe(10);
-    expect(updated.steps[9].status).toBe("complete");
+    const first = submitAnswer("p1", 1, "Question 1", "Answer 1");
+    expect(first.steps[0].answers?.length).toBe(1);
+    const second = submitAnswer("p1", 1, "Question 2", "Answer 2");
+    expect(second.steps[0].answers?.length).toBe(2);
+    expect(second.currentStep).toBe(1); // Still on step 1
   });
 
   it("throws when project not found", () => {
-    expect(() => submitAnswer("no-such", 1, "x")).toThrow(
+    expect(() => submitAnswer("no-such", 1, "Q", "x")).toThrow(
       "No step state for project: no-such",
     );
   });
