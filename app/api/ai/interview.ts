@@ -1,10 +1,11 @@
 import { defineEventHandler, readBody } from "vinxi/http";
-import { buildInterviewPrompt, STEP_NAMES } from "@/features/ai/prompts";
+import { buildInterviewPrompt } from "@/features/ai/prompts";
 import { streamQuestion } from "@/features/ai/streaming";
 import { handleMockStreamingRequest } from "@/features/ai/mock-streaming";
+import { getStepName } from "@/features/planning/step-config";
 
 // Set to true to use mock streaming (demonstration mode without Bedrock)
-const USE_MOCK_STREAMING = true;
+const USE_MOCK_STREAMING = false;
 
 export default defineEventHandler(async (event) => {
   // Parse and validate input
@@ -27,8 +28,8 @@ export default defineEventHandler(async (event) => {
   }
 
   // Get step name
-  const stepName = STEP_NAMES[stepNumber];
-  if (!stepName) {
+  const stepName = getStepName(stepNumber);
+  if (!stepName || stepName === `Step ${stepNumber}`) {
     throw new Error(`Invalid step number: ${stepNumber}`);
   }
 
@@ -39,7 +40,15 @@ export default defineEventHandler(async (event) => {
 
   // Build prompt and stream response from Bedrock
   const messages = buildInterviewPrompt(stepName, stepNumber, previousAnswers);
-  const stream = await streamQuestion(messages);
+  const stream = await streamQuestion(messages, {
+    name: "interview-streaming-question",
+    sessionId: projectId,
+    metadata: {
+      stepNumber,
+      stepName,
+      previousAnswersCount: previousAnswers.length,
+    },
+  });
 
   // Return streaming response
   return new Response(stream, {

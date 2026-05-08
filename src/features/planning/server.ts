@@ -2,11 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { generateArtifact } from "../ai/server";
 import { getProject, initStore } from "../projects/store";
 import {
+  completeStep,
   getStepState,
   hasStepState,
   initProjectSteps,
+  setStepArtifact,
   submitAnswer,
+  submitAnswerAndComplete,
+  updateStepOptions,
 } from "./store";
+import { isInterviewStep } from "./step-config";
+import type { StepOption } from "./types";
 
 export const $getStepState = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => {
@@ -36,11 +42,14 @@ export const $submitAnswer = createServerFn({ method: "POST" })
       throw new Error("projectId required");
     if (typeof d.stepNumber !== "number")
       throw new Error("stepNumber must be a number");
+    if (typeof d.question !== "string" || !d.question.trim())
+      throw new Error("question required");
     if (typeof d.answer !== "string" || !d.answer.trim())
       throw new Error("answer required");
     return {
       projectId: d.projectId,
       stepNumber: d.stepNumber,
+      question: d.question.trim(),
       answer: d.answer.trim(),
     };
   })
@@ -49,6 +58,7 @@ export const $submitAnswer = createServerFn({ method: "POST" })
     const updatedState = submitAnswer(
       data.projectId,
       data.stepNumber,
+      data.question,
       data.answer,
     );
 
@@ -62,4 +72,90 @@ export const $submitAnswer = createServerFn({ method: "POST" })
     }
 
     return updatedState;
+  });
+
+export const $completeStep = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    if (typeof d.stepNumber !== "number")
+      throw new Error("stepNumber must be a number");
+    return {
+      projectId: d.projectId,
+      stepNumber: d.stepNumber,
+    };
+  })
+  .handler(async ({ data }) => {
+    await initStore();
+    const updatedState = completeStep(data.projectId, data.stepNumber);
+
+    // Generate artifact after step completion for interview steps
+    const step = updatedState.steps.find((s) => s.stepNumber === data.stepNumber);
+    if (step?.answers && step.answers.length > 0 && isInterviewStep(data.stepNumber)) {
+      try {
+        const answers = step.answers.map((a) => a.value);
+        const artifact = await generateArtifact(data.projectId, data.stepNumber, answers);
+        // Update the step with the artifact content
+        setStepArtifact(data.projectId, data.stepNumber, artifact.content);
+      } catch (error) {
+        console.error("Failed to generate artifact:", error);
+      }
+    }
+
+    return updatedState;
+  });
+
+export const $submitAnswerAndComplete = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    if (typeof d.stepNumber !== "number")
+      throw new Error("stepNumber must be a number");
+    if (typeof d.question !== "string" || !d.question.trim())
+      throw new Error("question required");
+    if (typeof d.answer !== "string" || !d.answer.trim())
+      throw new Error("answer required");
+    return {
+      projectId: d.projectId,
+      stepNumber: d.stepNumber,
+      question: d.question.trim(),
+      answer: d.answer.trim(),
+    };
+  })
+  .handler(async ({ data }) => {
+    await initStore();
+    return submitAnswerAndComplete(
+      data.projectId,
+      data.stepNumber,
+      data.question,
+      data.answer,
+    );
+  });
+
+export const $updateStepOptions = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    if (typeof d.stepNumber !== "number")
+      throw new Error("stepNumber must be a number");
+    if (!Array.isArray(d.options))
+      throw new Error("options must be an array");
+    return {
+      projectId: d.projectId,
+      stepNumber: d.stepNumber,
+      options: d.options as StepOption[],
+    };
+  })
+  .handler(async ({ data }) => {
+    await initStore();
+    return updateStepOptions(data.projectId, data.stepNumber, data.options);
   });

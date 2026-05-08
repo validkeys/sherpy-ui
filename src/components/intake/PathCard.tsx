@@ -5,6 +5,7 @@ export interface PathCardProps {
   subtitle: string;
   meta?: string;
   recommended?: boolean;
+  disabled?: boolean;
   onClick?: () => void;
 }
 
@@ -13,15 +14,20 @@ export function PathCard({
   subtitle,
   meta,
   recommended = false,
+  disabled = false,
   onClick,
 }: PathCardProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cn(
-        "px-3.5 pt-3.5 pb-3 rounded-[6px] border-[1.5px] flex flex-col gap-1 cursor-pointer text-left w-full",
+        "px-3.5 pt-3.5 pb-3 rounded-[6px] border-[1.5px] flex flex-col gap-1 text-left w-full",
         "focus-visible:outline-none focus-visible:shadow-focus",
+        disabled
+          ? "cursor-not-allowed opacity-50"
+          : "cursor-pointer",
         recommended
           ? "border-border-emph bg-sunken"
           : "border-border-2 bg-surface",

@@ -35,16 +35,15 @@ env:
 # Only variables that are actually set in the host environment are passed through.
 # Useful for credentials that should not be committed to sandbox.yaml.
 envFromHost:
-  # - AWS_ACCESS_KEY_ID
-  # - AWS_SECRET_ACCESS_KEY
-  # - AWS_SESSION_TOKEN
-  # - AWS_REGION
-  # - ANTHROPIC_BASE_URL
-  # GitHub CLI — fine-grained PAT with minimal required permissions.
-  # Create at: https://github.com/settings/tokens?type=beta
-  # Prefer a fine-grained PAT scoped to a single repo over a classic token.
-  # - GH_TOKEN
-
+  - CLAUDE_CODE_USE_BEDROCK
+  - AWS_REGION
+  - ANTHROPIC_MODEL
+  - ANTHROPIC_SMALL_FAST_MODEL
+  - AWS_PROFILE
+  - CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  - CLAUDE_SHOW_GIT_BRANCH
+  - CLAUDE_STATUS_FORMAT
+  - CLAUDE_STTAUSLINE_TEMPLATE
 # --- Environment from macOS Keychain -------------------------------------------
 # Fetches secrets from the host macOS Keychain at container start time.
 # Each entry maps a keychain item (service + account) to a container env var.
@@ -104,6 +103,8 @@ services:
 # Lets the container connect to other Docker containers (e.g. a compose stack)
 # via localhost:<port> — no .env changes needed.
 hostPorts:
+  - 3120 # langfuse UI
+  - 5436 # langfuse postgres
   # - 5432   # postgres
   # - 6379   # redis
 
@@ -150,6 +151,14 @@ skills:
 # Add project-specific API domains here.
 firewall:
   allow:
+    - "bedrock-runtime.ca-central-1.amazonaws.com"
+    - "sts.amazonaws.com"
+    - "sts.ca-central-1.amazonaws.com"
+    - "oidc.ca-central-1.amazonaws.com"
+    - "portal.sso.ca-central-1.amazonaws.com"
+    - "host.docker.internal"
+    - "codeload.github.com"
+    - "vault.dotenv.org"
     - "ui.shadcn.com"
     - "fonts.googleapis.com"
     # - "cdn.example.com"

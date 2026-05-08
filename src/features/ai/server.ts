@@ -2,24 +2,64 @@ import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { createServerFn } from "@tanstack/react-start";
 import { nanoid } from "nanoid";
 import { BEDROCK_MODEL_ID, bedrockClient } from "@/lib/bedrock";
+import {
+  createGenerationSpan,
+  createTrace,
+  finalizeGenerationSpan,
+  flushLangfuse,
+  type TraceMetadata,
+} from "@/lib/langfuse-helpers";
 import { getArtifact, upsertArtifact } from "../artifacts/store";
 import type { Artifact } from "../artifacts/types";
+import { getStepArtifactKey, getStepName } from "../planning/step-config";
 import {
   buildArtifactPrompt,
   buildInterviewPrompt,
   buildRefinementPrompt,
-  STEP_ARTIFACT_KEYS,
-  STEP_NAMES,
 } from "./prompts";
+import { getArtifactName } from "./skills-content";
 
 interface GenerateQuestionOutput {
   question: string;
 }
 
 // Non-streaming helper for generating text from Claude
+// Instrumented with Langfuse for observability (tokens, latency, cost)
 export async function generateText(
   messages: Array<{ role: string; content: string }>,
+  traceMetadata?: TraceMetadata,
 ): Promise<string> {
+  // Create Langfuse trace (no-op if disabled)
+  const trace = createTrace({
+    name: traceMetadata?.name ?? "generateText",
+    sessionId: traceMetadata?.sessionId,
+    userId: traceMetadata?.userId,
+    metadata: traceMetadata?.metadata,
+  });
+
+  // Create generation span
+  const span = createGenerationSpan(trace, {
+    name: "bedrock-invoke",
+    modelId: BEDROCK_MODEL_ID,
+    input: { messages },
+    maxTokens: 512,
+  });
+
+  console.log(
+    "[langfuse-debug] LANGFUSE_ENABLED:",
+    process.env.LANGFUSE_ENABLED,
+    "hasPublicKey:",
+    !!process.env.LANGFUSE_PUBLIC_KEY,
+    "baseUrl:",
+    process.env.LANGFUSE_BASEURL,
+    "trace:",
+    !!trace,
+    "span:",
+    !!span,
+  );
+
+  const startTime = Date.now();
+
   const body = {
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: 512,
@@ -34,7 +74,31 @@ export async function generateText(
 
   const res = await bedrockClient.send(cmd);
   const result = JSON.parse(new TextDecoder().decode(res.body));
-  return result.content[0].text as string;
+  const output = result.content[0].text as string;
+  const latencyMs = Date.now() - startTime;
+
+  // Finalize span with usage data
+  finalizeGenerationSpan(span, {
+    output,
+    usage: result.usage
+      ? {
+          input: result.usage.input_tokens ?? 0,
+          output: result.usage.output_tokens ?? 0,
+          total:
+            (result.usage.input_tokens ?? 0) +
+            (result.usage.output_tokens ?? 0),
+        }
+      : undefined,
+    metadata: {
+      latencyMs,
+      stopReason: result.stop_reason,
+    },
+  });
+
+  // Flush traces asynchronously (don't await to avoid blocking)
+  void flushLangfuse();
+
+  return output;
 }
 
 export const $generateQuestion = createServerFn({ method: "POST" })
@@ -54,8 +118,8 @@ export const $generateQuestion = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }): Promise<GenerateQuestionOutput> => {
-    const stepName = STEP_NAMES[data.stepNumber];
-    if (!stepName) {
+    const stepName = getStepName(data.stepNumber);
+    if (!stepName || stepName === `Step ${data.stepNumber}`) {
       throw new Error(`Invalid step number: ${data.stepNumber}`);
     }
 
@@ -64,7 +128,15 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       data.stepNumber,
       data.previousAnswers,
     );
-    const question = await generateText(messages);
+    const question = await generateText(messages, {
+      name: "interview-question",
+      sessionId: data.projectId,
+      metadata: {
+        stepNumber: data.stepNumber,
+        stepName,
+        previousAnswersCount: data.previousAnswers.length,
+      },
+    });
 
     return { question };
   });
@@ -74,25 +146,38 @@ export async function generateArtifact(
   stepNumber: number,
   answers: string[],
 ): Promise<Artifact> {
-  const stepName = STEP_NAMES[stepNumber];
-  if (!stepName) {
+  const stepName = getStepName(stepNumber);
+  if (!stepName || stepName === `Step ${stepNumber}`) {
     throw new Error(`Invalid step number: ${stepNumber}`);
   }
 
-  const artifactKey = STEP_ARTIFACT_KEYS[stepNumber];
-  if (!artifactKey) {
+  const artifactKey = getStepArtifactKey(stepNumber);
+  if (!artifactKey || artifactKey === "unknown") {
     throw new Error(`No artifact key mapping for step ${stepNumber}`);
   }
 
   const messages = buildArtifactPrompt(stepName, stepNumber, answers);
-  const content = await generateText(messages);
+  const content = await generateText(messages, {
+    name: "generate-artifact",
+    sessionId: projectId,
+    metadata: {
+      stepNumber,
+      stepName,
+      artifactKey,
+      answersCount: answers.length,
+    },
+  });
+
+  // Determine format from artifact filename
+  const artifactName = getArtifactName(stepNumber);
+  const format = artifactName.endsWith(".md") ? "markdown" : "yaml";
 
   const artifact: Artifact = {
     id: nanoid(8),
     projectId,
     key: artifactKey,
     label: stepName,
-    format: "yaml",
+    format,
     content,
     status: "ready",
     generatedAt: new Date().toISOString(),
@@ -147,7 +232,15 @@ export const $refineArtifact = createServerFn({ method: "POST" })
       artifact.content,
       data.instruction,
     );
-    const refinedContent = await generateText(messages);
+    const refinedContent = await generateText(messages, {
+      name: "refine-artifact",
+      sessionId: data.projectId,
+      metadata: {
+        artifactKey: data.key,
+        artifactLabel: artifact.label,
+        instructionLength: data.instruction.length,
+      },
+    });
     const updated = { ...artifact, content: refinedContent };
     upsertArtifact(updated);
     return updated;

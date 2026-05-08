@@ -44,14 +44,14 @@ describe("buildInterviewPrompt", () => {
 });
 
 describe("buildArtifactPrompt", () => {
-  it("includes step name and number", () => {
-    const messages = buildArtifactPrompt("Project Vision", 1, [
+  it("includes step name in prompt", () => {
+    const messages = buildArtifactPrompt("Gap Analysis Worksheet", 1, [
       "Build a collaborative planning tool",
     ]);
 
     const allContent = messages.map((m) => m.content).join(" ");
-    expect(allContent).toContain("Project Vision");
-    expect(allContent).toContain("step completed: 1");
+    expect(allContent).toContain("Gap Analysis Worksheet");
+    expect(allContent).toContain("Build a collaborative planning tool");
   });
 
   it("includes all answers", () => {
@@ -162,9 +162,9 @@ target_audience: Product managers`;
     ]);
 
     expect(result.projectId).toBe("test-project");
-    expect(result.key).toBe("project-vision");
-    expect(result.label).toBe("Define Project Vision");
-    expect(result.format).toBe("yaml");
+    expect(result.key).toBe("gap-analysis");
+    expect(result.label).toBe("Gap Analysis Worksheet");
+    expect(result.format).toBe("markdown");
     expect(result.content).toBe(mockArtifactContent);
     expect(result.status).toBe("ready");
     expect(artifactStore.upsertArtifact).toHaveBeenCalledWith(result);
@@ -191,7 +191,7 @@ target_audience: Product managers`;
 
     const result = await generateArtifact("test-project", 3, ["Feature list"]);
 
-    expect(result.key).toBe("core-features");
-    expect(result.label).toBe("List Core Features");
+    expect(result.key).toBe("technical-requirements");
+    expect(result.label).toBe("Technical Requirements Interview");
   });
 });

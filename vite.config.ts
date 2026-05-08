@@ -29,13 +29,37 @@ export default defineConfig({
             req.on("end", async () => {
               try {
                 const data = JSON.parse(body);
-                const { stepNumber } = data;
+                const { stepNumber, previousAnswers = [] } = data;
 
-                // Import mock streaming handler
-                const {
-                  createMockStream,
-                } = await import("./src/features/ai/mock-streaming");
-                const stream = createMockStream(stepNumber);
+                const USE_MOCK_STREAMING =
+                  process.env.USE_MOCK_STREAMING !== "false";
+
+                let stream: ReadableStream<string>;
+                if (USE_MOCK_STREAMING) {
+                  const { createMockStream } = await import(
+                    "./src/features/ai/mock-streaming"
+                  );
+                  stream = createMockStream(stepNumber, previousAnswers);
+                } else {
+                  const { buildInterviewPrompt } = await import(
+                    "./src/features/ai/prompts"
+                  );
+                  const { getStepName } = await import(
+                    "./src/features/planning/step-config"
+                  );
+                  const { streamQuestion } = await import(
+                    "./src/features/ai/streaming"
+                  );
+                  const stepName = getStepName(stepNumber);
+                  const messages = buildInterviewPrompt(
+                    stepName,
+                    stepNumber,
+                    previousAnswers,
+                  );
+                  stream = await streamQuestion(messages, {
+                    name: "interview-stream",
+                  });
+                }
 
                 // Set streaming headers
                 res.writeHead(200, {

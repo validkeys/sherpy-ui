@@ -8,6 +8,8 @@ import { InterviewThread } from "./InterviewThread";
 vi.mock("../hooks", () => ({
   useSubmitAnswer: vi.fn(),
   useStepState: vi.fn(),
+  useCompleteStep: vi.fn(),
+  useUpdateStepOptions: vi.fn(),
   stepStateQueryKey: vi.fn(),
 }));
 
@@ -16,7 +18,7 @@ vi.mock("@/features/ai/hooks", () => ({
 }));
 
 import { useStreamingQuestion } from "@/features/ai/hooks";
-import { useSubmitAnswer } from "../hooks";
+import { useCompleteStep, useStepState, useSubmitAnswer, useUpdateStepOptions } from "../hooks";
 
 const mockMutate = vi.fn();
 
@@ -46,15 +48,46 @@ beforeEach(() => {
     mutate: mockMutate,
     isPending: false,
   } as unknown as ReturnType<typeof useSubmitAnswer>);
+  vi.mocked(useCompleteStep).mockReturnValue({
+    mutate: vi.fn(),
+  } as unknown as ReturnType<typeof useCompleteStep>);
+  vi.mocked(useUpdateStepOptions).mockReturnValue({
+    mutate: vi.fn(),
+  } as unknown as ReturnType<typeof useUpdateStepOptions>);
+  vi.mocked(useStepState).mockReturnValue({
+    data: undefined,
+  } as unknown as ReturnType<typeof useStepState>);
   vi.mocked(useStreamingQuestion).mockReturnValue({
     text: "",
     loading: false,
     error: null,
+    isComplete: false,
+    refetch: vi.fn(),
   });
   mockMutate.mockReset();
 });
 
 describe("InterviewThread", () => {
+  it("renders without initialization errors", () => {
+    const stepState = makeStepState({
+      projectId: "test-123",
+      currentStep: 1,
+      steps: [
+        {
+          stepNumber: 1,
+          name: "Step 1",
+          status: "now" as const,
+          question: "Q1",
+        },
+      ],
+    });
+
+    // Should not throw ReferenceError during render
+    expect(() => {
+      wrap(<InterviewThread stepState={stepState} projectId="test-123" />);
+    }).not.toThrow();
+  });
+
   it("renders question for current step", () => {
     wrap(<InterviewThread stepState={makeStepState()} projectId="p1" />);
     expect(screen.getByText("Question for step 1?")).toBeInTheDocument();
@@ -76,6 +109,7 @@ describe("InterviewThread", () => {
           status: "complete",
           question: "Question for step 1?",
           answer: {
+            question: "Question for step 1?",
             value: "My first answer",
             submittedAt: "2026-01-01T00:00:00Z",
           },
@@ -132,7 +166,7 @@ describe("InterviewThread", () => {
     await userEvent.click(screen.getByRole("button", { name: /submit/i }));
 
     expect(mockMutate).toHaveBeenCalledWith(
-      { stepNumber: 1, answer: "A" },
+      { stepNumber: 1, answer: "A", question: "Pick one?" },
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
   });
@@ -145,8 +179,95 @@ describe("InterviewThread", () => {
     await userEvent.keyboard("{Enter}");
 
     expect(mockMutate).toHaveBeenCalledWith(
-      { stepNumber: 1, answer: "My answer" },
+      { stepNumber: 1, answer: "My answer", question: "Question for step 1?" },
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
+  });
+
+  it("shows loading state when streaming question", () => {
+    vi.mocked(useStreamingQuestion).mockReturnValue({
+      text: "",
+      loading: true,
+      error: null,
+      isComplete: false,
+      refetch: vi.fn(),
+    });
+
+    wrap(<InterviewThread stepState={makeStepState()} projectId="p1" />);
+
+    expect(screen.getByText("Computing next question...")).toBeInTheDocument();
+  });
+
+  it("shows streamed question text when available", () => {
+    vi.mocked(useStreamingQuestion).mockReturnValue({
+      text: "What is your project about?",
+      loading: false,
+      error: null,
+      isComplete: false,
+      refetch: vi.fn(),
+    });
+
+    wrap(<InterviewThread stepState={makeStepState()} projectId="p1" />);
+
+    expect(screen.getByText("What is your project about?")).toBeInTheDocument();
+  });
+
+  it("triggers refetch when step changes (BUG-005)", () => {
+    const mockRefetch = vi.fn();
+    vi.mocked(useStreamingQuestion).mockReturnValue({
+      text: "Question for step 1?",
+      loading: false,
+      error: null,
+      isComplete: false,
+      refetch: mockRefetch,
+    });
+
+    // Initial render on step 1
+    const stepState = makeStepState({ currentStep: 1 });
+    const { rerender } = wrap(
+      <InterviewThread stepState={stepState} projectId="p1" />
+    );
+
+    // Track the initial refetchTrigger value
+    const initialCalls = vi.mocked(useStreamingQuestion).mock.calls.length;
+    const initialTrigger = vi.mocked(useStreamingQuestion).mock.calls[initialCalls - 1]?.[0]?.refetchTrigger ?? 0;
+
+    // Update to step 2
+    const updatedStepState = makeStepState({
+      currentStep: 2,
+      steps: [
+        {
+          stepNumber: 1,
+          name: "Step 1",
+          status: "complete",
+          question: "Question for step 1?",
+          answer: { question: "Question for step 1?", value: "Answer 1", submittedAt: "2026-01-01T00:00:00Z" },
+        },
+        {
+          stepNumber: 2,
+          name: "Step 2",
+          status: "now",
+          question: "Question for step 2?",
+        },
+        ...Array.from({ length: 8 }, (_, i) => ({
+          stepNumber: i + 3,
+          name: `Step ${i + 3}`,
+          status: "pending" as const,
+          question: `Question for step ${i + 3}?`,
+        })),
+      ],
+    });
+
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <InterviewThread stepState={updatedStepState} projectId="p1" />
+      </QueryClientProvider>
+    );
+
+    // Verify useStreamingQuestion was called with incremented refetchTrigger
+    const finalCalls = vi.mocked(useStreamingQuestion).mock.calls.length;
+    const finalTrigger = vi.mocked(useStreamingQuestion).mock.calls[finalCalls - 1]?.[0]?.refetchTrigger ?? 0;
+
+    expect(finalTrigger).toBeGreaterThan(initialTrigger);
   });
 });

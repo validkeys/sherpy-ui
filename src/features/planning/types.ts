@@ -1,6 +1,7 @@
 export type StepStatus = "complete" | "now" | "pending";
 
 export interface StepAnswer {
+  question: string; // The question that was answered
   value: string;
   submittedAt: string;
 }
@@ -18,8 +19,10 @@ export interface PlanningStep {
   status: StepStatus;
   question: string; // mock question text — replaced by AI in M4
   options?: StepOption[];
-  answer?: StepAnswer;
+  answer?: StepAnswer; // legacy: single answer (kept for backward compatibility)
+  answers?: StepAnswer[]; // multi-turn Q&A support
   artifactKey?: string; // set after AI generates artifact in M4
+  artifact?: string; // Generated YAML/content for this step
 }
 
 export interface ProjectStepState {

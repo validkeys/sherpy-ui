@@ -1,13 +1,26 @@
-import { STEP_NAMES } from "./prompts";
+import { getStepName } from "../planning/step-config";
 
 /**
  * Creates a mock streaming response that simulates token-by-token AI generation
  * Used for demonstration when real Bedrock streaming isn't available
  */
-export function createMockStream(stepNumber: number): ReadableStream<string> {
-  const stepName = STEP_NAMES[stepNumber];
-  if (!stepName) {
+export function createMockStream(
+  stepNumber: number,
+  previousAnswers: string[],
+): ReadableStream<string> {
+  const stepName = getStepName(stepNumber);
+  if (!stepName || stepName === `Step ${stepNumber}`) {
     throw new Error(`Invalid step number: ${stepNumber}`);
+  }
+
+  // Simulate step completion after 2 answers for each step
+  if (previousAnswers.length >= 2) {
+    return new ReadableStream<string>({
+      async start(controller) {
+        controller.enqueue("[STEP_COMPLETE]");
+        controller.close();
+      },
+    });
   }
 
   // Get the mock question text
@@ -24,7 +37,24 @@ export function createMockStream(stepNumber: number): ReadableStream<string> {
     10: "We're ready to generate the final summaries. Should we produce a developer-focused technical summary, an executive overview, or both?",
   };
 
-  const questionText = mockQuestions[stepNumber] || stepName;
+  // Use different follow-up questions for second answer
+  const followUpQuestions: Record<number, string> = {
+    1: "Could you share more details about the existing documentation or your starting point?",
+    2: "Who are the primary stakeholders affected by this problem?",
+    3: "Are there any regulatory or compliance requirements we need to consider?",
+    4: "What dependencies exist between these milestones?",
+    5: "Are there any team capacity constraints or risks we should account for?",
+    6: "How will we measure and validate these success criteria?",
+    7: "What are the long-term maintenance implications of these decisions?",
+    8: "Are there any hard deadlines or external dependencies that constrain the timeline?",
+    9: "What's your current test coverage and infrastructure setup?",
+    10: "Who is the primary audience for each summary?",
+  };
+
+  const questionText =
+    previousAnswers.length === 0
+      ? mockQuestions[stepNumber] || stepName
+      : followUpQuestions[stepNumber] || `Tell me more about ${stepName}.`;
 
   return new ReadableStream<string>({
     async start(controller) {
@@ -57,14 +87,14 @@ export async function handleMockStreamingRequest(body: {
   stepNumber: number;
   previousAnswers: string[];
 }): Promise<Response> {
-  const { stepNumber } = body;
+  const { stepNumber, previousAnswers } = body;
 
   // Validate step number
   if (typeof stepNumber !== "number" || stepNumber < 1 || stepNumber > 10) {
     return new Response("Invalid step number", { status: 400 });
   }
 
-  const stream = createMockStream(stepNumber);
+  const stream = createMockStream(stepNumber, previousAnswers);
 
   return new Response(stream, {
     headers: {

@@ -7,11 +7,12 @@ import { ProjectIntake } from "./ProjectIntake";
 
 vi.mock("../hooks", () => ({
   useSubmitAnswer: vi.fn(),
+  useSubmitAnswerAndComplete: vi.fn(),
   useStepState: vi.fn(),
   stepStateQueryKey: vi.fn(),
 }));
 
-import { useSubmitAnswer } from "../hooks";
+import { useSubmitAnswer, useSubmitAnswerAndComplete } from "../hooks";
 
 const mockMutate = vi.fn();
 
@@ -41,6 +42,10 @@ beforeEach(() => {
     mutate: mockMutate,
     isPending: false,
   } as unknown as ReturnType<typeof useSubmitAnswer>);
+  vi.mocked(useSubmitAnswerAndComplete).mockReturnValue({
+    mutate: mockMutate,
+    isPending: false,
+  } as unknown as ReturnType<typeof useSubmitAnswerAndComplete>);
   mockMutate.mockReset();
 });
 
@@ -64,7 +69,7 @@ describe("ProjectIntake", () => {
           name: "Step 1",
           status: "complete",
           question: "Question for step 1?",
-          answer: { value: "scratch", submittedAt: "2026-01-01T00:00:00Z" },
+          answer: { question: "Question for step 1?", value: "scratch", submittedAt: "2026-01-01T00:00:00Z" },
         },
         ...Array.from({ length: 9 }, (_, i) => ({
           stepNumber: i + 2,
@@ -94,7 +99,8 @@ describe("ProjectIntake", () => {
     await userEvent.click(screen.getByText("Start from scratch"));
     expect(mockMutate).toHaveBeenCalledWith({
       stepNumber: 1,
-      answer: "scratch",
+      question: "Question for step 1?",
+      answer: "Starting from scratch",
     });
   });
 });

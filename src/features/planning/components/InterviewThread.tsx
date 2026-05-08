@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ArtifactCard } from "@/components/thread/ArtifactCard";
 import { Composer } from "@/components/thread/Composer";
 import { OptionCard } from "@/components/thread/OptionCard";
 import { OptionStack } from "@/components/thread/OptionStack";
@@ -6,7 +7,12 @@ import { QuestionCard } from "@/components/thread/QuestionCard";
 import { ThreadDivider } from "@/components/thread/ThreadDivider";
 import { ThreadView } from "@/components/thread/ThreadView";
 import { useStreamingQuestion } from "@/features/ai/hooks";
-import { useSubmitAnswer } from "@/features/planning/hooks";
+import {
+  useCompleteStep,
+  useStepState,
+  useSubmitAnswer,
+  useUpdateStepOptions,
+} from "@/features/planning/hooks";
 import type { ProjectStepState } from "@/features/planning/types";
 import { AnsweredMessage } from "./AnsweredMessage";
 
@@ -16,9 +22,13 @@ interface InterviewThreadProps {
 }
 
 export function InterviewThread({
-  stepState,
+  stepState: _stepState,
   projectId,
 }: InterviewThreadProps) {
+  // Use the query directly to get fresh data after mutations
+  // This ensures we always have the latest state after answer submission
+  const { data: freshStepState } = useStepState(projectId);
+  const stepState = freshStepState ?? _stepState;
   const [inputText, setInputText] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [optimisticAnswer, setOptimisticAnswer] = useState<{
@@ -27,34 +37,84 @@ export function InterviewThread({
     answer: string;
     stepName: string;
   } | null>(null);
-  const { mutate: submitAnswer, isPending } = useSubmitAnswer(projectId);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
-  // Get previous answers for current step (currently only single answer per step)
+  // Get previous answers for current step (supports multi-turn Q&A)
   const currentStepData = stepState.steps.find(
     (s) => s.stepNumber === stepState.currentStep,
   );
-  const completedAnswers = currentStepData?.answer
-    ? [currentStepData.answer.value]
-    : [];
+
+  // Stabilize array reference to prevent unnecessary re-renders
+  const completedAnswers = useMemo(
+    () => currentStepData?.answers?.map((a) => a.value) ?? [],
+    [currentStepData?.answers],
+  );
 
   // Streaming AI question - enabled for M4-007 end-to-end wiring
+  // Using refetchTrigger to force refetch after answer submission
   const {
     text: streamedQuestion,
     loading: isStreaming,
     error: streamError,
+    isComplete,
+    refetch: refetchQuestion,
   } = useStreamingQuestion({
     projectId,
     stepNumber: stepState.currentStep,
     previousAnswers: completedAnswers,
     enabled: true,
+    refetchTrigger,
+    onOptionsReady: (options) => {
+      // Update step with parsed options when streaming completes
+      console.log("[InterviewThread] Options parsed from question:", options);
+      console.log("[InterviewThread] Updating step", stepState.currentStep, "with options");
+      updateOptions({
+        stepNumber: stepState.currentStep,
+        options,
+      });
+    },
   });
 
+  const { mutate: submitAnswer, isPending } = useSubmitAnswer(projectId);
+  const { mutate: completeStep } = useCompleteStep(projectId);
+  const { mutate: updateOptions } = useUpdateStepOptions(projectId);
+
+  // Debug logging
+  console.log("[InterviewThread] Render:", {
+    currentStep: stepState.currentStep,
+    answersCount: completedAnswers.length,
+  });
+
+  // Auto-advance when AI signals step completion
+  useEffect(() => {
+    if (isComplete && !isStreaming) {
+      console.log("[InterviewThread] Step completion detected, calling completeStep", {
+        stepNumber: stepState.currentStep,
+        stepName: currentStepData?.name,
+      });
+      completeStep({ stepNumber: stepState.currentStep });
+    }
+  }, [isComplete, isStreaming, stepState.currentStep, completeStep, currentStepData?.name]);
+
+  // Refetch question when step changes (BUG-005 fix)
+  useEffect(() => {
+    console.log("[InterviewThread] Step changed, triggering refetch");
+    setRefetchTrigger(prev => prev + 1);
+  }, [stepState.currentStep]);
+
   const completedSteps = stepState.steps.filter((s) => s.status === "complete");
-  const currentStep = stepState.steps.find(
-    (s) => s.stepNumber === stepState.currentStep,
-  );
+  const currentStep = currentStepData;
   const selectedOptionTitle =
     currentStep?.options?.find((o) => o.letter === selectedOption)?.title ?? "";
+
+  // Calculate question counter: sum of all answers from all steps + 1 for current question
+  const totalAnswersFromCompletedSteps = completedSteps.reduce(
+    (sum, step) => sum + (step.answers?.length ?? (step.answer ? 1 : 0)),
+    0
+  );
+  const answersInCurrentStep = completedAnswers.length;
+  const currentQuestionNumber = totalAnswersFromCompletedSteps + answersInCurrentStep + 1;
+  const totalQuestions = 33; // 1 (Step 1) + 16 (Step 2) + 16 (Step 3)
 
   function handleSubmit() {
     const answer = selectedOption ?? inputText.trim();
@@ -80,11 +140,18 @@ export function InterviewThread({
     setSelectedOption(null);
 
     submitAnswer(
-      { stepNumber: currentStep.stepNumber, answer },
+      {
+        stepNumber: currentStep.stepNumber,
+        question: currentQuestionText,
+        answer,
+      },
       {
         onSuccess: () => {
           // Clear optimistic answer once server confirms
           setOptimisticAnswer(null);
+          // Increment trigger to force refetch of next question
+          console.log("[InterviewThread] Incrementing refetch trigger");
+          setRefetchTrigger(prev => prev + 1);
         },
         onError: () => {
           // If submission fails, clear optimistic answer
@@ -97,65 +164,98 @@ export function InterviewThread({
   // Build messages including optimistic answer
   const allMessages = [];
 
-  // Add completed steps
+  // Add completed steps (show all Q&As from each step)
   for (const step of completedSteps) {
     allMessages.push(
       <div key={step.stepNumber} className="flex flex-col gap-2">
         <ThreadDivider label={step.name} tone="success" />
-        {step.answer && (
+        {/* Show all Q&As from this step */}
+        {step.answers && step.answers.length > 0 ? (
+          step.answers.map((ans, idx) => (
+            <AnsweredMessage
+              key={`${step.stepNumber}-${idx}`}
+              stepName={step.name}
+              question={ans.question}
+              answer={ans.value}
+            />
+          ))
+        ) : step.answer ? (
           <AnsweredMessage
             stepName={step.name}
-            question={step.question}
+            question={step.answer.question}
             answer={step.answer.value}
           />
+        ) : null}
+        {/* Show artifact if available */}
+        {step.artifact && (
+          <ArtifactCard stepName={step.name} content={step.artifact} />
         )}
       </div>
     );
   }
 
+  // Add previous Q&As from current step (before the active question)
+  if (currentStepData?.answers && currentStepData.answers.length > 0) {
+    currentStepData.answers.forEach((ans, idx) => {
+      allMessages.push(
+        <AnsweredMessage
+          key={`current-${currentStepData.stepNumber}-${idx}`}
+          stepName={currentStepData.name}
+          question={ans.question}
+          answer={ans.value}
+        />
+      );
+    });
+  }
+
   // Add optimistic answer if pending
   if (optimisticAnswer && isPending) {
     allMessages.push(
-      <div key={`optimistic-${optimisticAnswer.stepNumber}`} className="flex flex-col gap-2">
-        <ThreadDivider label={optimisticAnswer.stepName} tone="success" />
-        <AnsweredMessage
-          stepName={optimisticAnswer.stepName}
-          question={optimisticAnswer.question}
-          answer={optimisticAnswer.answer}
-        />
-      </div>
+      <AnsweredMessage
+        key={`optimistic-${optimisticAnswer.stepNumber}`}
+        stepName={optimisticAnswer.stepName}
+        question={optimisticAnswer.question}
+        answer={optimisticAnswer.answer}
+      />
     );
   }
 
   const messages = allMessages.length > 0 ? allMessages : undefined;
 
   // Determine question text priority:
-  // 1. If pending submission (before step updates), show loading immediately
-  // 2. If we have streamed text (even partial), show it
-  // 3. If streaming failed, fall back to mock question
-  // 4. If streaming in progress but no text yet, show loading
+  // 1. If step is complete, show completion message
+  // 2. If pending submission OR streaming, show loading
+  // 3. If we have streamed text (even partial), show it
+  // 4. If streaming failed, fall back to mock question
   // 5. Fall back to mock question
-  const questionText = isPending
-    ? "Computing next question..."
-    : streamedQuestion
-      ? streamedQuestion
-      : streamError
-        ? currentStep?.question || "Loading question..."
-        : isStreaming
-          ? "Computing..."
+  const questionText = isComplete
+    ? "Step complete! Moving to next step..."
+    : isPending || isStreaming
+      ? "Computing next question..."
+      : streamedQuestion
+        ? streamedQuestion
+        : streamError
+          ? currentStep?.question || "Loading question..."
           : currentStep?.question || "Loading question...";
 
-  // Disable form while submitting OR while streaming the next question
-  const isLoadingQuestion = isPending || isStreaming;
+  // Disable form while submitting OR while streaming the next question OR when step is complete
+  const isLoadingQuestion = isPending || isStreaming || isComplete;
 
   const question = currentStep ? (
     <QuestionCard
-      n={currentStep.stepNumber}
-      total={10}
+      n={currentQuestionNumber}
+      total={totalQuestions}
       text={questionText}
       dimmed={isPending && !streamedQuestion}
     />
   ) : undefined;
+
+  // Debug logging for options
+  console.log("[InterviewThread] Render options:", {
+    hasOptions: !!currentStep?.options,
+    optionsLength: currentStep?.options?.length ?? 0,
+    options: currentStep?.options,
+  });
 
   const options = currentStep?.options?.length ? (
     <OptionStack>

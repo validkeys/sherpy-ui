@@ -119,28 +119,28 @@ describe("$submitAnswer validator", () => {
 });
 
 describe("$submitAnswer (store delegate)", () => {
-  it("advances step and returns updated state", () => {
+  it("adds answer without advancing step", () => {
     initProjectSteps("p1", "scratch");
-    const updated = submitAnswer("p1", 1, "my answer");
-    expect(updated.steps[0].status).toBe("complete");
-    expect(updated.currentStep).toBe(2);
+    const updated = submitAnswer("p1", 1, "Question 1", "my answer");
+    expect(updated.steps[0].answer?.value).toBe("my answer");
+    expect(updated.currentStep).toBe(1); // Does not advance
   });
 
   it("throws on unknown projectId", () => {
-    expect(() => submitAnswer("no-such", 1, "x")).toThrow(
+    expect(() => submitAnswer("no-such", 1, "Q", "x")).toThrow(
       "No step state for project: no-such",
     );
   });
 
-  it("ignores out-of-order submit — does not regress currentStep", () => {
+  it("allows multiple answers to same step (multi-turn Q&A)", () => {
     initProjectSteps("p1", "scratch");
-    submitAnswer("p1", 1, "step 1 answer");
-    // currentStep is now 2
-    const before = getStepState("p1");
-    expect(before.currentStep).toBe(2);
+    const first = submitAnswer("p1", 1, "Question 1", "step 1 answer");
+    expect(first.steps[0].answers?.length).toBe(1);
+    expect(first.currentStep).toBe(1);
 
-    // submit stale step 1 again
-    const after = submitAnswer("p1", 1, "stale re-submit");
-    expect(after.currentStep).toBe(2); // must not regress
+    // submit second answer to step 1
+    const second = submitAnswer("p1", 1, "Question 2", "second answer");
+    expect(second.steps[0].answers?.length).toBe(2);
+    expect(second.currentStep).toBe(1); // Still on step 1
   });
 });
