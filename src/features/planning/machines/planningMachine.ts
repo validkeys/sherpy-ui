@@ -262,9 +262,97 @@ export const planningMachine = setup({
 
     // ─── STEP 3: Technical Requirements (Interview) ────────
     step3_techReqs: {
-      initial: 'placeholder',
+      initial: 'asking',
       states: {
-        placeholder: {},
+        asking: {
+          invoke: {
+            id: 'fetchQ3',
+            src: 'fetchQuestion',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 3,
+              previousAnswers: context.step3Answers.map((a) => a.value),
+              projectContext: buildProjectContext(context),
+            }),
+            onDone: {
+              target: 'answering',
+              actions: assign({
+                step3CurrentQuestion: ({ event }) => event.output.question,
+                step3CurrentOptions: ({ event }) => event.output.options ?? null,
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'asking',
+              actions: assign({
+                error: ({ event }) => `Failed to fetch question: ${event.error}`,
+              }),
+            },
+          },
+        },
+        answering: {
+          on: {
+            SUBMIT_ANSWER: {
+              guard: ({ event }) => event.type === 'SUBMIT_ANSWER' && event.stepNumber === 3,
+              target: 'checkingComplete',
+              actions: assign({
+                step3Answers: ({ context, event }) => [
+                  ...context.step3Answers,
+                  {
+                    question: event.question,
+                    value: event.answer,
+                    timestamp: new Date().toISOString(),
+                  },
+                ],
+                step3CurrentQuestion: null,
+                step3CurrentOptions: null,
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+          },
+        },
+        checkingComplete: {
+          always: [
+            {
+              guard: ({ context }) => context.step3Answers.length < 10,
+              target: 'asking',
+            },
+            {
+              target: 'generatingArtifact',
+            },
+          ],
+        },
+        generatingArtifact: {
+          invoke: {
+            src: 'generateArtifact',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 3,
+              accumulatedContext: {
+                responses: context.step1Responses,
+                step2Answers: context.step2Answers,
+                step3Answers: context.step3Answers,
+                projectOverview: buildProjectContext(context),
+              },
+            }),
+            onDone: {
+              target: '#planning.step4_styleAnchors',
+              actions: assign({
+                artifacts: ({ context, event }) => ({
+                  ...context.artifacts,
+                  3: event.output,
+                }),
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'asking',
+              actions: assign({
+                error: ({ event }) => `Step 3 artifact failed: ${event.error}`,
+              }),
+            },
+          },
+        },
       },
     },
 

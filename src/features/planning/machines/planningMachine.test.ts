@@ -440,3 +440,344 @@ describe('Step 2: Business Requirements Interview', () => {
     expect(snapshot.context.artifacts[2]).toBeDefined();
   });
 });
+
+// ─────────────────────────────────────────────────────────────
+// STEP 3: Technical Requirements Interview Tests
+// ─────────────────────────────────────────────────────────────
+
+describe('Step 3: Technical Requirements Interview', () => {
+  it('should transition from step2 to step3 in asking state', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 1,
+      responses: { overview: 'Test' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Submit 10 answers for step2
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 2,
+        question: `Question ${i}`,
+        answer: `Answer ${i}`,
+      });
+    }
+
+    // Wait for step2 artifact generation
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.matches('step3_techReqs')).toBe(true);
+  });
+
+  it('should invoke fetchQuestion actor in asking state', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 1,
+      responses: { overview: 'Test' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Complete step2
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 2,
+        question: `Q${i}`,
+        answer: `A${i}`,
+      });
+    }
+
+    // Wait for step3 entry + fetchQuestion
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    const snapshot = actor.getSnapshot();
+    // Should either be in answering (if fetchQuestion completed) or still asking
+    expect(
+      snapshot.matches({ step3_techReqs: 'answering' }) ||
+        snapshot.matches({ step3_techReqs: 'asking' })
+    ).toBe(true);
+  });
+
+  it('should store question and options in context after fetchQuestion resolves', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 1,
+      responses: { overview: 'Test' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Complete step2
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 2,
+        question: `Q${i}`,
+        answer: `A${i}`,
+      });
+    }
+
+    // Wait for step3 fetchQuestion to complete
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    const snapshot = actor.getSnapshot();
+    if (snapshot.matches({ step3_techReqs: 'answering' })) {
+      expect(snapshot.context.step3CurrentQuestion).toBeTruthy();
+      expect(snapshot.context.step3CurrentOptions).toBeTruthy();
+    }
+  });
+
+  it('should append answer to context on SUBMIT_ANSWER', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 1,
+      responses: { overview: 'Test' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Complete step2
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 2,
+        question: `Q${i}`,
+        answer: `A${i}`,
+      });
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    // Submit an answer for step3
+    actor.send({
+      type: 'SUBMIT_ANSWER',
+      stepNumber: 3,
+      question: 'What is the architecture?',
+      answer: 'Microservices',
+    });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.context.step3Answers).toHaveLength(1);
+    expect(snapshot.context.step3Answers[0]).toEqual({
+      question: 'What is the architecture?',
+      value: 'Microservices',
+      timestamp: expect.any(String),
+    });
+  });
+
+  it('should clear current question and options after SUBMIT_ANSWER', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 1,
+      responses: { overview: 'Test' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Complete step2
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 2,
+        question: `Q${i}`,
+        answer: `A${i}`,
+      });
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    actor.send({
+      type: 'SUBMIT_ANSWER',
+      stepNumber: 3,
+      question: 'Test question',
+      answer: 'Test answer',
+    });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.context.step3CurrentQuestion).toBeNull();
+    expect(snapshot.context.step3CurrentOptions).toBeNull();
+  });
+
+  it('should return to asking state if answers < 10', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 1,
+      responses: { overview: 'Test' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Complete step2
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 2,
+        question: `Q${i}`,
+        answer: `A${i}`,
+      });
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    // Submit 1 answer for step3 (less than 10)
+    actor.send({
+      type: 'SUBMIT_ANSWER',
+      stepNumber: 3,
+      question: 'Q1',
+      answer: 'A1',
+    });
+
+    // Wait for state transition (checkingComplete -> asking -> fetchQuestion)
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const snapshot = actor.getSnapshot();
+    // Should go back to asking for more questions (or answering if fetch completed)
+    expect(
+      snapshot.matches({ step3_techReqs: 'asking' }) ||
+        snapshot.matches({ step3_techReqs: 'answering' })
+    ).toBe(true);
+  });
+
+  it('should transition to generatingArtifact when answers >= 10', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 1,
+      responses: { overview: 'Test' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Complete step2
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 2,
+        question: `Q${i}`,
+        answer: `A${i}`,
+      });
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    // Submit 10 answers for step3
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 3,
+        question: `Question ${i}`,
+        answer: `Answer ${i}`,
+      });
+    }
+
+    // Wait for state transitions
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const snapshot = actor.getSnapshot();
+    // Should be generating artifact or moved to step4
+    expect(
+      snapshot.matches({ step3_techReqs: 'generatingArtifact' }) ||
+        snapshot.matches('step4_styleAnchors')
+    ).toBe(true);
+  });
+
+  it('should transition to step4 after successful artifact generation', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 1,
+      responses: { overview: 'Test' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Complete step2
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 2,
+        question: `Q${i}`,
+        answer: `A${i}`,
+      });
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    // Complete step3
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 3,
+        question: `Question ${i}`,
+        answer: `Answer ${i}`,
+      });
+    }
+
+    // Wait for artifact generation
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.matches('step4_styleAnchors')).toBe(true);
+    expect(snapshot.context.artifacts[3]).toBeDefined();
+  });
+});
