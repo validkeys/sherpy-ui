@@ -120,17 +120,143 @@ export const planningMachine = setup({
 
     // ─── STEP 1: Gap Analysis (Form) ───────────────────────
     step1_gapAnalysis: {
-      initial: 'placeholder',
+      initial: 'collecting',
       states: {
-        placeholder: {},
+        collecting: {
+          on: {
+            SUBMIT_FORM: {
+              guard: ({ event }) => event.type === 'SUBMIT_FORM' && event.stepNumber === 1,
+              target: 'submitting',
+              actions: assign({
+                step1Responses: ({ event }) => event.responses,
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+          },
+        },
+        submitting: {
+          invoke: {
+            src: 'generateArtifact',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 1,
+              accumulatedContext: {
+                responses: context.step1Responses,
+              },
+            }),
+            onDone: {
+              target: '#planning.step2_businessReqs',
+              actions: assign({
+                artifacts: ({ context, event }) => ({
+                  ...context.artifacts,
+                  1: event.output,
+                }),
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'collecting',
+              actions: assign({
+                error: ({ event }) => `Step 1 artifact generation failed: ${event.error}`,
+              }),
+            },
+          },
+        },
       },
     },
 
     // ─── STEP 2: Business Requirements (Interview) ─────────
     step2_businessReqs: {
-      initial: 'placeholder',
+      initial: 'asking',
       states: {
-        placeholder: {},
+        asking: {
+          invoke: {
+            id: 'fetchQ2',
+            src: 'fetchQuestion',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 2,
+              previousAnswers: context.step2Answers.map((a) => a.value),
+              projectContext: buildProjectContext(context),
+            }),
+            onDone: {
+              target: 'answering',
+              actions: assign({
+                step2CurrentQuestion: ({ event }) => event.output.question,
+                step2CurrentOptions: ({ event }) => event.output.options ?? null,
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'asking',
+              actions: assign({
+                error: ({ event }) => `Failed to fetch question: ${event.error}`,
+              }),
+            },
+          },
+        },
+        answering: {
+          on: {
+            SUBMIT_ANSWER: {
+              guard: ({ event }) => event.type === 'SUBMIT_ANSWER' && event.stepNumber === 2,
+              target: 'checkingComplete',
+              actions: assign({
+                step2Answers: ({ context, event }) => [
+                  ...context.step2Answers,
+                  {
+                    question: event.question,
+                    value: event.answer,
+                    timestamp: new Date().toISOString(),
+                  },
+                ],
+                step2CurrentQuestion: null,
+                step2CurrentOptions: null,
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+          },
+        },
+        checkingComplete: {
+          always: [
+            {
+              guard: ({ context }) => context.step2Answers.length < 10,
+              target: 'asking',
+            },
+            {
+              target: 'generatingArtifact',
+            },
+          ],
+        },
+        generatingArtifact: {
+          invoke: {
+            src: 'generateArtifact',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 2,
+              accumulatedContext: {
+                responses: context.step1Responses,
+                answers: context.step2Answers,
+                projectOverview: buildProjectContext(context),
+              },
+            }),
+            onDone: {
+              target: '#planning.step3_techReqs',
+              actions: assign({
+                artifacts: ({ context, event }) => ({
+                  ...context.artifacts,
+                  2: event.output,
+                }),
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'asking',
+              actions: assign({
+                error: ({ event }) => `Step 2 artifact failed: ${event.error}`,
+              }),
+            },
+          },
+        },
       },
     },
 
