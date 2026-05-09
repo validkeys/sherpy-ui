@@ -13,6 +13,23 @@ vi.mock("@/lib/bedrock", () => ({
   BEDROCK_MODEL_ID: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 }));
 
+// Mock feature flags
+vi.mock("./feature-flags", () => ({
+  isStructuredOutputEnabled: vi.fn(() => false), // Default: disabled
+}));
+
+// Mock step config
+vi.mock("../planning/step-config", async () => {
+  const actual = await vi.importActual("../planning/step-config");
+  return {
+    ...actual,
+    getStepResponseSchema: vi.fn(() => ({
+      type: "object",
+      properties: { question: { type: "string" } },
+    })),
+  };
+});
+
 // Mock nanoid
 vi.mock("nanoid", () => ({
   nanoid: vi.fn(() => "mock-id-123"),
@@ -23,15 +40,14 @@ vi.spyOn(artifactStore, "upsertArtifact");
 
 describe("buildInterviewPrompt", () => {
   it("includes step name in output", () => {
-    const messages = buildInterviewPrompt("Define Project Vision", 1, []);
+    const messages = buildInterviewPrompt("Gap Analysis Worksheet", 1, []);
 
     const allContent = messages.map((m) => m.content).join(" ");
-    expect(allContent).toContain("Define Project Vision");
-    expect(allContent).toContain("step: 1");
+    expect(allContent).toContain("Gap Analysis Worksheet");
   });
 
   it("includes previous answers", () => {
-    const messages = buildInterviewPrompt("Define Project Vision", 1, [
+    const messages = buildInterviewPrompt("Gap Analysis Worksheet", 1, [
       "Answer one",
       "Answer two",
     ]);
@@ -40,6 +56,19 @@ describe("buildInterviewPrompt", () => {
     expect(allContent).toContain("Previous answers");
     expect(allContent).toContain("Answer one");
     expect(allContent).toContain("Answer two");
+  });
+
+  it("includes project overview for step 2+", () => {
+    const messages = buildInterviewPrompt(
+      "Business Requirements Interview",
+      2,
+      [],
+      "Build a mobile app for task management"
+    );
+
+    const allContent = messages.map((m) => m.content).join(" ");
+    expect(allContent).toContain("Project Overview");
+    expect(allContent).toContain("Build a mobile app for task management");
   });
 });
 
@@ -94,7 +123,7 @@ describe("generateText", () => {
     );
 
     const messages = [{ role: "user", content: "Test prompt" }];
-    const result = await generateText(messages);
+    const result = await generateText(messages, 1);
 
     expect(result).toBe("What is your project vision?");
     expect(bedrockModule.bedrockClient.send).toHaveBeenCalledWith(
@@ -119,7 +148,7 @@ describe("generateText", () => {
       { role: "user", content: "Test" },
       { role: "assistant", content: "Got it" },
     ];
-    await generateText(messages);
+    await generateText(messages, 1);
 
     const call = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
     const command = call[0] as InvokeModelCommand;
@@ -193,5 +222,106 @@ target_audience: Product managers`;
 
     expect(result.key).toBe("technical-requirements");
     expect(result.label).toBe("Technical Requirements Interview");
+  });
+
+  describe("Structured Output Support", () => {
+    it("includes response_format when feature flag is enabled", async () => {
+      const { isStructuredOutputEnabled } = await import("./feature-flags");
+      const { getStepResponseSchema } = await import("../planning/step-config");
+
+      // Enable structured output for step 1
+      vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
+      vi.mocked(getStepResponseSchema).mockReturnValue({
+        type: "object",
+        properties: {
+          question: { type: "string" },
+          options: { type: "array" },
+        },
+      });
+
+      const mockResponse = {
+        body: new TextEncoder().encode(
+          JSON.stringify({
+            content: [{ text: '{"question":"Test"}' }],
+          }),
+        ),
+      };
+
+      vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
+        mockResponse as never,
+      );
+
+      const messages = [{ role: "user", content: "Test" }];
+      await generateText(messages, 1); // stepNumber = 1
+
+      // Verify response_format was added to body
+      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
+      const command = callArgs[0] as InvokeModelCommand;
+      const body = JSON.parse(command.input.body as string);
+
+      expect(body.response_format).toBeDefined();
+      expect(body.response_format.type).toBe("json_schema");
+      expect(body.response_format.json_schema).toBeDefined();
+    });
+
+    it("omits response_format when feature flag is disabled", async () => {
+      const { isStructuredOutputEnabled } = await import("./feature-flags");
+
+      // Disable structured output
+      vi.mocked(isStructuredOutputEnabled).mockReturnValue(false);
+
+      const mockResponse = {
+        body: new TextEncoder().encode(
+          JSON.stringify({
+            content: [{ text: "Text mode response" }],
+          }),
+        ),
+      };
+
+      vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
+        mockResponse as never,
+      );
+
+      const messages = [{ role: "user", content: "Test" }];
+      await generateText(messages, 1);
+
+      // Verify response_format was NOT added
+      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
+      const command = callArgs[0] as InvokeModelCommand;
+      const body = JSON.parse(command.input.body as string);
+
+      expect(body.response_format).toBeUndefined();
+    });
+
+    it("omits response_format when schema is not available", async () => {
+      const { isStructuredOutputEnabled } = await import("./feature-flags");
+      const { getStepResponseSchema } = await import("../planning/step-config");
+
+      // Enable flag but no schema available
+      vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
+      vi.mocked(getStepResponseSchema).mockReturnValue(undefined);
+
+      const mockResponse = {
+        body: new TextEncoder().encode(
+          JSON.stringify({
+            content: [{ text: "Fallback" }],
+          }),
+        ),
+      };
+
+      vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
+        mockResponse as never,
+      );
+
+      const messages = [{ role: "user", content: "Test" }];
+      await generateText(messages, 4); // Step 4 has no schema
+
+      // Verify response_format was NOT added (schema unavailable)
+      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
+      const command = callArgs[0] as InvokeModelCommand;
+      const body = JSON.parse(command.input.body as string);
+
+      expect(body.response_format).toBeUndefined();
+    });
   });
 });

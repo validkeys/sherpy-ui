@@ -11,13 +11,15 @@ import {
 } from "@/lib/langfuse-helpers";
 import { getArtifact, upsertArtifact } from "../artifacts/store";
 import type { Artifact } from "../artifacts/types";
-import { getStepArtifactKey, getStepName } from "../planning/step-config";
+import { getStepArtifactKey, getStepName, getStepResponseSchema } from "../planning/step-config";
+import { getStepState } from "../planning/store";
 import {
   buildArtifactPrompt,
   buildInterviewPrompt,
   buildRefinementPrompt,
 } from "./prompts";
 import { getArtifactName } from "./skills-content";
+import { isStructuredOutputEnabled } from "./feature-flags";
 
 interface GenerateQuestionOutput {
   question: string;
@@ -27,6 +29,7 @@ interface GenerateQuestionOutput {
 // Instrumented with Langfuse for observability (tokens, latency, cost)
 export async function generateText(
   messages: Array<{ role: string; content: string }>,
+  stepNumber: number,
   traceMetadata?: TraceMetadata,
 ): Promise<string> {
   // Create Langfuse trace (no-op if disabled)
@@ -60,11 +63,23 @@ export async function generateText(
 
   const startTime = Date.now();
 
-  const body = {
+  // Build request body
+  const body: any = {
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: 512,
     messages,
   };
+
+  // Add JSON Schema constraint if enabled for this step
+  if (isStructuredOutputEnabled(stepNumber)) {
+    const schema = getStepResponseSchema(stepNumber);
+    if (schema) {
+      body.response_format = {
+        type: "json_schema",
+        json_schema: schema,
+      };
+    }
+  }
 
   const cmd = new InvokeModelCommand({
     modelId: BEDROCK_MODEL_ID,
@@ -123,20 +138,40 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       throw new Error(`Invalid step number: ${data.stepNumber}`);
     }
 
+    // Get project overview from Step 1 for context in later steps
+    let projectOverview: string | undefined;
+    if (data.stepNumber > 1) {
+      try {
+        const stepState = getStepState(data.projectId);
+        const step1 = stepState.steps.find((s) => s.stepNumber === 1);
+        // Step 1 should have 2 answers: 1) scratch/doc choice, 2) project overview
+        if (step1?.answers && step1.answers.length >= 2) {
+          projectOverview = step1.answers[1]?.value;
+        }
+      } catch (error) {
+        console.warn("[server] Could not get Step 1 context:", error);
+      }
+    }
+
     const messages = buildInterviewPrompt(
       stepName,
       data.stepNumber,
       data.previousAnswers,
+      projectOverview,
     );
-    const question = await generateText(messages, {
-      name: "interview-question",
-      sessionId: data.projectId,
-      metadata: {
-        stepNumber: data.stepNumber,
-        stepName,
-        previousAnswersCount: data.previousAnswers.length,
-      },
-    });
+    const question = await generateText(
+      messages,
+      data.stepNumber,
+      {
+        name: "interview-question",
+        sessionId: data.projectId,
+        metadata: {
+          stepNumber: data.stepNumber,
+          stepName,
+          previousAnswersCount: data.previousAnswers.length,
+        },
+      }
+    );
 
     return { question };
   });
@@ -157,16 +192,20 @@ export async function generateArtifact(
   }
 
   const messages = buildArtifactPrompt(stepName, stepNumber, answers);
-  const content = await generateText(messages, {
-    name: "generate-artifact",
-    sessionId: projectId,
-    metadata: {
-      stepNumber,
-      stepName,
-      artifactKey,
-      answersCount: answers.length,
-    },
-  });
+  const content = await generateText(
+    messages,
+    stepNumber,
+    {
+      name: "generate-artifact",
+      sessionId: projectId,
+      metadata: {
+        stepNumber,
+        stepName,
+        artifactKey,
+        answersCount: answers.length,
+      },
+    }
+  );
 
   // Determine format from artifact filename
   const artifactName = getArtifactName(stepNumber);
@@ -232,12 +271,15 @@ export const $refineArtifact = createServerFn({ method: "POST" })
       artifact.content,
       data.instruction,
     );
-    const refinedContent = await generateText(messages, {
-      name: "refine-artifact",
-      sessionId: data.projectId,
-      metadata: {
-        artifactKey: data.key,
-        artifactLabel: artifact.label,
+    const refinedContent = await generateText(
+      messages,
+      0, // Refinement not tied to a specific step
+      {
+        name: "refine-artifact",
+        sessionId: data.projectId,
+        metadata: {
+          artifactKey: data.key,
+          artifactLabel: artifact.label,
         instructionLength: data.instruction.length,
       },
     });

@@ -62,6 +62,7 @@ beforeEach(() => {
     loading: false,
     error: null,
     isComplete: false,
+    options: [],
     refetch: vi.fn(),
   });
   mockMutate.mockReset();
@@ -190,6 +191,7 @@ describe("InterviewThread", () => {
       loading: true,
       error: null,
       isComplete: false,
+      options: [],
       refetch: vi.fn(),
     });
 
@@ -204,6 +206,7 @@ describe("InterviewThread", () => {
       loading: false,
       error: null,
       isComplete: false,
+      options: [],
       refetch: vi.fn(),
     });
 
@@ -219,6 +222,7 @@ describe("InterviewThread", () => {
       loading: false,
       error: null,
       isComplete: false,
+      options: [],
       refetch: mockRefetch,
     });
 
@@ -269,5 +273,85 @@ describe("InterviewThread", () => {
     const finalTrigger = vi.mocked(useStreamingQuestion).mock.calls[finalCalls - 1]?.[0]?.refetchTrigger ?? 0;
 
     expect(finalTrigger).toBeGreaterThan(initialTrigger);
+  });
+
+  it("prevents duplicate completeStep calls when step changes (BUG-DOUBLE-COMPLETION)", async () => {
+    const mockCompleteStep = vi.fn();
+    vi.mocked(useCompleteStep).mockReturnValue({
+      mutate: mockCompleteStep,
+    } as unknown as ReturnType<typeof useCompleteStep>);
+
+    // Initial state: Step 1 is complete (isComplete=true)
+    vi.mocked(useStreamingQuestion).mockReturnValue({
+      text: "Question complete",
+      loading: false,
+      error: null,
+      isComplete: true, // AI signaled completion
+      options: [],
+      refetch: vi.fn(),
+    });
+
+    const stepState = makeStepState({ currentStep: 1 });
+    const { rerender } = wrap(
+      <InterviewThread stepState={stepState} projectId="p1" />
+    );
+
+    // Wait for initial effect to trigger completeStep
+    await vi.waitFor(() => {
+      expect(mockCompleteStep).toHaveBeenCalledTimes(1);
+      expect(mockCompleteStep).toHaveBeenCalledWith({ stepNumber: 1 });
+    });
+
+    // Simulate server response: step advances to 2
+    const updatedStepState = makeStepState({
+      currentStep: 2, // Step changed from 1 to 2
+      steps: [
+        {
+          stepNumber: 1,
+          name: "Step 1",
+          status: "complete",
+          question: "Question for step 1?",
+          answer: { question: "Question for step 1?", value: "Answer 1", submittedAt: "2026-01-01T00:00:00Z" },
+        },
+        {
+          stepNumber: 2,
+          name: "Step 2",
+          status: "now",
+          question: "Question for step 2?",
+        },
+        ...Array.from({ length: 8 }, (_, i) => ({
+          stepNumber: i + 3,
+          name: `Step ${i + 3}`,
+          status: "pending" as const,
+          question: `Question for step ${i + 3}?`,
+        })),
+      ],
+    });
+
+    // Note: isComplete is STILL true from previous step (race condition)
+    // but streaming for new step should reset it
+    vi.mocked(useStreamingQuestion).mockReturnValue({
+      text: "Loading next question...",
+      loading: true, // Fetching new question
+      error: null,
+      isComplete: true, // STILL TRUE from previous render (this is the bug scenario)
+      options: [],
+      refetch: vi.fn(),
+    });
+
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <InterviewThread stepState={updatedStepState} projectId="p1" />
+      </QueryClientProvider>
+    );
+
+    // BUG: Without the fix, completeStep would be called again with stepNumber=2
+    // FIX: With the ref tracking, it should not be called again
+    await vi.waitFor(() => {
+      // Should still be called only once (for step 1)
+      expect(mockCompleteStep).toHaveBeenCalledTimes(1);
+      // Should NOT have been called with step 2
+      expect(mockCompleteStep).not.toHaveBeenCalledWith({ stepNumber: 2 });
+    });
   });
 });

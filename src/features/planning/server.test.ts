@@ -197,13 +197,14 @@ describe("$submitAnswer (store delegate)", () => {
 
   it("allows multiple answers to same step (multi-turn Q&A)", () => {
     initProjectSteps("p1", "scratch");
+    // Step 1 now starts with 1 pre-filled answer
     const first = submitAnswer("p1", 1, "Question 1", "step 1 answer");
-    expect(first.steps[0].answers?.length).toBe(1);
+    expect(first.steps[0].answers?.length).toBe(2); // Pre-filled + new answer
     expect(first.currentStep).toBe(1);
 
     // submit second answer to step 1
     const second = submitAnswer("p1", 1, "Question 2", "second answer");
-    expect(second.steps[0].answers?.length).toBe(2);
+    expect(second.steps[0].answers?.length).toBe(3); // Pre-filled + 2 new answers
     expect(second.currentStep).toBe(1); // Still on step 1
   });
 });

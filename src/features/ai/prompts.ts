@@ -10,6 +10,7 @@ export function buildInterviewPrompt(
   stepName: string,
   stepNumber: number,
   previousAnswers: string[],
+  projectOverview?: string,
 ): Message[] {
   // Get skill content for this step
   const skillContent = getSkillContent(stepNumber);
@@ -17,6 +18,11 @@ export function buildInterviewPrompt(
   // If we have skill content, use it
   if (skillContent) {
     let systemContext = skillContent;
+
+    // Add project overview from Step 1 if available (for Step 2+)
+    if (projectOverview) {
+      systemContext += `\n\n## Project Overview (from Step 1)\n\n${projectOverview}\n`;
+    }
 
     if (previousAnswers.length > 0) {
       systemContext += "\n\n## Progress So Far\n\nPrevious answers in this interview:\n";
@@ -26,7 +32,39 @@ export function buildInterviewPrompt(
       systemContext += "\n";
     }
 
-    systemContext += "\n\nNow ask the next appropriate question based on the progress above.";
+    systemContext += `
+
+## CRITICAL OUTPUT FORMATTING RULES
+
+When presenting multiple-choice questions:
+
+1. **DO NOT** echo or list the options in plain text before the **Options:** section
+2. **DO NOT** write introductory text like "Here are your options:" or "You can choose from:"
+3. **ALWAYS** use the exact format from the skill content with **Options:** header
+4. **ALWAYS** include the option number, title, and description exactly as specified
+5. **NEVER** paraphrase or summarize the options before presenting them
+
+Correct format example:
+\`\`\`
+What is your choice?
+
+**Options:**
+1. Option A (Recommended) - Full description here
+2. Option B - Full description here
+\`\`\`
+
+Incorrect format (DO NOT DO THIS):
+\`\`\`
+Let me present your options:
+1. Option A - Short version
+2. Option B - Short version
+
+**Options:**
+1. Option A (Recommended) - Full description here
+2. Option B - Full description here
+\`\`\`
+
+Now ask the next appropriate question based on the progress above.`;
 
     return [
       { role: "user", content: systemContext },

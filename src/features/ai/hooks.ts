@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parseOptions } from "./parse-options";
+import { isStructuredOutputEnabled } from "./feature-flags";
+import type { InterviewQuestionResponse } from "../planning/response-schemas";
+import type { StepOption } from "../planning/types";
 
 interface UseStreamingQuestionParams {
   projectId: string;
@@ -15,6 +18,7 @@ interface UseStreamingQuestionResult {
   loading: boolean;
   error: Error | null;
   isComplete: boolean; // true if AI signaled step completion
+  options: StepOption[]; // Parsed options from response (JSON or text)
   refetch: () => void; // Imperative refetch method
 }
 
@@ -25,6 +29,7 @@ export function useStreamingQuestion(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [options, setOptions] = useState<StepOption[]>([]);
 
   // Track the latest params in a ref to avoid stale closures
   const paramsRef = useRef(params);
@@ -46,6 +51,7 @@ export function useStreamingQuestion(
     setText("");
     setError(null);
     setIsComplete(false);
+    setOptions([]);
 
     fetch("/api/ai/interview", {
       method: "POST",
@@ -81,21 +87,43 @@ export function useStreamingQuestion(
           const chunk = decoder.decode(value, { stream: true });
           accumulatedText += chunk;
 
-          // Check for completion signal
-          if (accumulatedText.includes("[STEP_COMPLETE]")) {
-            setIsComplete(true);
-            // Don't show the completion marker to the user
-            setText(accumulatedText.replace("[STEP_COMPLETE]", "").trim());
-          } else {
-            setText(accumulatedText);
-          }
+          // Show accumulated text during streaming (will be replaced with final parsed text)
+          setText(accumulatedText);
         }
 
-        // Parse options from completed question and notify parent
-        if (!cancelled && currentParams.onOptionsReady) {
-          const options = parseOptions(accumulatedText);
-          if (options.length > 0) {
-            currentParams.onOptionsReady(options);
+        // After streaming completes, parse based on mode
+        if (!cancelled) {
+          if (isStructuredOutputEnabled(currentParams.stepNumber)) {
+            // JSON mode: parse structured response
+            try {
+              const parsed: InterviewQuestionResponse = JSON.parse(accumulatedText);
+              setText(parsed.question); // Clean question text only
+              setOptions(parsed.options);
+              setIsComplete(parsed.isComplete ?? false);
+
+              // Notify parent with parsed options (backward compat)
+              if (currentParams.onOptionsReady) {
+                currentParams.onOptionsReady(parsed.options);
+              }
+            } catch (err) {
+              console.error("[useStreamingQuestion] Failed to parse JSON response:", err);
+              setError(new Error("Invalid JSON response from AI"));
+            }
+          } else {
+            // Text mode: legacy parsing
+            if (accumulatedText.includes("[STEP_COMPLETE]")) {
+              setIsComplete(true);
+              setText(accumulatedText.replace("[STEP_COMPLETE]", "").trim());
+            } else {
+              setText(accumulatedText);
+            }
+
+            // Parse options from text
+            const parsedOptions = parseOptions(accumulatedText);
+            setOptions(parsedOptions);
+            if (currentParams.onOptionsReady) {
+              currentParams.onOptionsReady(parsedOptions);
+            }
           }
         }
 
@@ -119,5 +147,5 @@ export function useStreamingQuestion(
     fetchQuestion();
   }, [params.projectId, params.stepNumber, params.enabled, params.refetchTrigger, fetchQuestion]);
 
-  return { text, loading, error, isComplete, refetch: fetchQuestion };
+  return { text, loading, error, isComplete, options, refetch: fetchQuestion };
 }

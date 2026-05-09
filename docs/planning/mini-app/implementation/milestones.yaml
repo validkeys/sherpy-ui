@@ -100,6 +100,8 @@ milestones:
 
   - id: m4
     name: AI Integration — Bedrock Streaming
+    status: completed
+    completed_date: "2026-05-08"
     description: |
       Wire AWS Bedrock (Claude Sonnet 4.5 via InvokeModelWithResponseStream)
       into the existing interview thread. Mock OIDC auth session server fn.

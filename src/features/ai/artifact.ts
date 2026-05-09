@@ -9,9 +9,13 @@ export async function generateArtifact(
   const messages = buildArtifactPrompt(stepName, stepNumber, answers);
 
   // Stream the artifact generation
-  const stream = await streamQuestion(messages, {
-    name: `artifact-generation-step-${stepNumber}`,
-  });
+  const stream = await streamQuestion(
+    messages,
+    stepNumber,
+    {
+      name: `artifact-generation-step-${stepNumber}`,
+    }
+  );
 
   // Collect all chunks
   const reader = stream.getReader();

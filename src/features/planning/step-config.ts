@@ -14,29 +14,38 @@
  * 4. If automated: Add processing logic to server.ts
  */
 
+import {
+  INTERVIEW_QUESTION_SCHEMA,
+  ARTIFACT_RESPONSE_SCHEMA,
+} from "./response-schemas";
+
 export type StepType = "automated" | "interview";
 
 export interface StepConfig {
   name: string;
   type: StepType;
   artifactKey: string;
+  responseSchema?: object; // JSON Schema for LLM response validation (optional for gradual rollout)
 }
 
 export const STEP_CONFIG: Record<number, StepConfig> = {
   1: {
     name: "Gap Analysis Worksheet",
-    type: "automated",
+    type: "interview",
     artifactKey: "gap-analysis",
+    responseSchema: INTERVIEW_QUESTION_SCHEMA,
   },
   2: {
     name: "Business Requirements Interview",
     type: "interview",
     artifactKey: "business-requirements",
+    responseSchema: INTERVIEW_QUESTION_SCHEMA,
   },
   3: {
     name: "Technical Requirements Interview",
     type: "interview",
     artifactKey: "technical-requirements",
+    responseSchema: INTERVIEW_QUESTION_SCHEMA,
   },
   4: {
     name: "Style Anchors Collection",
@@ -98,6 +107,10 @@ export function isInterviewStep(stepNumber: number): boolean {
 
 export function isAutomatedStep(stepNumber: number): boolean {
   return STEP_CONFIG[stepNumber]?.type === "automated";
+}
+
+export function getStepResponseSchema(stepNumber: number): object | undefined {
+  return STEP_CONFIG[stepNumber]?.responseSchema;
 }
 
 // Validation - run at module load (development only)

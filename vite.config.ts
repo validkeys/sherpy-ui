@@ -56,9 +56,13 @@ export default defineConfig({
                     stepNumber,
                     previousAnswers,
                   );
-                  stream = await streamQuestion(messages, {
-                    name: "interview-stream",
-                  });
+                  stream = await streamQuestion(
+                    messages,
+                    stepNumber,
+                    {
+                      name: "interview-stream",
+                    }
+                  );
                 }
 
                 // Set streaming headers
