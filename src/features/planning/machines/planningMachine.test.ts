@@ -723,14 +723,16 @@ describe('Step 3: Technical Requirements Interview', () => {
       });
     }
 
-    // Wait for state transitions
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    // Wait for state transitions (longer wait for async operations)
+    await new Promise((resolve) => setTimeout(resolve, 250));
 
     const snapshot = actor.getSnapshot();
-    // Should be generating artifact or moved to step4
+    // Should be generating artifact or moved to step4 (or even step5 if fast)
     expect(
       snapshot.matches({ step3_techReqs: 'generatingArtifact' }) ||
-        snapshot.matches('step4_styleAnchors')
+        snapshot.matches('step4_styleAnchors') ||
+        snapshot.matches({ step4_styleAnchors: 'generating' }) ||
+        snapshot.matches('step5_implPlanner')
     ).toBe(true);
   });
 
@@ -773,11 +775,368 @@ describe('Step 3: Technical Requirements Interview', () => {
       });
     }
 
-    // Wait for artifact generation
+    // Wait for artifact generation (longer wait for async transitions)
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.matches('step4_styleAnchors') || snapshot.matches('step5_implPlanner')).toBe(
+      true
+    );
+    expect(snapshot.context.artifacts[3]).toBeDefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// STEP 4: Style Anchors (Automated) Tests
+// ─────────────────────────────────────────────────────────────
+
+describe('Step 4: Style Anchors (Automated)', () => {
+  it('should automatically start generating artifact when entering step4', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Complete steps 1-3
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 1, responses: { overview: 'Test' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 2, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 3, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const snapshot = actor.getSnapshot();
+    expect(
+      snapshot.matches('step4_styleAnchors') ||
+        snapshot.matches({ step4_styleAnchors: 'generating' }) ||
+        snapshot.matches('step5_implPlanner')
+    ).toBe(true);
+  });
+
+  it('should transition to step5 after generating artifact', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Complete steps 1-3
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 1, responses: { overview: 'Test' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 2, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 3, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.matches('step5_implPlanner')).toBe(true);
+    expect(snapshot.context.artifacts[4]).toBeDefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// STEP 5: Implementation Planner (Form) Tests
+// ─────────────────────────────────────────────────────────────
+
+describe('Step 5: Implementation Planner (Form)', () => {
+  it('should start in collecting state', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Complete steps 1-4
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 1, responses: { overview: 'Test' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 2, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 3, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.matches({ step5_implPlanner: 'collecting' })).toBe(true);
+  });
+
+  it('should update context and transition to submitting on SUBMIT_FORM', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Complete steps 1-4
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 1, responses: { overview: 'Test' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 2, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 3, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 5,
+      responses: { deployment: 'Vercel', techStack: 'React + TypeScript' },
+    });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.context.step5Responses).toEqual({
+      deployment: 'Vercel',
+      techStack: 'React + TypeScript',
+    });
+    expect(snapshot.matches({ step5_implPlanner: 'submitting' })).toBe(true);
+  });
+
+  it('should transition to step6 after artifact generation', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Complete steps 1-4
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 1, responses: { overview: 'Test' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 2, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 3, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 5,
+      responses: { deployment: 'Vercel', techStack: 'React + TypeScript' },
+    });
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.matches('step4_styleAnchors')).toBe(true);
-    expect(snapshot.context.artifacts[3]).toBeDefined();
+    expect(
+      snapshot.matches('step6_definitionOfDone') || snapshot.matches('step7_archDecisions')
+    ).toBe(true);
+    expect(snapshot.context.artifacts[5]).toBeDefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// STEPS 6, 8, 9, 10: Automated Steps Tests
+// ─────────────────────────────────────────────────────────────
+
+describe('Steps 6, 8, 9, 10: Automated Steps', () => {
+  it('should auto-generate step 6 and transition to step 7', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Complete steps 1-5
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 1, responses: { overview: 'Test' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 2, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 3, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 5, responses: {} });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.matches('step7_archDecisions')).toBe(true);
+    expect(snapshot.context.artifacts[6]).toBeDefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// STEP 7: Architecture Decisions (Artifact-Only) Tests
+// ─────────────────────────────────────────────────────────────
+
+describe('Step 7: Architecture Decisions (Artifact-Only)', () => {
+  it('should start in reviewing state', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Complete steps 1-6
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 1, responses: { overview: 'Test' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 2, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 3, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 5, responses: {} });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.matches({ step7_archDecisions: 'reviewing' })).toBe(true);
+  });
+
+  it('should store edits on EDIT_ARTIFACT', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Complete steps 1-6
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 1, responses: { overview: 'Test' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 2, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 3, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 5, responses: {} });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    actor.send({ type: 'EDIT_ARTIFACT', stepNumber: 7, content: 'Edited architecture decisions' });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.context.step7Edits).toBe('Edited architecture decisions');
+  });
+
+  it('should transition to step8 on APPROVE_ARTIFACT', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Complete steps 1-6
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 1, responses: { overview: 'Test' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 2, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 3, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 5, responses: {} });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    actor.send({ type: 'APPROVE_ARTIFACT', stepNumber: 7 });
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.matches('step8_deliveryTimeline')).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// FULL WORKFLOW TEST (Steps 1-10)
+// ─────────────────────────────────────────────────────────────
+
+describe('Full Workflow (Steps 1-10)', () => {
+  it('should complete entire workflow from start to complete', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Step 1
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 1, responses: { overview: 'Test' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Step 2
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 2, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    // Step 3
+    for (let i = 1; i <= 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      actor.send({ type: 'SUBMIT_ANSWER', stepNumber: 3, question: `Q${i}`, answer: `A${i}` });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300)); // Step 4 auto-generates
+
+    // Step 5
+    actor.send({ type: 'SUBMIT_FORM', stepNumber: 5, responses: {} });
+    await new Promise((resolve) => setTimeout(resolve, 200)); // Step 6 auto-generates
+
+    // Step 7
+    actor.send({ type: 'APPROVE_ARTIFACT', stepNumber: 7 });
+    await new Promise((resolve) => setTimeout(resolve, 150)); // Step 8 auto-generates
+    await new Promise((resolve) => setTimeout(resolve, 150)); // Step 9 auto-generates
+    await new Promise((resolve) => setTimeout(resolve, 150)); // Step 10 auto-generates
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.matches('complete')).toBe(true);
+    expect(Object.keys(snapshot.context.artifacts).length).toBeGreaterThanOrEqual(8);
   });
 });

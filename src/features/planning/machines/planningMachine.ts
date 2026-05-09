@@ -358,57 +358,263 @@ export const planningMachine = setup({
 
     // ─── STEP 4: Style Anchors Collection (Automated) ──────
     step4_styleAnchors: {
-      initial: 'placeholder',
+      initial: 'generating',
       states: {
-        placeholder: {},
+        generating: {
+          invoke: {
+            src: 'generateArtifact',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 4,
+              accumulatedContext: {
+                projectOverview: buildProjectContext(context),
+              },
+            }),
+            onDone: {
+              target: '#planning.step5_implPlanner',
+              actions: assign({
+                artifacts: ({ context, event }) => ({
+                  ...context.artifacts,
+                  4: event.output,
+                }),
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'generating',
+              actions: assign({
+                error: ({ event }) => `Step 4 failed: ${event.error}`,
+              }),
+            },
+          },
+        },
       },
     },
 
     // ─── STEP 5: Implementation Planner (Form) ─────────────
     step5_implPlanner: {
-      initial: 'placeholder',
+      initial: 'collecting',
       states: {
-        placeholder: {},
+        collecting: {
+          on: {
+            SUBMIT_FORM: {
+              guard: ({ event }) => event.type === 'SUBMIT_FORM' && event.stepNumber === 5,
+              target: 'submitting',
+              actions: assign({
+                step5Responses: ({ event }) => event.responses,
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+          },
+        },
+        submitting: {
+          invoke: {
+            src: 'generateArtifact',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 5,
+              accumulatedContext: {
+                projectOverview: buildProjectContext(context),
+                responses: context.step5Responses,
+              },
+            }),
+            onDone: {
+              target: '#planning.step6_definitionOfDone',
+              actions: assign({
+                artifacts: ({ context, event }) => ({
+                  ...context.artifacts,
+                  5: event.output,
+                }),
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'collecting',
+              actions: assign({
+                error: ({ event }) => `Step 5 failed: ${event.error}`,
+              }),
+            },
+          },
+        },
       },
     },
 
     // ─── STEP 6: Definition of Done (Automated) ────────────
     step6_definitionOfDone: {
-      initial: 'placeholder',
+      initial: 'generating',
       states: {
-        placeholder: {},
+        generating: {
+          invoke: {
+            src: 'generateArtifact',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 6,
+              accumulatedContext: {
+                projectOverview: buildProjectContext(context),
+                artifacts: context.artifacts,
+              },
+            }),
+            onDone: {
+              target: '#planning.step7_archDecisions',
+              actions: assign({
+                artifacts: ({ context, event }) => ({
+                  ...context.artifacts,
+                  6: event.output,
+                }),
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'generating',
+              actions: assign({
+                error: ({ event }) => `Step 6 failed: ${event.error}`,
+              }),
+            },
+          },
+        },
       },
     },
 
     // ─── STEP 7: Architecture Decisions (Artifact-only) ────
     step7_archDecisions: {
-      initial: 'placeholder',
+      initial: 'reviewing',
       states: {
-        placeholder: {},
+        reviewing: {
+          on: {
+            EDIT_ARTIFACT: {
+              guard: ({ event }) => event.type === 'EDIT_ARTIFACT' && event.stepNumber === 7,
+              actions: assign({
+                step7Edits: ({ event }) => event.content,
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            APPROVE_ARTIFACT: {
+              guard: ({ event }) => event.type === 'APPROVE_ARTIFACT' && event.stepNumber === 7,
+              target: '#planning.step8_deliveryTimeline',
+              actions: assign({
+                artifacts: ({ context }) => ({
+                  ...context.artifacts,
+                  7: context.step7Edits
+                    ? {
+                        type: 'markdown',
+                        content: context.step7Edits,
+                        generatedAt: new Date().toISOString(),
+                      }
+                    : context.artifacts[7],
+                }),
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+          },
+        },
       },
     },
 
     // ─── STEP 8: Delivery Timeline (Automated) ─────────────
     step8_deliveryTimeline: {
-      initial: 'placeholder',
+      initial: 'generating',
       states: {
-        placeholder: {},
+        generating: {
+          invoke: {
+            src: 'generateArtifact',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 8,
+              accumulatedContext: {
+                projectOverview: buildProjectContext(context),
+                artifacts: context.artifacts,
+              },
+            }),
+            onDone: {
+              target: '#planning.step9_qaTestPlan',
+              actions: assign({
+                artifacts: ({ context, event }) => ({
+                  ...context.artifacts,
+                  8: event.output,
+                }),
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'generating',
+              actions: assign({
+                error: ({ event }) => `Step 8 failed: ${event.error}`,
+              }),
+            },
+          },
+        },
       },
     },
 
     // ─── STEP 9: QA Test Plan (Automated) ──────────────────
     step9_qaTestPlan: {
-      initial: 'placeholder',
+      initial: 'generating',
       states: {
-        placeholder: {},
+        generating: {
+          invoke: {
+            src: 'generateArtifact',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 9,
+              accumulatedContext: {
+                projectOverview: buildProjectContext(context),
+                artifacts: context.artifacts,
+              },
+            }),
+            onDone: {
+              target: '#planning.step10_summaries',
+              actions: assign({
+                artifacts: ({ context, event }) => ({
+                  ...context.artifacts,
+                  9: event.output,
+                }),
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'generating',
+              actions: assign({
+                error: ({ event }) => `Step 9 failed: ${event.error}`,
+              }),
+            },
+          },
+        },
       },
     },
 
     // ─── STEP 10: Executive/Developer Summaries (Automated)
     step10_summaries: {
-      initial: 'placeholder',
+      initial: 'generating',
       states: {
-        placeholder: {},
+        generating: {
+          invoke: {
+            src: 'generateArtifact',
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              stepNumber: 10,
+              accumulatedContext: {
+                projectOverview: buildProjectContext(context),
+                artifacts: context.artifacts,
+              },
+            }),
+            onDone: {
+              target: '#planning.complete',
+              actions: assign({
+                artifacts: ({ context, event }) => ({
+                  ...context.artifacts,
+                  10: event.output,
+                }),
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              target: 'generating',
+              actions: assign({
+                error: ({ event }) => `Step 10 failed: ${event.error}`,
+              }),
+            },
+          },
+        },
       },
     },
 
