@@ -1,6 +1,64 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createActor } from 'xstate';
 import { planningMachine } from './planningMachine';
+
+// Mock global fetch for API calls
+global.fetch = vi.fn();
+
+// Mock $generateArtifact server function
+vi.mock('../../ai/server', () => ({
+  $generateArtifact: vi.fn(async ({ data }) => ({
+    id: 'mock-artifact-id',
+    projectId: data.projectId,
+    key: `step-${data.stepNumber}`,
+    label: `Step ${data.stepNumber}`,
+    format: data.stepNumber === 2 || data.stepNumber === 3 ? 'yaml' : 'markdown',
+    content: `# Mock artifact for step ${data.stepNumber}`,
+    status: 'ready',
+    generatedAt: new Date().toISOString(),
+  })),
+}));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+
+  // Default mock for fetch (interview API)
+  (global.fetch as any).mockImplementation(async (url: string, options: any) => {
+    const body = JSON.parse(options.body);
+    const { stepNumber } = body;
+
+    // Mock streaming response
+    const mockQuestion = `Mock question for step ${stepNumber}`;
+    const mockText = JSON.stringify({
+      question: mockQuestion,
+      options: [
+        { letter: '1', title: 'Option A', body: 'Description A' },
+        { letter: '2', title: 'Option B', body: 'Description B' },
+        { letter: '3', title: 'Option C', body: 'Description C' },
+      ],
+    });
+
+    return {
+      ok: true,
+      headers: new Map([['content-type', 'application/json']]),
+      body: {
+        getReader: () => {
+          let done = false;
+          return {
+            read: async () => {
+              if (done) return { done: true, value: undefined };
+              done = true;
+              return {
+                done: false,
+                value: new TextEncoder().encode(mockText),
+              };
+            },
+          };
+        },
+      },
+    };
+  });
+});
 
 describe('planningMachine structure', () => {
   it('should have correct machine id', () => {

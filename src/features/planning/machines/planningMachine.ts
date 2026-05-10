@@ -14,7 +14,7 @@ import type {
 } from './types';
 
 // ─────────────────────────────────────────────────────────────
-// STUB ACTORS (will be replaced with real implementations in t-009)
+// REAL API ACTORS
 // ─────────────────────────────────────────────────────────────
 
 const fetchQuestion = fromPromise<
@@ -26,11 +26,62 @@ const fetchQuestion = fromPromise<
     projectContext: string;
   }
 >(async ({ input }) => {
-  // STUB: return mock data
-  return {
-    question: `Mock question for step ${input.stepNumber}`,
-    options: ['Option A', 'Option B', 'Option C'],
-  };
+  // Call streaming interview API
+  const response = await fetch('/api/ai/interview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      projectId: input.projectId,
+      stepNumber: input.stepNumber,
+      previousAnswers: input.previousAnswers,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Interview API failed: ${response.status} ${response.statusText}`);
+  }
+
+  if (!response.body) {
+    throw new Error('No response body from interview API');
+  }
+
+  // Read entire stream
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let accumulatedText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    accumulatedText += decoder.decode(value, { stream: true });
+  }
+
+  // Check if response is structured JSON or text
+  const contentType = response.headers.get('content-type');
+  if (contentType?.includes('application/json') || accumulatedText.trim().startsWith('{')) {
+    // JSON mode: parse structured response
+    try {
+      const parsed = JSON.parse(accumulatedText);
+      return {
+        question: parsed.question,
+        options: parsed.options?.map((opt: any) => opt.title || opt) || undefined,
+      };
+    } catch (err) {
+      console.error('[fetchQuestion] Failed to parse JSON response:', err);
+      throw new Error('Invalid JSON response from interview API');
+    }
+  } else {
+    // Text mode: parse options from markdown
+    const { parseOptions } = await import('../../ai/parse-options');
+    const parsedOptions = parseOptions(accumulatedText);
+
+    return {
+      question: accumulatedText,
+      options: parsedOptions.length > 0
+        ? parsedOptions.map((opt) => opt.title)
+        : undefined,
+    };
+  }
 });
 
 const generateArtifact = fromPromise<
@@ -41,11 +92,39 @@ const generateArtifact = fromPromise<
     accumulatedContext: Record<string, unknown>;
   }
 >(async ({ input }) => {
-  // STUB: return mock artifact
+  // Extract answers from accumulated context
+  const answers: string[] = [];
+
+  // Collect answers from step-specific context
+  if (input.stepNumber === 1 && input.accumulatedContext.step1Responses) {
+    const responses = input.accumulatedContext.step1Responses as Record<string, string>;
+    answers.push(...Object.values(responses));
+  } else if (input.stepNumber === 2 && input.accumulatedContext.step2Answers) {
+    const stepAnswers = input.accumulatedContext.step2Answers as Array<{ value: string }>;
+    answers.push(...stepAnswers.map((a) => a.value));
+  } else if (input.stepNumber === 3 && input.accumulatedContext.step3Answers) {
+    const stepAnswers = input.accumulatedContext.step3Answers as Array<{ value: string }>;
+    answers.push(...stepAnswers.map((a) => a.value));
+  } else if (input.stepNumber === 5 && input.accumulatedContext.step5Responses) {
+    const responses = input.accumulatedContext.step5Responses as Record<string, string>;
+    answers.push(...Object.values(responses));
+  }
+
+  // Call server function for artifact generation
+  const { $generateArtifact } = await import('../../ai/server');
+  const artifact = await $generateArtifact({
+    data: {
+      projectId: input.projectId,
+      stepNumber: input.stepNumber,
+      answers,
+    },
+  });
+
+  // Convert server Artifact type to machine Artifact type
   return {
-    type: 'yaml',
-    content: `# Mock artifact for step ${input.stepNumber}`,
-    generatedAt: new Date().toISOString(),
+    type: artifact.format === 'markdown' ? 'markdown' : 'yaml',
+    content: artifact.content,
+    generatedAt: artifact.generatedAt,
   };
 });
 
