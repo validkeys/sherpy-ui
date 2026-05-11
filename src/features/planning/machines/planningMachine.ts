@@ -149,6 +149,50 @@ function buildProjectContext(ctx: PlanningContext): string {
 }
 
 // ─────────────────────────────────────────────────────────────
+// NAVIGATION HELPERS
+// ─────────────────────────────────────────────────────────────
+
+const STEP_NUMBER_TO_KEY: Record<number, string> = {
+  1: 'step1_gapAnalysis',
+  2: 'step2_businessReqs',
+  3: 'step3_techReqs',
+  4: 'step4_styleAnchors',
+  5: 'step5_implPlanner',
+  6: 'step6_definitionOfDone',
+  7: 'step7_archDecisions',
+  8: 'step8_deliveryTimeline',
+  9: 'step9_qaTestPlan',
+  10: 'step10_summaries',
+};
+
+const STEP_KEY_TO_NUMBER: Record<string, number> = {
+  step1_gapAnalysis: 1,
+  step2_businessReqs: 2,
+  step3_techReqs: 3,
+  step4_styleAnchors: 4,
+  step5_implPlanner: 5,
+  step6_definitionOfDone: 6,
+  step7_archDecisions: 7,
+  step8_deliveryTimeline: 8,
+  step9_qaTestPlan: 9,
+  step10_summaries: 10,
+};
+
+function isStepComplete(context: PlanningContext, stepNumber: number): boolean {
+  return context.completedSteps.includes(stepNumber);
+}
+
+function canNavigateForward(context: PlanningContext): boolean {
+  // Can go forward if current step is complete and not on step 10
+  return context.currentStepNumber < 10 && isStepComplete(context, context.currentStepNumber);
+}
+
+function canNavigateBack(context: PlanningContext): boolean {
+  // Can go back if not on step 1
+  return context.currentStepNumber > 1;
+}
+
+// ─────────────────────────────────────────────────────────────
 // MACHINE DEFINITION
 // ─────────────────────────────────────────────────────────────
 
@@ -187,13 +231,119 @@ export const planningMachine = setup({
     step5Responses: {},
     step7Edits: null,
     artifacts: {},
+    completedSteps: [],
+    currentStepNumber: 1,
     error: null,
   }),
+
+  on: {
+    // Global navigation handlers - explicit transitions based on current step
+    NEXT: [
+      {
+        guard: ({ context }) => context.currentStepNumber === 1 && isStepComplete(context, 1),
+        target: '.step2_businessReqs',
+        actions: assign({ currentStepNumber: 2, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 2 && isStepComplete(context, 2),
+        target: '.step3_techReqs',
+        actions: assign({ currentStepNumber: 3, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 3 && isStepComplete(context, 3),
+        target: '.step4_styleAnchors',
+        actions: assign({ currentStepNumber: 4, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 4 && isStepComplete(context, 4),
+        target: '.step5_implPlanner',
+        actions: assign({ currentStepNumber: 5, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 5 && isStepComplete(context, 5),
+        target: '.step6_definitionOfDone',
+        actions: assign({ currentStepNumber: 6, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 6 && isStepComplete(context, 6),
+        target: '.step7_archDecisions',
+        actions: assign({ currentStepNumber: 7, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 7 && isStepComplete(context, 7),
+        target: '.step8_deliveryTimeline',
+        actions: assign({ currentStepNumber: 8, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 8 && isStepComplete(context, 8),
+        target: '.step9_qaTestPlan',
+        actions: assign({ currentStepNumber: 9, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 9 && isStepComplete(context, 9),
+        target: '.step10_summaries',
+        actions: assign({ currentStepNumber: 10, updatedAt: () => new Date().toISOString() }),
+      },
+    ],
+    BACK: [
+      {
+        guard: ({ context }) => context.currentStepNumber === 2,
+        target: '.step1_gapAnalysis',
+        actions: assign({ currentStepNumber: 1, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 3,
+        target: '.step2_businessReqs',
+        actions: assign({ currentStepNumber: 2, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 4,
+        target: '.step3_techReqs',
+        actions: assign({ currentStepNumber: 3, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 5,
+        target: '.step4_styleAnchors',
+        actions: assign({ currentStepNumber: 4, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 6,
+        target: '.step5_implPlanner',
+        actions: assign({ currentStepNumber: 5, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 7,
+        target: '.step6_definitionOfDone',
+        actions: assign({ currentStepNumber: 6, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 8,
+        target: '.step7_archDecisions',
+        actions: assign({ currentStepNumber: 7, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 9,
+        target: '.step8_deliveryTimeline',
+        actions: assign({ currentStepNumber: 8, updatedAt: () => new Date().toISOString() }),
+      },
+      {
+        guard: ({ context }) => context.currentStepNumber === 10,
+        target: '.step9_qaTestPlan',
+        actions: assign({ currentStepNumber: 9, updatedAt: () => new Date().toISOString() }),
+      },
+    ],
+  },
 
   states: {
     idle: {
       on: {
-        START_PLANNING: 'step1_gapAnalysis',
+        START_PLANNING: {
+          target: 'step1_gapAnalysis',
+          actions: assign({
+            currentStepNumber: 1,
+            updatedAt: () => new Date().toISOString(),
+          }),
+        },
       },
     },
 
@@ -230,6 +380,11 @@ export const planningMachine = setup({
                   ...context.artifacts,
                   1: event.output,
                 }),
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(1)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 1],
+                currentStepNumber: 2,
                 updatedAt: () => new Date().toISOString(),
               }),
             },
@@ -325,6 +480,11 @@ export const planningMachine = setup({
                   ...context.artifacts,
                   2: event.output,
                 }),
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(2)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 2],
+                currentStepNumber: 3,
                 updatedAt: () => new Date().toISOString(),
               }),
             },
@@ -421,6 +581,11 @@ export const planningMachine = setup({
                   ...context.artifacts,
                   3: event.output,
                 }),
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(3)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 3],
+                currentStepNumber: 4,
                 updatedAt: () => new Date().toISOString(),
               }),
             },
@@ -456,6 +621,11 @@ export const planningMachine = setup({
                   ...context.artifacts,
                   4: event.output,
                 }),
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(4)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 4],
+                currentStepNumber: 5,
                 updatedAt: () => new Date().toISOString(),
               }),
             },
@@ -504,6 +674,11 @@ export const planningMachine = setup({
                   ...context.artifacts,
                   5: event.output,
                 }),
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(5)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 5],
+                currentStepNumber: 6,
                 updatedAt: () => new Date().toISOString(),
               }),
             },
@@ -540,6 +715,11 @@ export const planningMachine = setup({
                   ...context.artifacts,
                   6: event.output,
                 }),
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(6)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 6],
+                currentStepNumber: 7,
                 updatedAt: () => new Date().toISOString(),
               }),
             },
@@ -581,6 +761,11 @@ export const planningMachine = setup({
                       }
                     : context.artifacts[7],
                 }),
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(7)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 7],
+                currentStepNumber: 8,
                 updatedAt: () => new Date().toISOString(),
               }),
             },
@@ -611,6 +796,11 @@ export const planningMachine = setup({
                   ...context.artifacts,
                   8: event.output,
                 }),
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(8)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 8],
+                currentStepNumber: 9,
                 updatedAt: () => new Date().toISOString(),
               }),
             },
@@ -647,6 +837,11 @@ export const planningMachine = setup({
                   ...context.artifacts,
                   9: event.output,
                 }),
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(9)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 9],
+                currentStepNumber: 10,
                 updatedAt: () => new Date().toISOString(),
               }),
             },
@@ -683,6 +878,10 @@ export const planningMachine = setup({
                   ...context.artifacts,
                   10: event.output,
                 }),
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(10)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 10],
                 updatedAt: () => new Date().toISOString(),
               }),
             },

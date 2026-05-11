@@ -74,6 +74,10 @@ export type PlanningContext = {
   // Accumulated artifacts
   artifacts: StepArtifactMap;
 
+  // Navigation tracking
+  completedSteps: number[]; // Array of step numbers (1-10) that are complete
+  currentStepNumber: number; // Current step number (1-10)
+
   // Error state
   error: string | null;
 };
@@ -89,7 +93,9 @@ export type PlanningEvent =
   | { type: 'EDIT_ARTIFACT'; stepNumber: number; content: string }
   | { type: 'APPROVE_ARTIFACT'; stepNumber: number }
   | { type: 'RETRY'; stepNumber: number }
-  | { type: 'RESET_PROJECT' };
+  | { type: 'RESET_PROJECT' }
+  | { type: 'NEXT' }
+  | { type: 'BACK' };
 
 /**
  * Input required to initialize the planning machine
