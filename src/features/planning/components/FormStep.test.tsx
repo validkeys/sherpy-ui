@@ -1,0 +1,371 @@
+/**
+ * FormStep Component Tests
+ * Tests FormStep for steps 1 (Gap Analysis) and 5 (Implementation Planner)
+ */
+
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { userEvent } from '@testing-library/user-event';
+import { FormStep } from './FormStep';
+import { PlanningMachineProvider } from '../machines/PlanningMachineContext';
+
+describe('FormStep', () => {
+  const defaultInput = {
+    projectId: 'test-project',
+    entryPath: 'new-project' as const,
+  };
+
+  describe('Step 1 - Gap Analysis', () => {
+    const step1Props = {
+      stepKey: 'step1_gapAnalysis',
+      stepName: 'Gap Analysis',
+      status: 'active',
+    };
+
+    it('renders step name', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} />
+        </PlanningMachineProvider>
+      );
+
+      expect(screen.getByRole('heading', { name: /gap analysis/i })).toBeDefined();
+    });
+
+    it('renders step 1 form fields', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} />
+        </PlanningMachineProvider>
+      );
+
+      expect(screen.getByLabelText(/do you have existing requirements/i)).toBeDefined();
+      expect(screen.getByLabelText(/what are you building/i)).toBeDefined();
+    });
+
+    it('renders textarea for project description', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} />
+        </PlanningMachineProvider>
+      );
+
+      const textarea = screen.getByLabelText(/what are you building/i);
+      expect(textarea.tagName).toBe('TEXTAREA');
+      expect(textarea.getAttribute('rows')).toBe('5');
+    });
+
+    it('renders text input for existing requirements', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} />
+        </PlanningMachineProvider>
+      );
+
+      const input = screen.getByLabelText(/do you have existing requirements/i);
+      expect(input.tagName).toBe('INPUT');
+      expect(input.getAttribute('type')).toBe('text');
+    });
+
+    it('handles input changes', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} />
+        </PlanningMachineProvider>
+      );
+
+      const input = screen.getByLabelText(/do you have existing requirements/i) as HTMLInputElement;
+      await user.type(input, 'Yes, we have PRD');
+
+      expect(input.value).toBe('Yes, we have PRD');
+    });
+
+    it('handles textarea changes', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} />
+        </PlanningMachineProvider>
+      );
+
+      const textarea = screen.getByLabelText(/what are you building/i) as HTMLTextAreaElement;
+      await user.type(textarea, 'A new planning tool');
+
+      expect(textarea.value).toBe('A new planning tool');
+    });
+
+    it('disables submit button when form invalid', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} />
+        </PlanningMachineProvider>
+      );
+
+      const submitButton = screen.getByRole('button', { name: /submit/i }) as HTMLButtonElement;
+      expect(submitButton.disabled).toBe(true);
+    });
+
+    it('enables submit button when form valid', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} />
+        </PlanningMachineProvider>
+      );
+
+      const input = screen.getByLabelText(/do you have existing requirements/i);
+      const textarea = screen.getByLabelText(/what are you building/i);
+
+      await user.type(input, 'Yes');
+      await user.type(textarea, 'Test project');
+
+      await waitFor(() => {
+        const submitButton = screen.getByRole('button', { name: /submit/i }) as HTMLButtonElement;
+        expect(submitButton.disabled).toBe(false);
+      });
+    });
+
+    it('shows loading state during submission', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} status="submitting" />
+        </PlanningMachineProvider>
+      );
+
+      const submitButton = screen.getByRole('button', { name: /submitting/i }) as HTMLButtonElement;
+      expect(submitButton.disabled).toBe(true);
+    });
+
+    it('disables inputs during submission', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} status="submitting" />
+        </PlanningMachineProvider>
+      );
+
+      const input = screen.getByLabelText(/do you have existing requirements/i) as HTMLInputElement;
+      const textarea = screen.getByLabelText(/what are you building/i) as HTMLTextAreaElement;
+
+      expect(input.disabled).toBe(true);
+      expect(textarea.disabled).toBe(true);
+    });
+  });
+
+  describe('Step 5 - Implementation Planner', () => {
+    const step5Props = {
+      stepKey: 'step5_implPlanner',
+      stepName: 'Implementation Planner',
+      status: 'active',
+    };
+
+    it('renders step name', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step5Props} />
+        </PlanningMachineProvider>
+      );
+
+      expect(screen.getByRole('heading', { name: /implementation planner/i })).toBeDefined();
+    });
+
+    it('renders step 5 form fields', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step5Props} />
+        </PlanningMachineProvider>
+      );
+
+      expect(screen.getByLabelText(/what is the deployment strategy/i)).toBeDefined();
+      expect(screen.getByLabelText(/what is the tech stack/i)).toBeDefined();
+    });
+
+    it('renders select dropdown for deployment strategy', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step5Props} />
+        </PlanningMachineProvider>
+      );
+
+      const select = screen.getByLabelText(/what is the deployment strategy/i);
+      expect(select.tagName).toBe('SELECT');
+    });
+
+    it('renders select options', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step5Props} />
+        </PlanningMachineProvider>
+      );
+
+      const select = screen.getByLabelText(/what is the deployment strategy/i);
+      const options = Array.from(select.querySelectorAll('option')).map(
+        (opt) => opt.textContent
+      );
+
+      expect(options).toContain('Cloud');
+      expect(options).toContain('On-Premise');
+      expect(options).toContain('Hybrid');
+      expect(options).toContain('Not Decided');
+    });
+
+    it('handles select changes', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step5Props} />
+        </PlanningMachineProvider>
+      );
+
+      const select = screen.getByLabelText(/what is the deployment strategy/i) as HTMLSelectElement;
+      await user.selectOptions(select, 'Cloud');
+
+      expect(select.value).toBe('Cloud');
+    });
+
+    it('handles text input changes', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step5Props} />
+        </PlanningMachineProvider>
+      );
+
+      const input = screen.getByLabelText(/what is the tech stack/i) as HTMLInputElement;
+      await user.type(input, 'React, Node.js');
+
+      expect(input.value).toBe('React, Node.js');
+    });
+
+    it('validates empty select values', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step5Props} />
+        </PlanningMachineProvider>
+      );
+
+      const submitButton = screen.getByRole('button', { name: /submit/i }) as HTMLButtonElement;
+      expect(submitButton.disabled).toBe(true);
+    });
+
+    it('enables submit when all fields valid', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step5Props} />
+        </PlanningMachineProvider>
+      );
+
+      const select = screen.getByLabelText(/what is the deployment strategy/i);
+      const input = screen.getByLabelText(/what is the tech stack/i);
+
+      await user.selectOptions(select, 'Cloud');
+      await user.type(input, 'React');
+
+      await waitFor(() => {
+        const submitButton = screen.getByRole('button', { name: /submit/i }) as HTMLButtonElement;
+        expect(submitButton.disabled).toBe(false);
+      });
+    });
+  });
+
+  describe('Form submission', () => {
+    const step1Props = {
+      stepKey: 'step1_gapAnalysis',
+      stepName: 'Gap Analysis',
+      status: 'active',
+    };
+
+    it('prevents submission with invalid form', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} />
+        </PlanningMachineProvider>
+      );
+
+      const submitButton = screen.getByRole('button', { name: /submit/i }) as HTMLButtonElement;
+      expect(submitButton.disabled).toBe(true);
+
+      // Try to submit (button should be disabled)
+      await user.click(submitButton);
+
+      // Should not submit
+      expect(submitButton.disabled).toBe(true);
+    });
+
+    it('handles form submission with valid data', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep {...step1Props} />
+        </PlanningMachineProvider>
+      );
+
+      const input = screen.getByLabelText(/do you have existing requirements/i);
+      const textarea = screen.getByLabelText(/what are you building/i);
+
+      await user.type(input, 'Yes');
+      await user.type(textarea, 'Test project');
+
+      await waitFor(() => {
+        const submitButton = screen.getByRole('button', { name: /submit/i }) as HTMLButtonElement;
+        expect(submitButton.disabled).toBe(false);
+      });
+
+      const submitButton = screen.getByRole('button', { name: /submit/i });
+      await user.click(submitButton);
+
+      // Form should remain on screen (machine handles state transition)
+      expect(screen.getByRole('heading', { name: /gap analysis/i })).toBeDefined();
+    });
+  });
+
+  describe('Edge cases', () => {
+    it('handles generatingArtifact status', () => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep
+            stepKey="step1_gapAnalysis"
+            stepName="Gap Analysis"
+            status="generatingArtifact"
+          />
+        </PlanningMachineProvider>
+      );
+
+      const submitButton = screen.getByRole('button', { name: /submitting/i }) as HTMLButtonElement;
+      expect(submitButton.disabled).toBe(true);
+    });
+
+    it('rejects whitespace-only values', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <FormStep
+            stepKey="step1_gapAnalysis"
+            stepName="Gap Analysis"
+            status="active"
+          />
+        </PlanningMachineProvider>
+      );
+
+      const input = screen.getByLabelText(/do you have existing requirements/i);
+      const textarea = screen.getByLabelText(/what are you building/i);
+
+      await user.type(input, '   ');
+      await user.type(textarea, '   ');
+
+      const submitButton = screen.getByRole('button', { name: /submit/i }) as HTMLButtonElement;
+      expect(submitButton.disabled).toBe(true);
+    });
+  });
+});
