@@ -30,3 +30,4 @@ storybook-static
 qa-screenshots
 _ref/
 .env
+coverage/
