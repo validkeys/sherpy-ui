@@ -3,7 +3,7 @@
  * Handles form-based input with fixed questions
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePlanningMachine, useSelector } from '../machines/PlanningMachineContext';
 
 type Props = {
@@ -47,7 +47,11 @@ const STEP5_QUESTIONS: FormQuestion[] = [
 ];
 
 export function FormStep({ stepKey, stepName, status }: Props) {
+  console.log('[FormStep] Component render - props:', { stepKey, stepName, status });
+
   const actor = usePlanningMachine();
+  console.log('[FormStep] Actor instance ID:', actor.id, 'Status:', actor.getSnapshot().status);
+
   const stepNumber = stepKey === 'step1_gapAnalysis' ? 1 : 5;
   const questions = stepNumber === 1 ? STEP1_QUESTIONS : STEP5_QUESTIONS;
 
@@ -57,26 +61,81 @@ export function FormStep({ stepKey, stepName, status }: Props) {
   });
 
   // Local form state
-  const [formData, setFormData] = useState<Record<string, string>>(existingResponses);
+  const [formData, setFormData] = useState<Record<string, string>>(existingResponses || {});
+
+  // Sync form data when existing responses change (e.g., loaded from localStorage)
+  useEffect(() => {
+    if (existingResponses && Object.keys(existingResponses).length > 0) {
+      setFormData(existingResponses);
+    }
+  }, [existingResponses]);
 
   const isLoading = status === 'submitting' || status === 'generatingArtifact';
 
   const handleChange = (id: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [id]: value }));
+    console.log('[FormStep] Field changed:', { id, value });
+    setFormData((prev) => {
+      const next = { ...prev, [id]: value };
+      console.log('[FormStep] Updated formData:', next);
+      return next;
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    actor.send({
-      type: 'SUBMIT_FORM',
+    console.log('[FormStep] ===== SUBMIT CLICKED =====');
+    console.log('[FormStep] Form data:', formData);
+    console.log('[FormStep] Step number:', stepNumber);
+
+    const event = {
+      type: 'SUBMIT_FORM' as const,
       stepNumber,
       responses: formData,
-    });
+    };
+
+    console.log('[FormStep] Sending event:', event);
+    console.log('[FormStep] Current machine state BEFORE send:', actor.getSnapshot().value);
+    console.log('[FormStep] Can machine accept this event?', actor.getSnapshot().can(event));
+
+    actor.send(event);
+
+    console.log('[FormStep] Event sent to machine');
+
+    // Check state after a tick
+    setTimeout(() => {
+      const snapshot = actor.getSnapshot();
+      console.log('[FormStep] Machine state AFTER send:', snapshot.value);
+      console.log('[FormStep] Machine context AFTER send:', snapshot.context);
+      if (snapshot.context.error) {
+        console.error('[FormStep] ❌ ERROR in context:', snapshot.context.error);
+      }
+    }, 10);
+
+    // Check after a longer delay to see if artifact generation completed
+    setTimeout(() => {
+      const snapshot = actor.getSnapshot();
+      console.log('[FormStep] Machine state after 2 seconds:', snapshot.value);
+      if (snapshot.context.error) {
+        console.error('[FormStep] ❌ ERROR after 2s:', snapshot.context.error);
+      }
+      if (snapshot.context.currentStepNumber !== 2) {
+        console.warn('[FormStep] ⚠️ Still on step', snapshot.context.currentStepNumber, '- artifact generation may have failed');
+      }
+    }, 2000);
   };
 
   const isFormValid = questions.every((q) => {
     const value = formData[q.id];
     return value && value.trim().length > 0;
+  });
+
+  console.log('[FormStep] Render state:', {
+    stepNumber,
+    status,
+    formData,
+    isFormValid,
+    isLoading,
+    buttonDisabled: isLoading || !isFormValid,
   });
 
   return (

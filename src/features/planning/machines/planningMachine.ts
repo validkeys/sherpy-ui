@@ -92,6 +92,8 @@ const generateArtifact = fromPromise<
     accumulatedContext: Record<string, unknown>;
   }
 >(async ({ input }) => {
+  console.log('[generateArtifact] Starting with input:', input);
+
   // Extract answers from accumulated context
   const answers: string[] = [];
 
@@ -110,22 +112,34 @@ const generateArtifact = fromPromise<
     answers.push(...Object.values(responses));
   }
 
-  // Call server function for artifact generation
-  const { $generateArtifact } = await import('../../ai/server');
-  const artifact = await $generateArtifact({
-    data: {
-      projectId: input.projectId,
-      stepNumber: input.stepNumber,
-      answers,
-    },
-  });
+  console.log('[generateArtifact] Extracted answers:', answers);
 
-  // Convert server Artifact type to machine Artifact type
-  return {
-    type: artifact.format === 'markdown' ? 'markdown' : 'yaml',
-    content: artifact.content,
-    generatedAt: artifact.generatedAt,
-  };
+  try {
+    // Call server function for artifact generation
+    console.log('[generateArtifact] Importing server function...');
+    const { $generateArtifact } = await import('../../ai/server');
+
+    console.log('[generateArtifact] Calling $generateArtifact...');
+    const artifact = await $generateArtifact({
+      data: {
+        projectId: input.projectId,
+        stepNumber: input.stepNumber,
+        answers,
+      },
+    });
+
+    console.log('[generateArtifact] ✅ Success! Got artifact:', artifact);
+
+    // Convert server Artifact type to machine Artifact type
+    return {
+      type: artifact.format === 'markdown' ? 'markdown' : 'yaml',
+      content: artifact.content,
+      generatedAt: artifact.generatedAt,
+    };
+  } catch (error) {
+    console.error('[generateArtifact] ❌ Error:', error);
+    throw error;
+  }
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -215,7 +229,7 @@ export const planningMachine = setup({
   },
 }).createMachine({
   id: 'planning',
-  initial: 'idle',
+  initial: 'step1_gapAnalysis',
   context: ({ input }: { input: PlanningInput }) => ({
     projectId: input.projectId,
     entryPath: input.entryPath,
@@ -370,7 +384,7 @@ export const planningMachine = setup({
               projectId: context.projectId,
               stepNumber: 1,
               accumulatedContext: {
-                responses: context.step1Responses,
+                step1Responses: context.step1Responses,
               },
             }),
             onDone: {
@@ -664,7 +678,7 @@ export const planningMachine = setup({
               stepNumber: 5,
               accumulatedContext: {
                 projectOverview: buildProjectContext(context),
-                responses: context.step5Responses,
+                step5Responses: context.step5Responses,
               },
             }),
             onDone: {

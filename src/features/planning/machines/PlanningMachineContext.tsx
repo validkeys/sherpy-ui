@@ -60,11 +60,28 @@ export function PlanningMachineProvider({
 
   // Start actor on mount
   useEffect(() => {
+    console.log('[PlanningMachineProvider] Starting actor, current status:', actor.getSnapshot().status);
     actor.start();
+    console.log('[PlanningMachineProvider] After start, status:', actor.getSnapshot().status);
+
+    // Expose actor globally for debugging
+    if (typeof window !== 'undefined') {
+      (window as any).__planningActor = actor;
+      console.log('[PlanningMachineProvider] Actor exposed at window.__planningActor');
+    }
+
+    // Subscribe to all state changes for debugging
+    const subscription = actor.subscribe((snapshot) => {
+      console.log('[PlanningMachineProvider] State changed:', snapshot.value);
+      console.log('[PlanningMachineProvider] Actor status:', actor.getSnapshot().status);
+    });
+
     return () => {
+      console.log('[PlanningMachineProvider] Stopping actor');
+      subscription.unsubscribe();
       actor.stop();
     };
-  }, [actor]);
+  }, []); // Empty deps: actor is stable, only mount/unmount once per instance
 
   // Persist to localStorage on context changes
   useEffect(() => {
@@ -120,6 +137,9 @@ type PersistedSnapshot = {
 };
 
 function saveState(key: string, snapshot: SnapshotType): void {
+  // Skip during SSR
+  if (typeof window === 'undefined') return;
+
   try {
     const persistedSnapshot: PersistedSnapshot = {
       value: snapshot.value,
@@ -132,6 +152,9 @@ function saveState(key: string, snapshot: SnapshotType): void {
 }
 
 function loadState(key: string): SnapshotType | null {
+  // Skip during SSR
+  if (typeof window === 'undefined') return null;
+
   try {
     const stored = localStorage.getItem(key);
     if (!stored) return null;
