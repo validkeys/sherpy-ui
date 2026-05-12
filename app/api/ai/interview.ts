@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
     throw new Error("invalid input");
   }
 
-  const { projectId, stepNumber, previousAnswers } = body;
+  const { projectId, stepNumber, previousAnswers, projectContext } = body;
 
   if (typeof projectId !== "string" || !projectId) {
     throw new Error("projectId required");
@@ -27,6 +27,9 @@ export default defineEventHandler(async (event) => {
   if (!Array.isArray(previousAnswers)) {
     throw new Error("previousAnswers must be an array");
   }
+  if (projectContext !== undefined && typeof projectContext !== "string") {
+    throw new Error("projectContext must be a string if provided");
+  }
 
   // Get step name
   const stepName = getStepName(stepNumber);
@@ -34,9 +37,11 @@ export default defineEventHandler(async (event) => {
     throw new Error(`Invalid step number: ${stepNumber}`);
   }
 
-  // Get project overview from Step 1 for context in later steps
-  let projectOverview: string | undefined;
-  if (stepNumber > 1) {
+  // Use projectContext from machine first (preferred)
+  let projectOverview = projectContext;
+
+  // Fallback to server store if projectContext not provided
+  if (!projectOverview && stepNumber > 1) {
     try {
       const stepState = getStepState(projectId);
       const step1 = stepState.steps.find((s) => s.stepNumber === 1);

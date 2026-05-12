@@ -26,6 +26,8 @@ const fetchQuestion = fromPromise<
     projectContext: string;
   }
 >(async ({ input }) => {
+  console.log('[fetchQuestion] Input:', input);
+
   // Call streaming interview API
   const response = await fetch('/api/ai/interview', {
     method: 'POST',
@@ -34,6 +36,7 @@ const fetchQuestion = fromPromise<
       projectId: input.projectId,
       stepNumber: input.stepNumber,
       previousAnswers: input.previousAnswers,
+      projectContext: input.projectContext,
     }),
   });
 
@@ -148,17 +151,27 @@ const generateArtifact = fromPromise<
 
 function buildProjectContext(ctx: PlanningContext): string {
   const parts: string[] = [];
-  if (ctx.step1Responses.overview) {
-    parts.push(`Project: ${ctx.step1Responses.overview}`);
+
+  // Step 1: Gap Analysis responses
+  if (ctx.step1Responses.projectDescription) {
+    parts.push(`Project: ${ctx.step1Responses.projectDescription}`);
   }
+  if (ctx.step1Responses.existingRequirements) {
+    parts.push(`Has existing requirements: ${ctx.step1Responses.existingRequirements}`);
+  }
+
+  // Step 2: Business Requirements
   if (ctx.step2Answers.length > 0) {
     parts.push('Business Requirements:');
     ctx.step2Answers.forEach((a) => parts.push(`  Q: ${a.question}\n  A: ${a.value}`));
   }
+
+  // Step 3: Technical Requirements
   if (ctx.step3Answers.length > 0) {
     parts.push('Technical Requirements:');
     ctx.step3Answers.forEach((a) => parts.push(`  Q: ${a.question}\n  A: ${a.value}`));
   }
+
   return parts.join('\n\n');
 }
 
