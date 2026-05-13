@@ -315,5 +315,106 @@ describe('PlanningMachineContext', () => {
 
       consoleSpy.mockRestore();
     });
+
+    it('recovers from corrupted localStorage state by clearing it', async () => {
+      const storageKey = 'test-corrupted-recovery';
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
+
+      // Setup corrupted localStorage
+      const mockLocalStorage = {
+        getItem: vi.fn().mockReturnValue('{"invalid": "json"'), // Malformed JSON
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
+        key: vi.fn(),
+        length: 0,
+      };
+
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+        configurable: true,
+      });
+
+      function TestComponent() {
+        const currentStep = useSelector((state) => state.context.currentStepNumber);
+        return <div data-testid="current-step">{currentStep}</div>;
+      }
+
+      render(
+        <PlanningMachineProvider input={defaultInput} storageKey={storageKey}>
+          <TestComponent />
+        </PlanningMachineProvider>
+      );
+
+      // Wait for component to render
+      await waitFor(() => {
+        const stepElement = screen.getByTestId('current-step');
+        expect(stepElement.textContent).toBe('1');
+      });
+
+      // Verify error was logged with corruption message
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Corrupted state detected'),
+        expect.any(Error)
+      );
+
+      // Verify localStorage.removeItem was called to clear corrupted data
+      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith(storageKey);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('recovers from localStorage with missing critical fields', async () => {
+      const storageKey = 'test-missing-fields';
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
+
+      // Setup localStorage with missing projectId
+      const mockLocalStorage = {
+        getItem: vi.fn().mockReturnValue(JSON.stringify({
+          value: 'step1',
+          context: { currentStepNumber: 1 } // Missing projectId
+        })),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
+        key: vi.fn(),
+        length: 0,
+      };
+
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+        configurable: true,
+      });
+
+      function TestComponent() {
+        const currentStep = useSelector((state) => state.context.currentStepNumber);
+        return <div data-testid="current-step">{currentStep}</div>;
+      }
+
+      render(
+        <PlanningMachineProvider input={defaultInput} storageKey={storageKey}>
+          <TestComponent />
+        </PlanningMachineProvider>
+      );
+
+      // Wait for component to render with fresh state
+      await waitFor(() => {
+        const stepElement = screen.getByTestId('current-step');
+        expect(stepElement.textContent).toBe('1');
+      });
+
+      // Verify error was logged
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Corrupted state detected'),
+        expect.any(Error)
+      );
+
+      // Verify localStorage was cleared
+      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith(storageKey);
+
+      consoleSpy.mockRestore();
+    });
   });
 });

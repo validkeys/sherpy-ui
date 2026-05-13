@@ -1,0 +1,247 @@
+---
+plan_id: bug-007-defensive-fixes
+title: "BUG-007: Add Defensive Validation and localStorage Recovery"
+created: 2026-05-13
+status: ready
+estimated_duration: 60min
+
+context: |
+  BUG-007 reports that Gap Analysis submit button doesn't trigger API calls.
+  Tests show current code works correctly, but the bug symptoms suggest:
+  1. Race condition where formData becomes empty before submission
+  2. Corrupted localStorage causing invalid initial state
+
+  Solution: Add defensive checks to prevent invalid submissions and auto-recover
+  from corrupted state.
+
+goals:
+  - Prevent form submission when formData is invalid (even if button enabled)
+  - Auto-clear corrupted localStorage state and start fresh
+  - Add logging to diagnose if bug recurs
+  - Maintain all existing functionality
+
+non_goals:
+  - Changing core submission logic
+  - Adding new features
+  - Refactoring state management
+
+tasks:
+  - id: task-01
+    title: Add defensive validation to FormStep handleSubmit
+    file: src/features/planning/components/FormStep.tsx
+    duration: 20min
+    description: |
+      Add validation check before sending SUBMIT_FORM event to catch race conditions
+      where formData might be empty despite button being enabled.
+
+    changes:
+      - location: FormStep.tsx:84-100 (handleSubmit function)
+        action: |
+          Add defensive check at start of handleSubmit:
+
+          ```tsx
+          const handleSubmit = (e: React.FormEvent) => {
+            e.preventDefault();
+
+            // DEFENSIVE: Validate form data before submission
+            // Protects against race conditions where formData is empty
+            const filledFields = Object.keys(formData).filter(key => {
+              const value = formData[key];
+              return value && value.trim().length > 0;
+            });
+
+            if (filledFields.length < questions.length) {
+              console.error('[FormStep] ❌ Cannot submit: form data incomplete', {
+                formData,
+                filledFields: filledFields.length,
+                requiredFields: questions.length,
+                isFormValid,
+                stepNumber,
+              });
+              return; // Block submission
+            }
+
+            console.log('[FormStep] ===== SUBMIT CLICKED =====');
+            // ... rest of existing logic
+          ```
+
+    verify: |
+      - Run existing FormStep tests - all should pass
+      - Add test case for empty formData submission attempt
+      - Verify console.error is logged when validation fails
+      - Verify no SUBMIT_FORM event is sent when validation fails
+
+  - id: task-02
+    title: Add test for defensive validation
+    file: src/features/planning/components/FormStep.bug007.test.tsx
+    duration: 15min
+    description: |
+      Add test case that verifies the defensive validation prevents submission
+      with invalid form data.
+
+    changes:
+      - location: End of file
+        action: |
+          Add new test case:
+
+          ```tsx
+          it('defensive check: prevents submission with incomplete form data', () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
+
+            render(
+              <PlanningMachineProvider input={defaultInput}>
+                <FormStep stepKey="step1_gapAnalysis" stepName="Gap Analysis" status="collecting" />
+              </PlanningMachineProvider>
+            );
+
+            // Manually enable the button by filling then clearing fields
+            const requirementsField = screen.getByLabelText(/Do you have existing requirements/i);
+            const descriptionField = screen.getByLabelText(/What are you building/i);
+
+            fireEvent.change(requirementsField, { target: { value: 'Test' } });
+            fireEvent.change(descriptionField, { target: { value: 'Test' } });
+            fireEvent.change(requirementsField, { target: { value: '' } }); // Clear it
+
+            const submitButton = screen.getByRole('button', { name: /submit/i });
+
+            // Force click even though disabled
+            fireEvent.click(submitButton);
+
+            // Verify error was logged
+            expect(consoleSpy).toHaveBeenCalledWith(
+              expect.stringContaining('Cannot submit: form data incomplete'),
+              expect.any(Object)
+            );
+
+            consoleSpy.mockRestore();
+          });
+          ```
+
+    verify: |
+      - Test passes
+      - Console error is logged with diagnostic info
+      - No SUBMIT_FORM event is sent to machine
+
+  - id: task-03
+    title: Add localStorage recovery to PlanningMachineContext
+    file: src/features/planning/machines/PlanningMachineContext.tsx
+    duration: 15min
+    description: |
+      Wrap localStorage.getItem parsing in try-catch to auto-clear corrupted state.
+      This prevents the entire app from breaking if stored state is invalid.
+
+    changes:
+      - location: PlanningMachineContext.tsx:154-171 (loadState function)
+        action: |
+          Update loadState function to handle corruption:
+
+          ```tsx
+          function loadState(key: string): SnapshotType | null {
+            // Skip during SSR
+            if (typeof window === 'undefined') return null;
+
+            try {
+              const stored = localStorage.getItem(key);
+              if (!stored) return null;
+
+              const parsed = JSON.parse(stored) as PersistedSnapshot;
+
+              // Validate parsed state has required structure
+              if (!parsed.context || !parsed.value) {
+                throw new Error('Invalid state structure: missing context or value');
+              }
+
+              // Cast to unknown first, then to SnapshotType
+              return parsed as unknown as SnapshotType;
+            } catch (error) {
+              // Auto-recover by clearing corrupted state
+              console.error('[PlanningMachineContext] ⚠️  Corrupted state detected, clearing and starting fresh:', error);
+              try {
+                localStorage.removeItem(key);
+              } catch (clearError) {
+                console.error('[PlanningMachineContext] Failed to clear corrupted state:', clearError);
+              }
+              return null; // Start with fresh state
+            }
+          }
+          ```
+
+    verify: |
+      - Manually corrupt localStorage and verify recovery
+      - Check console.error is logged with diagnostic info
+      - Verify app starts fresh after corruption
+      - Run all PlanningMachineContext tests
+
+  - id: task-04
+    title: Add test for localStorage corruption recovery
+    file: src/features/planning/machines/PlanningMachineContext.test.tsx
+    duration: 10min
+    description: |
+      Add test that verifies corrupted localStorage is cleared and app recovers.
+
+    changes:
+      - location: Create new test or add to existing test suite
+        action: |
+          Add test case:
+
+          ```tsx
+          it('recovers from corrupted localStorage state', () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
+
+            // Setup corrupted localStorage
+            const mockLocalStorage = {
+              getItem: vi.fn().mockReturnValue('{"invalid": "json"'), // Malformed JSON
+              setItem: vi.fn(),
+              removeItem: vi.fn(),
+              clear: vi.fn(),
+            };
+            Object.defineProperty(window, 'localStorage', {
+              value: mockLocalStorage,
+              writable: true,
+            });
+
+            render(
+              <PlanningMachineProvider input={defaultInput} storageKey="test-corrupted">
+                <div>Test component</div>
+              </PlanningMachineProvider>
+            );
+
+            // Verify error was logged
+            expect(consoleSpy).toHaveBeenCalledWith(
+              expect.stringContaining('Corrupted state detected'),
+              expect.any(Error)
+            );
+
+            // Verify localStorage.removeItem was called
+            expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('test-corrupted');
+
+            consoleSpy.mockRestore();
+          });
+          ```
+
+    verify: |
+      - Test passes
+      - Console error shows corruption detected
+      - localStorage.removeItem is called
+      - App continues to function normally
+
+success_criteria:
+  - All existing tests pass (no regressions)
+  - New defensive validation test passes
+  - New localStorage recovery test passes
+  - Manual testing with corrupted state shows auto-recovery
+  - Console logs provide diagnostic info if bug recurs
+
+risks:
+  - Low risk: Changes are purely defensive, don't modify happy path
+  - localStorage.removeItem might fail in some browsers (already handled with try-catch)
+
+rollback_plan: |
+  If issues arise, revert the two file changes:
+  - FormStep.tsx: Remove defensive validation block
+  - PlanningMachineContext.tsx: Restore original loadState function
+
+notes: |
+  These changes don't fix a reproducible bug, but add safety nets for edge cases
+  that appear to have occurred in the wild based on BUG-007 report. The changes
+  are defensive programming that shouldn't affect normal operation.

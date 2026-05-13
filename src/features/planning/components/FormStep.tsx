@@ -83,6 +83,26 @@ export function FormStep({ stepKey, stepName, status }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // DEFENSIVE: Validate form data before submission
+    // This should never fail unless there's a race condition between
+    // isFormValid check and button click, or localStorage corruption
+    const missingFields = questions.filter(q => {
+      const value = formData[q.id];
+      return !value || value.trim().length === 0;
+    });
+
+    if (missingFields.length > 0) {
+      console.error('[FormStep] ❌ DEFENSIVE CHECK FAILED: form data incomplete despite enabled button', {
+        formData,
+        missingFieldIds: missingFields.map(q => q.id),
+        requiredFieldIds: questions.map(q => q.id),
+        stepNumber,
+        timestamp: new Date().toISOString(),
+      });
+      return; // Block submission
+    }
+
     console.log('[FormStep] ===== SUBMIT CLICKED =====');
     console.log('[FormStep] Form data:', formData);
     console.log('[FormStep] Step number:', stepNumber);

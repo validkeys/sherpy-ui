@@ -161,11 +161,27 @@ function loadState(key: string): SnapshotType | null {
 
     const parsed = JSON.parse(stored) as PersistedSnapshot;
 
+    // Validate parsed state has required structure
+    if (!parsed.context || !parsed.value || typeof parsed.context !== 'object') {
+      throw new Error('Invalid state structure: missing or invalid context/value');
+    }
+
+    // Validate critical context fields
+    if (!parsed.context.projectId || typeof parsed.context.currentStepNumber !== 'number') {
+      throw new Error('Invalid state structure: missing projectId or currentStepNumber');
+    }
+
     // Cast to unknown first, then to SnapshotType
     // This is safe because XState will reconstruct the full snapshot internally
     return parsed as unknown as SnapshotType;
   } catch (error) {
-    console.error('[PlanningMachineContext] Failed to load state:', error);
-    return null;
+    // Auto-recover by clearing corrupted state
+    console.error('[PlanningMachineContext] ⚠️  Corrupted state detected, clearing and starting fresh:', error);
+    try {
+      localStorage.removeItem(key);
+    } catch (clearError) {
+      console.error('[PlanningMachineContext] Failed to clear corrupted state:', clearError);
+    }
+    return null; // Start with fresh state
   }
 }
