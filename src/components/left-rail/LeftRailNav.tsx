@@ -1,4 +1,5 @@
 import { FolderOpen, Plus } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { useProjects } from "@/features/projects/hooks";
 import { cn } from "@/lib/utils";
 
@@ -8,8 +9,16 @@ interface LeftRailNavProps {
 
 export function LeftRailNav({ onNewProject }: LeftRailNavProps) {
   const { data: projects } = useProjects();
+  const navigate = useNavigate();
 
   const activeProjects = projects?.filter((p) => p.status === "active") ?? [];
+
+  const handleProjectClick = (projectId: string) => {
+    navigate({
+      to: "/project/$projectId/build",
+      params: { projectId },
+    });
+  };
 
   return (
     <div className="flex flex-col gap-[2px]">
@@ -18,17 +27,10 @@ export function LeftRailNav({ onNewProject }: LeftRailNavProps) {
       </span>
 
       {activeProjects.map((project) => (
-        // TODO: convert to <Link to="/project/$id"> when route exists (CR-A02)
         <button
           key={project.id}
           type="button"
-          onClick={() => {
-            if (process.env.NODE_ENV === "development") {
-              console.warn(
-                `[LeftRailNav] project route not yet implemented: ${project.id}`,
-              );
-            }
-          }}
+          onClick={() => handleProjectClick(project.id)}
           className={cn(
             "flex items-center gap-[10px] text-[13px] rounded-sm cursor-pointer w-full text-left",
             "transition-colors duration-[140ms] ease-out",
