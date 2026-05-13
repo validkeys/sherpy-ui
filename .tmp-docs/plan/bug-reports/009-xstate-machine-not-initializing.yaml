@@ -57,9 +57,9 @@ workaround: null
 # Any workaround available? (null if none)
 
 # Status
-status: "open" # open | investigating | fixed | wontfix | duplicate
-fixed_in: null # Commit hash or PR number when fixed
-verified_fixed: false # Set to true after re-test confirms fix
+status: "fixed" # open | investigating | fixed | wontfix | duplicate
+fixed_in: "fbcfac7" # Commit hash or PR number when fixed
+verified_fixed: true # Set to true after re-test confirms fix
 
 # Related
 related_bugs: ["006", "007", "008"]
