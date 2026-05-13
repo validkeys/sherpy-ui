@@ -84,17 +84,41 @@ export function FormStep({ stepKey, stepName, status }: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // DEFENSIVE: Validate form data before submission
-    // This should never fail unless there's a race condition between
-    // isFormValid check and button click, or localStorage corruption
+    // DEFENSIVE FIX FOR BUG-010: Read actual DOM values if React state is empty
+    // This handles cases where form values exist in DOM but React onChange didn't fire:
+    // - Browser autofill
+    // - Programmatic value setting (testing tools, automation)
+    // - Paste events that don't trigger onChange
+    // - Race conditions between value setting and state updates
+    const actualFormData = { ...formData };
+    let recoveredFromDOM = false;
+
+    questions.forEach(q => {
+      const element = document.getElementById(q.id) as HTMLInputElement | HTMLTextAreaElement;
+      if (element && element.value && element.value.trim()) {
+        if (!actualFormData[q.id] || actualFormData[q.id].trim().length === 0) {
+          console.log('[FormStep] 🔧 BUG-010 FIX: Recovering value from DOM for field:', q.id);
+          actualFormData[q.id] = element.value;
+          recoveredFromDOM = true;
+        }
+      }
+    });
+
+    if (recoveredFromDOM) {
+      console.warn('[FormStep] ⚠️ BUG-010 RECOVERY: React state was incomplete, recovered values from DOM');
+      console.warn('[FormStep] This can happen with autofill, paste, or programmatic form filling');
+      console.warn('[FormStep] Recovered data:', actualFormData);
+    }
+
+    // Validate form data before submission
     const missingFields = questions.filter(q => {
-      const value = formData[q.id];
+      const value = actualFormData[q.id];
       return !value || value.trim().length === 0;
     });
 
     if (missingFields.length > 0) {
       console.error('[FormStep] ❌ DEFENSIVE CHECK FAILED: form data incomplete despite enabled button', {
-        formData,
+        formData: actualFormData,
         missingFieldIds: missingFields.map(q => q.id),
         requiredFieldIds: questions.map(q => q.id),
         stepNumber,
@@ -104,13 +128,13 @@ export function FormStep({ stepKey, stepName, status }: Props) {
     }
 
     console.log('[FormStep] ===== SUBMIT CLICKED =====');
-    console.log('[FormStep] Form data:', formData);
+    console.log('[FormStep] Form data:', actualFormData);
     console.log('[FormStep] Step number:', stepNumber);
 
     const event = {
       type: 'SUBMIT_FORM' as const,
       stepNumber,
-      responses: formData,
+      responses: actualFormData,
     };
 
     console.log('[FormStep] Sending event:', event);
@@ -138,7 +162,7 @@ export function FormStep({ stepKey, stepName, status }: Props) {
       if (snapshot.context.error) {
         console.error('[FormStep] ❌ ERROR after 2s:', snapshot.context.error);
       }
-      if (snapshot.context.currentStepNumber !== 2) {
+      if (snapshot.context.currentStepNumber !== (stepNumber + 1)) {
         console.warn('[FormStep] ⚠️ Still on step', snapshot.context.currentStepNumber, '- artifact generation may have failed');
       }
     }, 2000);
