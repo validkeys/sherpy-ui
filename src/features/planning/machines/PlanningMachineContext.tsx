@@ -88,6 +88,12 @@ export function PlanningMachineProvider({
     const subscription = actor.subscribe((snapshot) => {
       saveState(storageKey, snapshot);
     });
+
+    // CRITICAL: XState v5 subscriptions only fire on state changes AFTER subscription.
+    // We must explicitly persist the initial state to ensure localStorage is created.
+    // This fixes BUG-009: XState machine not initializing - no localStorage created.
+    saveState(storageKey, actor.getSnapshot());
+
     return () => {
       subscription.unsubscribe();
     };
