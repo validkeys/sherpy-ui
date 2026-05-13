@@ -3,9 +3,21 @@ import type { CreateProjectInput, Project } from "./types";
 
 const store = new Map<string, Project>();
 const counterRef = { value: 42 };
+let lastTimestamp = "";
 
 function nextCode(): string {
   return `SHR-${String(counterRef.value++).padStart(4, "0")}`;
+}
+
+function getNewTimestamp(previousTimestamp?: string): string {
+  let timestamp = new Date().toISOString();
+  if (previousTimestamp && timestamp <= previousTimestamp) {
+    const date = new Date(previousTimestamp);
+    date.setMilliseconds(date.getMilliseconds() + 1);
+    timestamp = date.toISOString();
+  }
+  lastTimestamp = timestamp;
+  return timestamp;
 }
 
 export function listProjects(): Project[] {
@@ -40,6 +52,19 @@ export function updateProjectStatus(
     ...project,
     status,
     lastTouchedAt: new Date().toISOString(),
+  };
+  store.set(id, updated);
+  return updated;
+}
+
+export function updateCurrentStep(id: string, step: number): Project {
+  const project = store.get(id);
+  if (!project) throw new Error(`Project not found: ${id}`);
+  if (step <= 0) throw new Error(`Invalid step number: ${step}`);
+  const updated = {
+    ...project,
+    currentStep: step as Project["currentStep"],
+    lastTouchedAt: getNewTimestamp(project.lastTouchedAt),
   };
   store.set(id, updated);
   return updated;

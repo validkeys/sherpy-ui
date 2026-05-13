@@ -4,6 +4,7 @@ import {
   createProject,
   getProject,
   listProjects,
+  updateCurrentStep,
   updateProjectStatus,
 } from "./store";
 
@@ -75,5 +76,62 @@ describe("getProject", () => {
 
   it("returns undefined for unknown id", () => {
     expect(getProject("nope")).toBeUndefined();
+  });
+});
+
+describe("updateCurrentStep", () => {
+  it("updates currentStep for valid project and step number", () => {
+    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+    const originalTimestamp = project.lastTouchedAt;
+
+    const updated = updateCurrentStep(project.id, 3);
+
+    expect(updated.currentStep).toBe(3);
+    expect(updated.lastTouchedAt).not.toBe(originalTimestamp);
+    expect(updated.id).toBe(project.id);
+    expect(updated.name).toBe(project.name);
+  });
+
+  it("throws error for invalid projectId", () => {
+    expect(() => updateCurrentStep("invalid-id", 2)).toThrow(
+      "Project not found: invalid-id",
+    );
+  });
+
+  it("throws error for invalid step number (negative)", () => {
+    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+
+    expect(() => updateCurrentStep(project.id, -1)).toThrow(
+      "Invalid step number: -1",
+    );
+  });
+
+  it("throws error for invalid step number (zero)", () => {
+    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+
+    expect(() => updateCurrentStep(project.id, 0)).toThrow(
+      "Invalid step number: 0",
+    );
+  });
+
+  it("updates lastTouchedAt timestamp", () => {
+    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+    const originalTimestamp = project.lastTouchedAt;
+
+    const updated = updateCurrentStep(project.id, 2);
+
+    expect(updated.lastTouchedAt).not.toBe(originalTimestamp);
+    expect(new Date(updated.lastTouchedAt).getTime()).toBeGreaterThanOrEqual(
+      new Date(originalTimestamp).getTime(),
+    );
+  });
+
+  it("persists update in store", () => {
+    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+
+    updateCurrentStep(project.id, 5);
+    const retrieved = getProject(project.id);
+
+    expect(retrieved?.currentStep).toBe(5);
   });
 });
