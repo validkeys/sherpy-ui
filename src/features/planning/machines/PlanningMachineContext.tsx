@@ -58,7 +58,7 @@ export function PlanningMachineProvider({
     return createActor(planningMachine, { input });
   });
 
-  // Start actor on mount
+  // Start actor and manage lifecycle
   useEffect(() => {
     console.log('[PlanningMachineProvider] Starting actor, current status:', actor.getSnapshot().status);
     actor.start();
@@ -70,26 +70,24 @@ export function PlanningMachineProvider({
       console.log('[PlanningMachineProvider] Actor exposed at window.__planningActor');
     }
 
-    // Subscribe to all state changes for debugging
-    const subscription = actor.subscribe((snapshot) => {
+    // Subscribe for debugging logs
+    const debugSubscription = actor.subscribe((snapshot) => {
       console.log('[PlanningMachineProvider] State changed:', snapshot.value);
       console.log('[PlanningMachineProvider] Actor status:', actor.getSnapshot().status);
     });
 
-    return () => {
-      console.log('[PlanningMachineProvider] Stopping actor');
-      subscription.unsubscribe();
-      actor.stop();
-    };
-  }, []); // Empty deps: actor is stable, only mount/unmount once per instance
+    // Subscribe for localStorage persistence
+    const persistSubscription = actor.subscribe((snapshot) => {
+      // Only persist stable states, not transient invoke states
+      // Transient states like 'submitting', 'generating', etc. should not be persisted
+      // as they represent in-progress async operations that can't be resumed
+      const stateValue = snapshot.value as any;
+      const isTransientState =
+        (typeof stateValue === 'object' && Object.values(stateValue).some((v: any) =>
+          v === 'submitting' || v === 'generatingArtifact'
+        ));
 
-  // Persist to localStorage on context changes
-  useEffect(() => {
-    const subscription = actor.subscribe((snapshot) => {
-      // BUG-011 FIX PART 2: Don't save when actor is stopping
-      // When component unmounts, actor.stop() triggers a final snapshot with status: 'stopped'
-      // Saving this would cause the next load to restore a stopped actor that can't process events
-      if (snapshot.status !== 'stopped') {
+      if (!isTransientState) {
         saveState(storageKey, snapshot);
       }
     });
@@ -97,14 +95,15 @@ export function PlanningMachineProvider({
     // CRITICAL: XState v5 subscriptions only fire on state changes AFTER subscription.
     // We must explicitly persist the initial state to ensure localStorage is created.
     // This fixes BUG-009: XState machine not initializing - no localStorage created.
-    // BUG-011 FIX: Only save if status is active
-    const initialSnapshot = actor.getSnapshot();
-    if (initialSnapshot.status !== 'stopped') {
-      saveState(storageKey, initialSnapshot);
-    }
+    saveState(storageKey, actor.getSnapshot());
 
     return () => {
-      subscription.unsubscribe();
+      console.log('[PlanningMachineProvider] Cleaning up actor');
+      // CRITICAL: Unsubscribe BEFORE stopping actor
+      // This prevents the stop event from triggering a save with status: 'stopped'
+      persistSubscription.unsubscribe();
+      debugSubscription.unsubscribe();
+      actor.stop();
     };
   }, [actor, storageKey]);
 
@@ -194,11 +193,14 @@ function loadState(key: string): SnapshotType | null {
       throw new Error('Invalid context: missing projectId or currentStepNumber');
     }
 
-    // BUG-011 FIX PART 2: Force status to 'active' when restoring
-    // When the component unmounts, actor.stop() is called, which triggers a save with status: 'stopped'.
-    // If we restore with status: 'stopped', the actor cannot process events even after actor.start().
-    // XState v5 respects the snapshot's status field, so we must reset it to 'active' for restoration.
-    parsed.status = 'active';
+    // BUG-011 FIX: Defensive reset of status to 'active'
+    // This handles any existing corrupted snapshots in localStorage that have status: 'stopped'.
+    // Should not happen with proper cleanup ordering, but provides defense-in-depth.
+    // XState v5 respects the snapshot's status field, so we must ensure it's 'active' for restoration.
+    if (parsed.status !== 'active') {
+      console.warn('[PlanningMachineContext] Restoring snapshot with non-active status:', parsed.status, '- forcing to active');
+      parsed.status = 'active';
+    }
 
     // Cast to SnapshotType - safe because we validated the structure above
     // and XState will properly reconstruct the snapshot during createActor
