@@ -1,36 +1,37 @@
-# Continue: Bug #002 State Sync - Task t-004
+# Continue: Bug #002 State Sync - Task t-005
 
 **Location:** Worktree `/workspace/.claude/worktrees/fix-bug-002-state-sync` (branch: `worktree-fix-bug-002-state-sync`)
 
-**Progress (Tasks t-001 ✅, t-002 ✅, t-003 ✅):**
-- Implemented `updateCurrentStep` store function with validation
-- Created PUT `/api/projects/[id]` endpoint following vinxi/http pattern
+**Progress (Tasks t-001 ✅, t-002 ✅, t-003 ✅, t-004 ✅):**
+- Implemented `updateCurrentStep` store function with validation (t-002)
+- Created PUT `/api/projects/[id]` endpoint (t-003)
+- Added backend sync to `$completeStep` and `$submitAnswerAndComplete` (t-004)
 - All 146 tests passing, zero type errors
 - Commits:
   - `feat(t-002): implement updateCurrentStep with validation`
   - `feat(t-003): create PUT endpoint for updateCurrentStep`
+  - `feat(t-004): sync currentStep to backend after transitions`
 
-**Next (Task t-004):**
-Integrate backend sync into planning machine at `src/features/planning/machines/planningMachine.ts`:
-- Add `syncStepToBackend` action after every step transition
-- Call PUT `/api/projects/[id]` with `{ currentStep: context.currentStep }`
-- Handle errors gracefully (log, don't block navigation)
-- Follow XState action pattern from lines 237-242
+**Next (Task t-005):**
+Update build page initialization to read `currentStep` from backend projects store.
+Currently the build page initializes planning state from scratch - it should respect
+the persisted `currentStep` from the projects store.
 
-**Style Anchor:** `src/features/planning/machines/planningMachine.ts:237-242`
+**Files to check:**
+- Build page component that initializes planning state
+- Projects store integration
+- Planning hooks initialization
 
 **Validation:**
 ```bash
-npm test src/features/planning/machines/planningMachine.test.ts
+npm test
 npm run typecheck
 ```
 
 **Critical Constraints:**
 - TDD: Write tests first
-- Error handling must not block step navigation
-- No new dependencies allowed
-- Only touch files specified in task
+- Must preserve existing initialization for new projects
+- Only update initialization for existing projects with persisted state
+- No breaking changes to existing behavior
 
-**Plan Reference:** `.tmp-docs/plans/fix-project-state-sync.yaml`
-
-**After t-004:** Task t-005 will update build page to initialize from backend state.
+**After t-005:** Create PR with all changes and manual verification plan.
