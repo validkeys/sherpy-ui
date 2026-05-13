@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createProject, _resetStore as resetProjects } from "../projects/store";
+import {
+  createProject,
+  getProject,
+  updateCurrentStep,
+  _resetStore as resetProjects,
+} from "../projects/store";
 import {
   getStepState,
   hasStepState,
@@ -115,6 +120,64 @@ describe("$submitAnswer validator", () => {
     expect(() =>
       validateSubmitAnswer({ projectId: "p1", stepNumber: 1, answer: "   " }),
     ).toThrow("answer required");
+  });
+});
+
+describe("$getStepState initialization from backend", () => {
+  it("initializes from backend currentStep when available", () => {
+    const project = createProject({ name: "Test", entryPath: "scratch" });
+    // Simulate a project that has progressed to step 3
+    updateCurrentStep(project.id, 3);
+
+    // Initialize planning state - should sync from backend
+    const updatedProject = getProject(project.id);
+    initProjectSteps(project.id, project.entryPath, updatedProject!.currentStep);
+    const state = getStepState(project.id);
+
+    expect(state.currentStep).toBe(3);
+    expect(state.steps[0].status).toBe("complete");
+    expect(state.steps[1].status).toBe("complete");
+    expect(state.steps[2].status).toBe("now");
+    expect(state.steps[3].status).toBe("pending");
+  });
+
+  it("initializes from scratch when backend currentStep matches default", () => {
+    const project = createProject({ name: "Test", entryPath: "scratch" });
+    // Default currentStep for scratch is 1
+    initProjectSteps(project.id, project.entryPath);
+    const state = getStepState(project.id);
+
+    expect(state.currentStep).toBe(1);
+    expect(state.steps[0].status).toBe("now");
+    expect(state.steps[1].status).toBe("pending");
+  });
+
+  it("initializes doc-first projects from backend currentStep", () => {
+    const project = createProject({ name: "Test", entryPath: "doc-first" });
+    updateCurrentStep(project.id, 4);
+
+    const updatedProject = getProject(project.id);
+    initProjectSteps(project.id, project.entryPath, updatedProject!.currentStep);
+    const state = getStepState(project.id);
+
+    expect(state.currentStep).toBe(4);
+    expect(state.steps[0].status).toBe("complete"); // Step 1 pre-seeded
+    expect(state.steps[1].status).toBe("complete");
+    expect(state.steps[2].status).toBe("complete");
+    expect(state.steps[3].status).toBe("now");
+  });
+
+  it("preserves doc-first step 1 pre-seeded answer", () => {
+    const project = createProject({ name: "Test", entryPath: "doc-first" });
+    updateCurrentStep(project.id, 3);
+
+    const updatedProject = getProject(project.id);
+    initProjectSteps(project.id, project.entryPath, updatedProject!.currentStep);
+    const state = getStepState(project.id);
+
+    // Step 1 should have pre-seeded answer
+    expect(state.steps[0].answer?.value).toBe("doc-first");
+    expect(state.steps[0].status).toBe("complete");
   });
 });
 

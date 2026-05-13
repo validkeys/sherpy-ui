@@ -93,10 +93,30 @@ export function hasStepState(projectId: string): boolean {
 export function initProjectSteps(
   projectId: string,
   entryPath: EntryPath,
+  backendCurrentStep?: number,
 ): ProjectStepState {
   const steps = buildSteps(entryPath);
-  const currentStep = entryPath === "doc-first" ? 2 : 1;
-  const state: ProjectStepState = { projectId, currentStep, steps };
+  const defaultStep = entryPath === "doc-first" ? 2 : 1;
+  const currentStep = backendCurrentStep ?? defaultStep;
+
+  // Update step statuses based on currentStep
+  // Preserve pre-seeded answer for doc-first step 1
+  const updatedSteps = steps.map((step) => {
+    // For doc-first, step 1 is always pre-seeded and complete
+    if (entryPath === "doc-first" && step.stepNumber === 1) {
+      return step; // Keep pre-seeded answer and "complete" status
+    }
+
+    if (step.stepNumber < currentStep) {
+      return { ...step, status: "complete" as const };
+    } else if (step.stepNumber === currentStep) {
+      return { ...step, status: "now" as const };
+    } else {
+      return { ...step, status: "pending" as const };
+    }
+  });
+
+  const state: ProjectStepState = { projectId, currentStep, steps: updatedSteps };
   store.set(projectId, state);
   return state;
 }

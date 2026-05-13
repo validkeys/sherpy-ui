@@ -28,7 +28,8 @@ export const $getStepState = createServerFn({ method: "GET" })
     if (!hasStepState(data.projectId)) {
       const project = getProject(data.projectId);
       if (!project) throw new Error(`Project not found: ${data.projectId}`);
-      initProjectSteps(data.projectId, project.entryPath);
+      // Initialize with backend currentStep to restore persisted state
+      initProjectSteps(data.projectId, project.entryPath, project.currentStep);
     }
     return getStepState(data.projectId);
   });
