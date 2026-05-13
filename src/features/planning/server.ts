@@ -92,6 +92,20 @@ export const $completeStep = createServerFn({ method: "POST" })
     await initStore();
     const updatedState = completeStep(data.projectId, data.stepNumber);
 
+    // Sync currentStep to backend projects store
+    try {
+      const response = await fetch(`/api/projects/${data.projectId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentStep: updatedState.currentStep }),
+      });
+      if (!response.ok) {
+        throw new Error(`Backend sync failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("[syncStepToBackend] Error syncing step to backend:", error);
+    }
+
     // Generate artifact after step completion for interview steps
     const step = updatedState.steps.find((s) => s.stepNumber === data.stepNumber);
     if (step?.answers && step.answers.length > 0 && isInterviewStep(data.stepNumber)) {
@@ -130,12 +144,28 @@ export const $submitAnswerAndComplete = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     await initStore();
-    return submitAnswerAndComplete(
+    const updatedState = submitAnswerAndComplete(
       data.projectId,
       data.stepNumber,
       data.question,
       data.answer,
     );
+
+    // Sync currentStep to backend projects store
+    try {
+      const response = await fetch(`/api/projects/${data.projectId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentStep: updatedState.currentStep }),
+      });
+      if (!response.ok) {
+        throw new Error(`Backend sync failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("[syncStepToBackend] Error syncing step to backend:", error);
+    }
+
+    return updatedState;
   });
 
 export const $updateStepOptions = createServerFn({ method: "POST" })
