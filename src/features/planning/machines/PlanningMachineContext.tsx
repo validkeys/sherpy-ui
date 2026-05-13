@@ -86,13 +86,22 @@ export function PlanningMachineProvider({
   // Persist to localStorage on context changes
   useEffect(() => {
     const subscription = actor.subscribe((snapshot) => {
-      saveState(storageKey, snapshot);
+      // BUG-011 FIX PART 2: Don't save when actor is stopping
+      // When component unmounts, actor.stop() triggers a final snapshot with status: 'stopped'
+      // Saving this would cause the next load to restore a stopped actor that can't process events
+      if (snapshot.status !== 'stopped') {
+        saveState(storageKey, snapshot);
+      }
     });
 
     // CRITICAL: XState v5 subscriptions only fire on state changes AFTER subscription.
     // We must explicitly persist the initial state to ensure localStorage is created.
     // This fixes BUG-009: XState machine not initializing - no localStorage created.
-    saveState(storageKey, actor.getSnapshot());
+    // BUG-011 FIX: Only save if status is active
+    const initialSnapshot = actor.getSnapshot();
+    if (initialSnapshot.status !== 'stopped') {
+      saveState(storageKey, initialSnapshot);
+    }
 
     return () => {
       subscription.unsubscribe();
@@ -137,20 +146,16 @@ export function useSelector<T>(selector: (snapshot: SnapshotType) => T): T {
 // PERSISTENCE HELPERS
 // ─────────────────────────────────────────────────────────────
 
-type PersistedSnapshot = {
-  value: string | Record<string, any>;
-  context: PlanningContext;
-};
-
 function saveState(key: string, snapshot: SnapshotType): void {
   // Skip during SSR
   if (typeof window === 'undefined') return;
 
   try {
-    const persistedSnapshot: PersistedSnapshot = {
-      value: snapshot.value,
-      context: snapshot.context,
-    };
+    // BUG-011 FIX: Use snapshot.toJSON() instead of manually picking fields
+    // XState v5 requires a complete snapshot with status, children, historyValue, tags, etc.
+    // Restoring from a partial snapshot causes the actor to enter an error state,
+    // which silently ignores all events (including SUBMIT_FORM).
+    const persistedSnapshot = snapshot.toJSON();
     localStorage.setItem(key, JSON.stringify(persistedSnapshot));
   } catch (error) {
     console.error('[PlanningMachineContext] Failed to save state:', error);
@@ -165,28 +170,46 @@ function loadState(key: string): SnapshotType | null {
     const stored = localStorage.getItem(key);
     if (!stored) return null;
 
-    const parsed = JSON.parse(stored) as PersistedSnapshot;
+    const parsed = JSON.parse(stored);
 
-    // Validate parsed state has required structure
-    if (!parsed.context || !parsed.value || typeof parsed.context !== 'object') {
-      throw new Error('Invalid state structure: missing or invalid context/value');
+    // BUG-011 FIX: Validate that we have a complete XState v5 snapshot
+    // A complete snapshot must include: status, value, context, children, historyValue, tags
+    // Partial snapshots (e.g., only {value, context}) will cause restoration to fail
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      !parsed.status ||
+      !parsed.value ||
+      !parsed.context ||
+      typeof parsed.context !== 'object'
+    ) {
+      throw new Error(
+        'Invalid snapshot structure: missing required fields (status, value, context). ' +
+        'This may be from an old version. Clearing and starting fresh.'
+      );
     }
 
     // Validate critical context fields
     if (!parsed.context.projectId || typeof parsed.context.currentStepNumber !== 'number') {
-      throw new Error('Invalid state structure: missing projectId or currentStepNumber');
+      throw new Error('Invalid context: missing projectId or currentStepNumber');
     }
 
-    // Cast to unknown first, then to SnapshotType
-    // This is safe because XState will reconstruct the full snapshot internally
+    // BUG-011 FIX PART 2: Force status to 'active' when restoring
+    // When the component unmounts, actor.stop() is called, which triggers a save with status: 'stopped'.
+    // If we restore with status: 'stopped', the actor cannot process events even after actor.start().
+    // XState v5 respects the snapshot's status field, so we must reset it to 'active' for restoration.
+    parsed.status = 'active';
+
+    // Cast to SnapshotType - safe because we validated the structure above
+    // and XState will properly reconstruct the snapshot during createActor
     return parsed as unknown as SnapshotType;
   } catch (error) {
-    // Auto-recover by clearing corrupted state
-    console.error('[PlanningMachineContext] ⚠️  Corrupted state detected, clearing and starting fresh:', error);
+    // Auto-recover by clearing corrupted/outdated state
+    console.error('[PlanningMachineContext] ⚠️  Invalid state detected, clearing and starting fresh:', error);
     try {
       localStorage.removeItem(key);
     } catch (clearError) {
-      console.error('[PlanningMachineContext] Failed to clear corrupted state:', clearError);
+      console.error('[PlanningMachineContext] Failed to clear invalid state:', clearError);
     }
     return null; // Start with fresh state
   }
