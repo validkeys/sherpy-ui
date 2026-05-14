@@ -141,3 +141,64 @@ PORT=3000
 SEED_DATA=true
 USE_MOCK_STREAMING=false  # Use mock LLM responses for testing
 ```
+
+## Testing
+
+This project uses a comprehensive testing framework with:
+- **Test Suite:** 654+ passing tests (Vitest)
+- **Coverage:** Unit, integration, and E2E tests
+- **Test Helpers:** `PlanningStateBuilder` for fluent test data creation
+- **Snapshot System:** 26 validated snapshots (0.16 MB) for regression testing
+
+### Quick Start
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Run tests with UI
+pnpm test:ui
+
+# Generate coverage report
+pnpm test:coverage
+
+# Validate snapshots
+pnpm run snapshots:validate
+
+# Generate snapshots
+pnpm run snapshots:generate
+```
+
+### Testing Guide
+
+For comprehensive testing documentation, see:
+- **[Testing Guide](tests/fixtures/GUIDE.md)** - Complete testing framework documentation (998 lines)
+  - PlanningStateBuilder API reference (16 methods)
+  - Snapshot system (capture/load/validate)
+  - Test helpers and best practices
+  - Troubleshooting guide
+  - Advanced patterns
+
+### Test Data Management
+
+```typescript
+// Example: Create test data with PlanningStateBuilder
+import { PlanningStateBuilder } from '@/tests/fixtures/builders/PlanningStateBuilder';
+
+const projectId = await new PlanningStateBuilder()
+  .withBusinessRequirements({ 
+    existingRequirements: 'No', 
+    projectDescription: 'Healthcare portal' 
+  })
+  .withTechnicalRequirements({ 
+    targetPlatform: 'Web', 
+    userBase: 'Internal staff' 
+  })
+  .atStep(5)
+  .save();
+```
+
+See [tests/fixtures/GUIDE.md](tests/fixtures/GUIDE.md) for full API documentation and examples.

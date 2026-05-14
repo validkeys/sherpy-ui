@@ -31,7 +31,7 @@ async function seedProject() {
   const step = parseInt(args[0], 10);
   const projectName = args[1];
 
-  if (isNaN(step) || step < 1 || step > 10) {
+  if (Number.isNaN(step) || step < 1 || step > 10) {
     console.error(
       `❌ Error: Invalid step number "${args[0]}". Must be between 1 and 10.`,
     );
@@ -76,7 +76,7 @@ async function seedProject() {
     );
     console.log(`   window.location.href = '${data.url}';`);
     console.log("");
-    console.log("🔗 Or open: " + baseUrl + data.url);
+    console.log(`🔗 Or open: ${baseUrl}${data.url}`);
     console.log(
       "   (then manually run the localStorage.setItem command above)",
     );

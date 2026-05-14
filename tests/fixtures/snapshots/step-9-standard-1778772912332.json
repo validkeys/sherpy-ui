@@ -1,0 +1,112 @@
+{
+  "version": "1.0",
+  "capturedAt": "2026-05-14T15:35:12.332Z",
+  "stepNumber": 9,
+  "label": "standard",
+  "xstateSnapshot": {
+    "status": "active",
+    "value": "step9",
+    "context": {
+      "projectId": "test-project",
+      "entryPath": "new-project",
+      "startedAt": "2026-05-14T15:35:12.332Z",
+      "updatedAt": "2026-05-14T15:35:12.332Z",
+      "step1Responses": {
+        "existingRequirements": "No",
+        "projectDescription": "Healthcare patient portal with appointment scheduling and secure messaging"
+      },
+      "step2Answers": [
+        {
+          "question": "What is the primary business goal for this project?",
+          "value": "Improve patient engagement and reduce administrative burden on healthcare staff",
+          "timestamp": "2026-05-14T10:00:00.000Z"
+        },
+        {
+          "question": "Who are the primary users of this system?",
+          "value": "Patients seeking appointments and secure communication with their healthcare providers",
+          "timestamp": "2026-05-14T10:05:00.000Z"
+        },
+        {
+          "question": "What are the key success metrics?",
+          "value": "50% reduction in phone calls for appointment scheduling, 80% patient adoption within 6 months",
+          "timestamp": "2026-05-14T10:10:00.000Z"
+        }
+      ],
+      "step2CurrentQuestion": null,
+      "step2CurrentOptions": null,
+      "step3Answers": [
+        {
+          "question": "What are the technical constraints for this project?",
+          "value": "Must comply with HIPAA, integrate with existing EHR system, support 10,000+ concurrent users",
+          "timestamp": "2026-05-14T11:00:00.000Z"
+        },
+        {
+          "question": "What is the preferred technology stack?",
+          "value": "React + TypeScript frontend, Node.js backend, PostgreSQL database, deployed on AWS",
+          "timestamp": "2026-05-14T11:05:00.000Z"
+        },
+        {
+          "question": "What are the security requirements?",
+          "value": "End-to-end encryption for messages, MFA authentication, audit logging for all data access",
+          "timestamp": "2026-05-14T11:10:00.000Z"
+        }
+      ],
+      "step3CurrentQuestion": null,
+      "step3CurrentOptions": null,
+      "step5Responses": {
+        "approach": "incremental",
+        "testStrategy": "TDD with integration tests",
+        "deploymentStrategy": "CI/CD with automated testing"
+      },
+      "step7Edits": null,
+      "artifacts": {
+        "1": {
+          "type": "markdown",
+          "content": "# Gap Analysis Worksheet\n\n## Project Overview\nHealthcare patient portal with appointment scheduling and secure messaging\n\n## Existing Requirements\n**Do you have existing requirements?** No\n\n## Gap Analysis\nBased on the information provided, this is a new project that requires comprehensive planning.\n\n**Next Steps:**\n- Conduct business requirements interview\n- Define technical requirements\n- Establish project scope and constraints\n",
+          "generatedAt": "2026-05-14T15:35:12.332Z"
+        },
+        "2": {
+          "type": "yaml",
+          "content": "# Business Requirements\n\n## Metadata\ngenerated_at: \"2026-05-14T15:35:12.332Z\"\ntotal_questions: 3\n\n## Interview Responses\nresponses:\n  - question: \"What is the primary business goal for this project?\"\n    answer: \"Improve patient engagement and reduce administrative burden on healthcare staff\"\n    timestamp: \"2026-05-14T10:00:00.000Z\"\n  - question: \"Who are the primary users of this system?\"\n    answer: \"Patients seeking appointments and secure communication with their healthcare providers\"\n    timestamp: \"2026-05-14T10:05:00.000Z\"\n  - question: \"What are the key success metrics?\"\n    answer: \"50% reduction in phone calls for appointment scheduling, 80% patient adoption within 6 months\"\n    timestamp: \"2026-05-14T10:10:00.000Z\"\n\n## Summary\nBusiness requirements captured through 3 interview questions covering project goals, user needs, and success criteria.\n",
+          "generatedAt": "2026-05-14T15:35:12.332Z"
+        },
+        "3": {
+          "type": "yaml",
+          "content": "# Technical Requirements\n\n## Metadata\ngenerated_at: \"2026-05-14T15:35:12.332Z\"\ntotal_questions: 3\n\n## Interview Responses\nresponses:\n  - question: \"What are the technical constraints for this project?\"\n    answer: \"Must comply with HIPAA, integrate with existing EHR system, support 10,000+ concurrent users\"\n    timestamp: \"2026-05-14T11:00:00.000Z\"\n  - question: \"What is the preferred technology stack?\"\n    answer: \"React + TypeScript frontend, Node.js backend, PostgreSQL database, deployed on AWS\"\n    timestamp: \"2026-05-14T11:05:00.000Z\"\n  - question: \"What are the security requirements?\"\n    answer: \"End-to-end encryption for messages, MFA authentication, audit logging for all data access\"\n    timestamp: \"2026-05-14T11:10:00.000Z\"\n\n## Summary\nTechnical requirements captured through 3 interview questions covering constraints, technology stack, and security requirements.\n",
+          "generatedAt": "2026-05-14T15:35:12.332Z"
+        },
+        "4": {
+          "type": "yaml",
+          "content": "# Style Anchors Collection\n\n## Metadata\ngenerated_at: \"2026-05-14T15:35:12.332Z\"\nproject_type: \"healthcare_patient_portal\"\n\n## Code Examples\n\n### React Component Pattern\n```typescript\n// Preferred: Functional component with TypeScript\ninterface PatientCardProps {\n  patientId: string;\n  onSelect: (id: string) => void;\n}\n\nexport const PatientCard: React.FC<PatientCardProps> = ({ patientId, onSelect }) => {\n  return (\n    <div className=\"patient-card\" onClick={() => onSelect(patientId)}>\n      {/* Component content */}\n    </div>\n  );\n};\n```\n\n### State Management Pattern\n```typescript\n// Preferred: XState for complex workflows\nimport { createMachine } from 'xstate';\n\nexport const appointmentMachine = createMachine({\n  id: 'appointment',\n  initial: 'idle',\n  states: {\n    idle: {\n      on: { SCHEDULE: 'scheduling' }\n    },\n    scheduling: {\n      on: { SUCCESS: 'scheduled', ERROR: 'error' }\n    }\n  }\n});\n```\n\n## Summary\nStyle anchors collected for healthcare patient portal application using React, TypeScript, and XState patterns.\n",
+          "generatedAt": "2026-05-14T15:35:12.332Z"
+        },
+        "5": {
+          "type": "yaml",
+          "content": "# Implementation Plan\n\n## Metadata\ngenerated_at: \"2026-05-14T15:35:12.332Z\"\napproach: \"incremental\"\ntest_strategy: \"TDD with integration tests\"\n\n## Milestones\n\n### Milestone 1: Core Infrastructure (Week 1-2)\n- Set up project structure\n- Configure CI/CD pipeline\n- Implement authentication system\n- **Definition of Done:** All infrastructure tests pass, deployment automated\n\n### Milestone 2: Patient Portal (Week 3-4)\n- Build patient dashboard\n- Implement appointment scheduling UI\n- Add secure messaging interface\n- **Definition of Done:** UI components functional, unit tests pass\n\n### Milestone 3: Integration (Week 5-6)\n- Integrate with EHR system\n- Implement data synchronization\n- Add audit logging\n- **Definition of Done:** Integration tests pass, HIPAA compliance verified\n\n### Milestone 4: Testing & Launch (Week 7-8)\n- Conduct QA testing\n- Perform security audit\n- Deploy to production\n- **Definition of Done:** All acceptance criteria met, production stable\n\n## Risk Mitigation\n- HIPAA compliance: Engage security consultant early\n- EHR integration: Start API testing in Milestone 1\n- Performance: Load testing during Milestone 3\n\n## Summary\nImplementation plan with 4 milestones over 8 weeks, TDD approach, incremental delivery strategy.\n",
+          "generatedAt": "2026-05-14T15:35:12.332Z"
+        },
+        "6": {
+          "type": "yaml",
+          "content": "# QA Test Plan\n\n## Metadata\ngenerated_at: \"2026-05-14T15:35:12.332Z\"\ntest_types: [\"functional\", \"integration\", \"security\", \"performance\"]\n\n## Test Suites\n\n### Functional Tests\n- User authentication flow\n- Appointment scheduling workflow\n- Secure messaging functionality\n- Patient data display\n\n### Integration Tests\n- EHR system integration\n- Email notification system\n- Calendar synchronization\n- Data export functionality\n\n### Security Tests\n- HIPAA compliance validation\n- Authentication/authorization checks\n- Data encryption verification\n- Audit log completeness\n\n### Performance Tests\n- Load testing (10,000+ concurrent users)\n- Response time benchmarks\n- Database query optimization\n- API endpoint performance\n\n## Test Coverage Goals\n- Unit tests: 80%+\n- Integration tests: 70%+\n- E2E tests: Critical paths only\n\n## Summary\nComprehensive QA test plan covering functional, integration, security, and performance testing for healthcare patient portal.\n",
+          "generatedAt": "2026-05-14T15:35:12.332Z"
+        },
+        "7": {
+          "type": "markdown",
+          "content": "# Architecture Decision Records\n\n## ADR-001: Use React for Frontend Framework\n\n**Status:** Accepted\n\n**Context:** Need to choose frontend framework for patient portal with complex UI interactions.\n\n**Decision:** Use React with TypeScript for type safety and component reusability.\n\n**Consequences:**\n- Large ecosystem of libraries and tools\n- Team expertise readily available\n- Strong TypeScript integration\n\n---\n\n## ADR-002: Use XState for State Management\n\n**Status:** Accepted\n\n**Context:** Complex multi-step workflows (appointment scheduling, interview flows) require robust state management.\n\n**Decision:** Use XState for complex workflows, React Context for simpler state.\n\n**Consequences:**\n- Explicit state machine definitions prevent bugs\n- Visual state charts aid debugging\n- Learning curve for team\n\n---\n\n## ADR-003: PostgreSQL for Primary Database\n\n**Status:** Accepted\n\n**Context:** Need HIPAA-compliant, ACID-compliant database for patient data.\n\n**Decision:** Use PostgreSQL with row-level security and audit logging.\n\n**Consequences:**\n- Strong ACID guarantees\n- Excellent performance for healthcare workloads\n- Mature ecosystem and tooling\n\n---\n\n## Summary\nThree architecture decisions documented covering frontend framework, state management, and database selection.\n",
+          "generatedAt": "2026-05-14T15:35:12.332Z"
+        },
+        "8": {
+          "type": "yaml",
+          "content": "# Delivery Timeline\n\n## Metadata\ngenerated_at: \"2026-05-14T15:35:12.332Z\"\ntotal_duration: \"8 weeks\"\nteam_size: \"5-7 engineers\"\n\n## Timeline\n\n### Phase 1: Foundation (Weeks 1-2)\n**Start:** 2026-05-20\n**End:** 2026-06-03\n\nDeliverables:\n- Project infrastructure setup\n- CI/CD pipeline operational\n- Authentication system implemented\n- Development environment configured\n\n**Milestone:** Core Infrastructure Complete\n\n---\n\n### Phase 2: Core Features (Weeks 3-4)\n**Start:** 2026-06-04\n**End:** 2026-06-17\n\nDeliverables:\n- Patient dashboard UI\n- Appointment scheduling system\n- Secure messaging interface\n- Basic EHR integration\n\n**Milestone:** Patient Portal Functional\n\n---\n\n### Phase 3: Integration & Testing (Weeks 5-6)\n**Start:** 2026-06-18\n**End:** 2026-07-01\n\nDeliverables:\n- Full EHR integration\n- Data synchronization\n- Audit logging system\n- Integration test suite\n\n**Milestone:** Integration Complete\n\n---\n\n### Phase 4: Launch Preparation (Weeks 7-8)\n**Start:** 2026-07-02\n**End:** 2026-07-15\n\nDeliverables:\n- QA testing complete\n- Security audit passed\n- Performance optimization\n- Production deployment\n\n**Milestone:** Production Launch\n\n## Summary\n8-week delivery timeline with 4 phases, culminating in production launch on 2026-07-15.\n",
+          "generatedAt": "2026-05-14T15:35:12.332Z"
+        }
+      },
+      "completedSteps": [1, 2, 3, 4, 5, 6, 7, 8],
+      "currentStepNumber": 9,
+      "error": null
+    },
+    "children": {},
+    "historyValue": {},
+    "tags": []
+  }
+}

@@ -12,6 +12,9 @@
     "lint:fix": "biome check --write .",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
     "services": "docker compose up -d",
     "services:down": "docker compose down",
     "services:logs": "docker compose logs -f",
@@ -25,7 +28,12 @@
     "seed:step2": "node scripts/seed-project.js 2",
     "seed:step3": "node scripts/seed-project.js 3",
     "seed:step5": "node scripts/seed-project.js 5",
-    "seed:step10": "node scripts/seed-project.js 10"
+    "seed:step10": "node scripts/seed-project.js 10",
+    "snapshots:generate": "tsx scripts/generate-snapshots.ts",
+    "snapshots:generate-edge-cases": "tsx scripts/generate-edge-case-snapshots.ts",
+    "snapshots:validate": "tsx scripts/validate-snapshots.ts",
+    "snapshots:list": "tsx scripts/validate-snapshots.ts --list",
+    "snapshots:stats": "tsx scripts/validate-snapshots.ts --stats"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1044.0",
@@ -90,6 +98,7 @@
     "lint-staged": "^17.0.4",
     "playwright": "^1.59.1",
     "storybook": "^10.3.6",
+    "tsx": "^4.22.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
     "vinxi": "^0.5.11",

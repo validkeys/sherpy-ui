@@ -197,9 +197,104 @@ export const POST = requireDevelopmentEnv(async (request: NextRequest) => {
 });
 ```
 
+## E2E Testing with Playwright
+
+The testing framework integrates with Playwright for end-to-end testing. Use `PlanningStateBuilder.persist()` to create projects at specific workflow steps.
+
+### Running E2E Tests
+
+```bash
+# Run all E2E tests
+npm run test:e2e
+
+# Run with UI mode for debugging
+npm run test:e2e:ui
+
+# Run in debug mode (step through tests)
+npm run test:e2e:debug
+```
+
+### E2E Test Pattern
+
+```typescript
+import { test, expect } from "@playwright/test";
+import { PlanningStateBuilder } from "../fixtures/builders/PlanningStateBuilder";
+
+test("Step 5: Implementation Planner", async ({ page }) => {
+  // Create project at Step 5 with all previous steps completed
+  const projectId = await PlanningStateBuilder.atStep(5)
+    .completeStep(1)
+    .completeStep(2)
+    .completeStep(3)
+    .completeStep(4)
+    .persist();
+
+  // Navigate to project
+  await page.goto(`/project/${projectId}/build`);
+
+  // Verify Step 5 UI is loaded
+  await expect(
+    page.locator('h2:has-text("Implementation Planner")')
+  ).toBeVisible();
+
+  // Fill form and submit
+  await page.fill('textarea[name="testStrategy"]', 'TDD with E2E coverage');
+  await page.click('button:has-text("Submit")');
+
+  // Verify navigation to next step
+  await expect(
+    page.locator('h2:has-text("QA Test Plan")')
+  ).toBeVisible();
+});
+```
+
+### E2E with Custom Data
+
+```typescript
+test("Healthcare project workflow", async ({ page }) => {
+  const projectId = await PlanningStateBuilder.atStep(2)
+    .withGapAnalysis({
+      existingRequirements: "No",
+      projectDescription: "HIPAA-compliant patient portal"
+    })
+    .withBusinessRequirements([
+      {
+        question: "What is the primary business goal?",
+        value: "Improve patient engagement by 50%",
+        timestamp: new Date().toISOString()
+      }
+    ])
+    .persist();
+
+  await page.goto(`/project/${projectId}/build`);
+  
+  // Test continues with custom data loaded...
+});
+```
+
+### E2E Test Examples
+
+See `tests/e2e/planning-workflow-builder.spec.ts` for complete examples:
+
+- Testing each workflow step independently
+- Testing with custom domain data (healthcare, e-commerce)
+- Testing error scenarios (invalid state transitions)
+- Capturing snapshots during E2E tests
+
+### How `.persist()` Works
+
+The `persist()` method:
+1. Validates the state using `build()`
+2. Calls the seed API (`/api/dev/seed`) to create the project
+3. Stores state in localStorage (if available)
+4. Returns the `projectId` for navigation
+
+**Note:** Requires dev server running and `ALLOW_TEST_DATA=true` in `.env.local`
+
 ## Related Documentation
 
 - **Builders**: `./builders/README.md` - Test state builder patterns
 - **Snapshots**: `./snapshots/README.md` - Snapshot capture and management
 - **Validation**: `./validation/schemas.ts` - State validation schemas
+- **E2E Tests**: `../e2e/planning-workflow-builder.spec.ts` - End-to-end test examples
 - **Implementation Plan**: `.tmp-docs/implementation-plan-testing-framework.md`

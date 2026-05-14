@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "capturedAt": "2026-05-14T18:47:38.579Z",
+  "stepNumber": 5,
+  "label": "missing-critical",
+  "xstateSnapshot": {
+    "status": "active",
+    "value": "step5",
+    "context": {
+      "projectId": "test-project",
+      "entryPath": "new-project",
+      "startedAt": "2026-05-14T18:47:38.579Z",
+      "updatedAt": "2026-05-14T18:47:38.579Z",
+      "step1Responses": {
+        "existingRequirements": "No",
+        "projectDescription": "Healthcare patient portal with appointment scheduling and secure messaging"
+      },
+      "step2Answers": [
+        {
+          "question": "What is the primary problem?",
+          "value": "Unclear problem statement",
+          "timestamp": "2026-05-14T10:00:00.000Z"
+        }
+      ],
+      "step2CurrentQuestion": null,
+      "step2CurrentOptions": null,
+      "step3Answers": [
+        {
+          "question": "What is the tech stack?",
+          "value": "Unknown",
+          "timestamp": "2026-05-14T11:00:00.000Z"
+        }
+      ],
+      "step3CurrentQuestion": null,
+      "step3CurrentOptions": null,
+      "step5Responses": {},
+      "step7Edits": null,
+      "artifacts": {
+        "1": {
+          "type": "markdown",
+          "content": "# Gap Analysis Worksheet\n\n## Project Overview\nHealthcare patient portal with appointment scheduling and secure messaging\n\n## Existing Requirements\n**Do you have existing requirements?** No\n\n## Gap Analysis\nBased on the information provided, this is a new project that requires comprehensive planning.\n\n**Next Steps:**\n- Conduct business requirements interview\n- Define technical requirements\n- Establish project scope and constraints\n",
+          "generatedAt": "2026-05-14T18:47:38.579Z"
+        },
+        "2": {
+          "type": "yaml",
+          "content": "# Business Requirements\n\n## Metadata\ngenerated_at: \"2026-05-14T18:47:38.579Z\"\ntotal_questions: 1\n\n## Interview Responses\nresponses:\n  - question: \"What is the primary problem?\"\n    answer: \"Unclear problem statement\"\n    timestamp: \"2026-05-14T10:00:00.000Z\"\n\n## Summary\nBusiness requirements captured through 1 interview questions covering project goals, user needs, and success criteria.\n",
+          "generatedAt": "2026-05-14T18:47:38.579Z"
+        },
+        "3": {
+          "type": "yaml",
+          "content": "# Technical Requirements\n\n## Metadata\ngenerated_at: \"2026-05-14T18:47:38.579Z\"\ntotal_questions: 1\n\n## Interview Responses\nresponses:\n  - question: \"What is the tech stack?\"\n    answer: \"Unknown\"\n    timestamp: \"2026-05-14T11:00:00.000Z\"\n\n## Summary\nTechnical requirements captured through 1 interview questions covering constraints, technology stack, and security requirements.\n",
+          "generatedAt": "2026-05-14T18:47:38.579Z"
+        },
+        "4": {
+          "type": "yaml",
+          "content": "# Style Anchors Collection\n\n## Metadata\ngenerated_at: \"2026-05-14T18:47:38.579Z\"\nproject_type: \"healthcare_patient_portal\"\n\n## Code Examples\n\n### React Component Pattern\n```typescript\n// Preferred: Functional component with TypeScript\ninterface PatientCardProps {\n  patientId: string;\n  onSelect: (id: string) => void;\n}\n\nexport const PatientCard: React.FC<PatientCardProps> = ({ patientId, onSelect }) => {\n  return (\n    <div className=\"patient-card\" onClick={() => onSelect(patientId)}>\n      {/* Component content */}\n    </div>\n  );\n};\n```\n\n### State Management Pattern\n```typescript\n// Preferred: XState for complex workflows\nimport { createMachine } from 'xstate';\n\nexport const appointmentMachine = createMachine({\n  id: 'appointment',\n  initial: 'idle',\n  states: {\n    idle: {\n      on: { SCHEDULE: 'scheduling' }\n    },\n    scheduling: {\n      on: { SUCCESS: 'scheduled', ERROR: 'error' }\n    }\n  }\n});\n```\n\n## Summary\nStyle anchors collected for healthcare patient portal application using React, TypeScript, and XState patterns.\n",
+          "generatedAt": "2026-05-14T18:47:38.579Z"
+        }
+      },
+      "completedSteps": [1, 2, 3, 4],
+      "currentStepNumber": 5,
+      "error": null
+    },
+    "children": {},
+    "historyValue": {},
+    "tags": []
+  }
+}

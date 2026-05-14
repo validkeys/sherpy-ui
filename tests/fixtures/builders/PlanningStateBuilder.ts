@@ -858,6 +858,59 @@ A modern web-based patient portal enabling appointment scheduling and secure mes
   }
 
   /**
+   * Persist state to localStorage via seed API (for E2E tests)
+   *
+   * @returns projectId that can be used to navigate to the project
+   *
+   * @example
+   * ```typescript
+   * const projectId = await PlanningStateBuilder.atStep(5).persist();
+   * await page.goto(`/project/${projectId}/build`);
+   * ```
+   */
+  async persist(): Promise<string> {
+    // Validate and build state
+    const state = this.build();
+
+    // Call seed API to persist state
+    const baseUrl = process.env.BASE_URL || "http://localhost:5180";
+    const response = await fetch(`${baseUrl}/api/dev/seed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        step: state.currentStepNumber,
+        projectName: state.projectId,
+        snapshot: {
+          status: "active",
+          value: `step${state.currentStepNumber}`,
+          context: state,
+          children: {},
+          historyValue: {},
+          tags: [],
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        `Failed to persist state: ${errorData.error || response.statusText}`,
+      );
+    }
+
+    const data = await response.json();
+
+    // Store in localStorage (if available, for browser tests)
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(data.storageKey, JSON.stringify(data.snapshot));
+    }
+
+    return data.projectId;
+  }
+
+  /**
    * Validate state consistency before building
    * Ensures invalid states cannot be constructed
    */
