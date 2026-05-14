@@ -22,14 +22,14 @@ const STEP_NUMBERS: Record<string, number> = {
 export function AutomatedStep({ stepKey, stepName }: Props) {
   const stepNumber = STEP_NUMBERS[stepKey];
 
+  // MUST call hooks before any early returns (Rules of Hooks)
+  const artifact = useSelector((state) => state.context.artifacts[stepNumber || 0]);
+  const currentState = useSelector((state) => state.value);
+
   if (!stepNumber) {
     console.error(`[AutomatedStep] Invalid stepKey: ${stepKey}`);
     return null;
   }
-
-  // Use primitive selectors
-  const artifact = useSelector((state) => state.context.artifacts[stepNumber]);
-  const currentState = useSelector((state) => state.value);
 
   // Determine if this step is currently generating
   const isGenerating = typeof currentState === 'object' && currentState !== null

@@ -41,8 +41,20 @@ export function PlanningMachineProvider({
   input,
   storageKey = 'planning-machine-state',
 }: PlanningMachineProviderProps) {
-  // Initialize actor (memoized per projectId)
-  const [actor] = React.useState(() => {
+  // ============================================================================
+  // BUG-013 FIX: Ensure single actor instance survives StrictMode remounts
+  // ============================================================================
+  // PROBLEM: React.useState(() => createActor()) creates a NEW actor on every mount.
+  // In StrictMode (mount → unmount → remount), this creates TWO actors:
+  //   1. First mount creates actor1, starts it, subscribes to it
+  //   2. Unmount cleanup runs but doesn't stop actor1 (BUG-012 fix)
+  //   3. Remount creates actor2, starts it
+  //   4. Components get actor2 from context, but actor1 is still running
+  //   5. Events sent to actor2 work, but localStorage was saved from actor1
+  //
+  // SOLUTION: Use React.useMemo with empty deps to ensure single actor instance
+  // per component instance. This way the same actor survives the unmount→remount.
+  const actor = React.useMemo(() => {
     // Try to restore from localStorage
     const persistedState = loadState(storageKey);
 
@@ -56,7 +68,7 @@ export function PlanningMachineProvider({
 
     // Create new actor with input
     return createActor(planningMachine, { input });
-  });
+  }, []); // Empty deps: only create once per component lifetime
 
   // Start actor and manage lifecycle
   useEffect(() => {
