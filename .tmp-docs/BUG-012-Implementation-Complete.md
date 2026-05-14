@@ -186,12 +186,42 @@ step1Responses: {
 ## Next Steps
 
 1. ✅ Implementation complete
-2. [ ] Manual browser testing (optional - tests prove it works)
+2. ✅ Manual browser testing (PASSED - verified with agent-browser)
 3. [ ] Update bug tracking documentation
-4. [ ] Create git commit with detailed message
+4. ✅ Create git commit with detailed message
 5. [ ] Push to remote and create PR
 6. [ ] Code review
 7. [ ] Merge to main
+
+---
+
+## Manual Browser Verification (agent-browser)
+
+**Date:** 2026-05-13 18:39-18:41  
+**Status:** ✅ **PASSED**
+
+Automated browser test verified the fix in a real Chrome browser:
+
+### Test Results
+- ✅ Form submission captured both fields correctly
+- ✅ step1Responses populated: `{ existingRequirements: "...", projectDescription: "..." }`
+- ✅ State transitioned: `collecting` → `submitting` → `step2_businessReqs.asking`
+- ✅ currentStepNumber advanced: `1` → `2`
+- ✅ Actor status remained: `active` (not stopped)
+- ✅ No errors: `error: null`
+- ✅ Page heading changed: "Gap Analysis" → "Business Requirements"
+
+### Evidence
+6 screenshots captured showing complete workflow:
+1. Dashboard initial state
+2. Create project modal
+3. Step 1 form loaded
+4. Form filled with test data
+5. 2s after submit (processing)
+6. Step 2 loaded successfully
+
+**Full report:** `.tmp-docs/BUG-012-Manual-Verification-Results.md`  
+**Screenshots:** `.tmp-docs/screenshots/bug-012-manual-test-*.png`
 
 ---
 
