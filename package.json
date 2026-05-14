@@ -19,7 +19,13 @@
     "langfuse": "docker compose up -d langfuse",
     "langfuse:logs": "docker compose logs -f langfuse",
     "langfuse:reset": "docker compose down -v && docker compose up -d langfuse",
-    "prepare": "husky"
+    "prepare": "husky",
+    "seed": "node scripts/seed-project.js",
+    "seed:step1": "node scripts/seed-project.js 1",
+    "seed:step2": "node scripts/seed-project.js 2",
+    "seed:step3": "node scripts/seed-project.js 3",
+    "seed:step5": "node scripts/seed-project.js 5",
+    "seed:step10": "node scripts/seed-project.js 10"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1044.0",
