@@ -469,16 +469,16 @@ describe("PlanningStateBuilder", () => {
         expect(state.artifacts[1]?.generatedAt).toBeDefined();
       });
 
-      it("throws for unimplemented steps", () => {
+      it("throws for invalid step numbers", () => {
         const builder = PlanningStateBuilder.new();
 
         expect(() => {
-          builder.completeStep(4);
-        }).toThrow("completeStep not yet implemented for step 4");
+          builder.completeStep(0);
+        }).toThrow("completeStep not yet implemented for step 0");
 
         expect(() => {
-          builder.completeStep(5);
-        }).toThrow("completeStep not yet implemented for step 5");
+          builder.completeStep(11);
+        }).toThrow("completeStep not yet implemented for step 11");
       });
 
       it("chains with atStep() for multi-step scenarios", () => {
@@ -839,6 +839,122 @@ describe("PlanningStateBuilder", () => {
         expect(state.artifacts[1]).toBeDefined();
         expect(state.artifacts[2]).toBeDefined();
         expect(state.artifacts[3]).toBeDefined();
+      });
+    });
+
+    describe("completeStep(4) - Style Anchors", () => {
+      it("completes Step 4 with style anchors artifact", () => {
+        const state = PlanningStateBuilder.new().completeStep(4).build();
+
+        expect(state.artifacts[4]).toBeDefined();
+        expect(state.artifacts[4]?.type).toBe("yaml");
+        expect(state.artifacts[4]?.content).toContain("Style Anchors");
+      });
+
+      it("generates realistic style anchor examples", () => {
+        const state = PlanningStateBuilder.new().completeStep(4).build();
+
+        const artifact = state.artifacts[4];
+        expect(artifact?.content).toContain("React");
+        expect(artifact?.content).toContain("TypeScript");
+      });
+    });
+
+    describe("completeStep(5) - Implementation Planner", () => {
+      it("completes Step 5 with implementation plan responses", () => {
+        const state = PlanningStateBuilder.new().completeStep(5).build();
+
+        expect(state.step5Responses).toBeTruthy();
+        expect(Object.keys(state.step5Responses).length).toBeGreaterThan(0);
+        expect(state.artifacts[5]).toBeDefined();
+      });
+
+      it("generates implementation plan artifact", () => {
+        const state = PlanningStateBuilder.new().completeStep(5).build();
+
+        const artifact = state.artifacts[5];
+        expect(artifact?.type).toBe("yaml");
+        expect(artifact?.content).toContain("Implementation Plan");
+      });
+    });
+
+    describe("completeStep(6) - QA Test Plan", () => {
+      it("completes Step 6 with QA test plan artifact", () => {
+        const state = PlanningStateBuilder.new().completeStep(6).build();
+
+        expect(state.artifacts[6]).toBeDefined();
+        expect(state.artifacts[6]?.type).toBe("yaml");
+        expect(state.artifacts[6]?.content).toContain("QA Test Plan");
+      });
+    });
+
+    describe("completeStep(7) - Architecture Decisions", () => {
+      it("completes Step 7 with architecture decisions artifact", () => {
+        const state = PlanningStateBuilder.new().completeStep(7).build();
+
+        expect(state.artifacts[7]).toBeDefined();
+        expect(state.artifacts[7]?.type).toBe("markdown");
+        expect(state.artifacts[7]?.content).toContain("Architecture Decision");
+      });
+    });
+
+    describe("completeStep(8) - Delivery Timeline", () => {
+      it("completes Step 8 with delivery timeline artifact", () => {
+        const state = PlanningStateBuilder.new().completeStep(8).build();
+
+        expect(state.artifacts[8]).toBeDefined();
+        expect(state.artifacts[8]?.type).toBe("yaml");
+        expect(state.artifacts[8]?.content).toContain("Delivery Timeline");
+      });
+    });
+
+    describe("completeStep(9) - Definition of Done", () => {
+      it("completes Step 9 with definition of done artifact", () => {
+        const state = PlanningStateBuilder.new().completeStep(9).build();
+
+        expect(state.artifacts[9]).toBeDefined();
+        expect(state.artifacts[9]?.type).toBe("yaml");
+        expect(state.artifacts[9]?.content).toContain("Definition of Done");
+      });
+    });
+
+    describe("completeStep(10) - Executive Summary", () => {
+      it("completes Step 10 with executive summary artifact", () => {
+        const state = PlanningStateBuilder.new().completeStep(10).build();
+
+        expect(state.artifacts[10]).toBeDefined();
+        expect(state.artifacts[10]?.type).toBe("markdown");
+        expect(state.artifacts[10]?.content).toContain("Executive Summary");
+      });
+    });
+
+    describe("completeStep() - Full workflow", () => {
+      it("completes all 10 steps sequentially", () => {
+        const builder = PlanningStateBuilder.new();
+
+        for (let step = 1; step <= 10; step++) {
+          builder.completeStep(step);
+        }
+
+        const state = builder.build();
+
+        // Verify all artifacts exist
+        for (let step = 1; step <= 10; step++) {
+          expect(state.artifacts[step]).toBeDefined();
+          expect(state.artifacts[step]?.generatedAt).toBeTruthy();
+        }
+      });
+
+      it("throws error for step > 10", () => {
+        expect(() => {
+          PlanningStateBuilder.new().completeStep(11);
+        }).toThrow(/not yet implemented for step 11/);
+      });
+
+      it("throws error for step < 1", () => {
+        expect(() => {
+          PlanningStateBuilder.new().completeStep(0);
+        }).toThrow(/not yet implemented for step 0/);
       });
     });
   });

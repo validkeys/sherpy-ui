@@ -423,10 +423,14 @@ describe("PlanningStateBuilder - State consistency", () => {
 });
 
 describe("PlanningStateBuilder - Error scenarios", () => {
-  it("throws error for unimplemented step completion", () => {
+  it("throws error for invalid step numbers", () => {
     expect(() => {
-      PlanningStateBuilder.new().completeStep(4);
-    }).toThrow(/not yet implemented for step 4/);
+      PlanningStateBuilder.new().completeStep(0);
+    }).toThrow(/not yet implemented for step 0/);
+
+    expect(() => {
+      PlanningStateBuilder.new().completeStep(11);
+    }).toThrow(/not yet implemented for step 11/);
   });
 
   it("validates Zod schemas reject invalid Step 1 responses", () => {

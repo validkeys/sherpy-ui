@@ -251,7 +251,75 @@ export class PlanningStateBuilder {
       ]);
     }
 
-    // TODO: Implement other steps in future tasks
+    if (stepNumber === 4) {
+      const artifact = this.generateStyleAnchorsArtifact();
+      if (!this.state.artifacts) {
+        this.state.artifacts = {};
+      }
+      this.state.artifacts[4] = artifact;
+      return this;
+    }
+
+    if (stepNumber === 5) {
+      this.state.step5Responses = {
+        approach: "incremental",
+        testStrategy: "TDD with integration tests",
+        deploymentStrategy: "CI/CD with automated testing",
+      };
+      const artifact = this.generateImplementationPlanArtifact();
+      if (!this.state.artifacts) {
+        this.state.artifacts = {};
+      }
+      this.state.artifacts[5] = artifact;
+      return this;
+    }
+
+    if (stepNumber === 6) {
+      const artifact = this.generateQATestPlanArtifact();
+      if (!this.state.artifacts) {
+        this.state.artifacts = {};
+      }
+      this.state.artifacts[6] = artifact;
+      return this;
+    }
+
+    if (stepNumber === 7) {
+      this.state.step7Edits = null;
+      const artifact = this.generateArchitectureDecisionsArtifact();
+      if (!this.state.artifacts) {
+        this.state.artifacts = {};
+      }
+      this.state.artifacts[7] = artifact;
+      return this;
+    }
+
+    if (stepNumber === 8) {
+      const artifact = this.generateDeliveryTimelineArtifact();
+      if (!this.state.artifacts) {
+        this.state.artifacts = {};
+      }
+      this.state.artifacts[8] = artifact;
+      return this;
+    }
+
+    if (stepNumber === 9) {
+      const artifact = this.generateDefinitionOfDoneArtifact();
+      if (!this.state.artifacts) {
+        this.state.artifacts = {};
+      }
+      this.state.artifacts[9] = artifact;
+      return this;
+    }
+
+    if (stepNumber === 10) {
+      const artifact = this.generateExecutiveSummaryArtifact();
+      if (!this.state.artifacts) {
+        this.state.artifacts = {};
+      }
+      this.state.artifacts[10] = artifact;
+      return this;
+    }
+
     throw new Error(`completeStep not yet implemented for step ${stepNumber}`);
   }
 
@@ -349,6 +417,436 @@ Technical requirements captured through ${answers.length} interview questions co
 
     return {
       type: "yaml",
+      content,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Generate Style Anchors artifact for Step 4
+   */
+  private generateStyleAnchorsArtifact(): Artifact {
+    const content = `# Style Anchors Collection
+
+## Metadata
+generated_at: "${new Date().toISOString()}"
+project_type: "healthcare_patient_portal"
+
+## Code Examples
+
+### React Component Pattern
+\`\`\`typescript
+// Preferred: Functional component with TypeScript
+interface PatientCardProps {
+  patientId: string;
+  onSelect: (id: string) => void;
+}
+
+export const PatientCard: React.FC<PatientCardProps> = ({ patientId, onSelect }) => {
+  return (
+    <div className="patient-card" onClick={() => onSelect(patientId)}>
+      {/* Component content */}
+    </div>
+  );
+};
+\`\`\`
+
+### State Management Pattern
+\`\`\`typescript
+// Preferred: XState for complex workflows
+import { createMachine } from 'xstate';
+
+export const appointmentMachine = createMachine({
+  id: 'appointment',
+  initial: 'idle',
+  states: {
+    idle: {
+      on: { SCHEDULE: 'scheduling' }
+    },
+    scheduling: {
+      on: { SUCCESS: 'scheduled', ERROR: 'error' }
+    }
+  }
+});
+\`\`\`
+
+## Summary
+Style anchors collected for healthcare patient portal application using React, TypeScript, and XState patterns.
+`;
+
+    return {
+      type: "yaml",
+      content,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Generate Implementation Plan artifact for Step 5
+   */
+  private generateImplementationPlanArtifact(): Artifact {
+    const content = `# Implementation Plan
+
+## Metadata
+generated_at: "${new Date().toISOString()}"
+approach: "${this.state.step5Responses?.approach || "incremental"}"
+test_strategy: "${this.state.step5Responses?.testStrategy || "TDD"}"
+
+## Milestones
+
+### Milestone 1: Core Infrastructure (Week 1-2)
+- Set up project structure
+- Configure CI/CD pipeline
+- Implement authentication system
+- **Definition of Done:** All infrastructure tests pass, deployment automated
+
+### Milestone 2: Patient Portal (Week 3-4)
+- Build patient dashboard
+- Implement appointment scheduling UI
+- Add secure messaging interface
+- **Definition of Done:** UI components functional, unit tests pass
+
+### Milestone 3: Integration (Week 5-6)
+- Integrate with EHR system
+- Implement data synchronization
+- Add audit logging
+- **Definition of Done:** Integration tests pass, HIPAA compliance verified
+
+### Milestone 4: Testing & Launch (Week 7-8)
+- Conduct QA testing
+- Perform security audit
+- Deploy to production
+- **Definition of Done:** All acceptance criteria met, production stable
+
+## Risk Mitigation
+- HIPAA compliance: Engage security consultant early
+- EHR integration: Start API testing in Milestone 1
+- Performance: Load testing during Milestone 3
+
+## Summary
+Implementation plan with 4 milestones over 8 weeks, TDD approach, incremental delivery strategy.
+`;
+
+    return {
+      type: "yaml",
+      content,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Generate QA Test Plan artifact for Step 6
+   */
+  private generateQATestPlanArtifact(): Artifact {
+    const content = `# QA Test Plan
+
+## Metadata
+generated_at: "${new Date().toISOString()}"
+test_types: ["functional", "integration", "security", "performance"]
+
+## Test Suites
+
+### Functional Tests
+- User authentication flow
+- Appointment scheduling workflow
+- Secure messaging functionality
+- Patient data display
+
+### Integration Tests
+- EHR system integration
+- Email notification system
+- Calendar synchronization
+- Data export functionality
+
+### Security Tests
+- HIPAA compliance validation
+- Authentication/authorization checks
+- Data encryption verification
+- Audit log completeness
+
+### Performance Tests
+- Load testing (10,000+ concurrent users)
+- Response time benchmarks
+- Database query optimization
+- API endpoint performance
+
+## Test Coverage Goals
+- Unit tests: 80%+
+- Integration tests: 70%+
+- E2E tests: Critical paths only
+
+## Summary
+Comprehensive QA test plan covering functional, integration, security, and performance testing for healthcare patient portal.
+`;
+
+    return {
+      type: "yaml",
+      content,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Generate Architecture Decisions artifact for Step 7
+   */
+  private generateArchitectureDecisionsArtifact(): Artifact {
+    const content = `# Architecture Decision Records
+
+## ADR-001: Use React for Frontend Framework
+
+**Status:** Accepted
+
+**Context:** Need to choose frontend framework for patient portal with complex UI interactions.
+
+**Decision:** Use React with TypeScript for type safety and component reusability.
+
+**Consequences:**
+- Large ecosystem of libraries and tools
+- Team expertise readily available
+- Strong TypeScript integration
+
+---
+
+## ADR-002: Use XState for State Management
+
+**Status:** Accepted
+
+**Context:** Complex multi-step workflows (appointment scheduling, interview flows) require robust state management.
+
+**Decision:** Use XState for complex workflows, React Context for simpler state.
+
+**Consequences:**
+- Explicit state machine definitions prevent bugs
+- Visual state charts aid debugging
+- Learning curve for team
+
+---
+
+## ADR-003: PostgreSQL for Primary Database
+
+**Status:** Accepted
+
+**Context:** Need HIPAA-compliant, ACID-compliant database for patient data.
+
+**Decision:** Use PostgreSQL with row-level security and audit logging.
+
+**Consequences:**
+- Strong ACID guarantees
+- Excellent performance for healthcare workloads
+- Mature ecosystem and tooling
+
+---
+
+## Summary
+Three architecture decisions documented covering frontend framework, state management, and database selection.
+`;
+
+    return {
+      type: "markdown",
+      content,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Generate Delivery Timeline artifact for Step 8
+   */
+  private generateDeliveryTimelineArtifact(): Artifact {
+    const content = `# Delivery Timeline
+
+## Metadata
+generated_at: "${new Date().toISOString()}"
+total_duration: "8 weeks"
+team_size: "5-7 engineers"
+
+## Timeline
+
+### Phase 1: Foundation (Weeks 1-2)
+**Start:** 2026-05-20
+**End:** 2026-06-03
+
+Deliverables:
+- Project infrastructure setup
+- CI/CD pipeline operational
+- Authentication system implemented
+- Development environment configured
+
+**Milestone:** Core Infrastructure Complete
+
+---
+
+### Phase 2: Core Features (Weeks 3-4)
+**Start:** 2026-06-04
+**End:** 2026-06-17
+
+Deliverables:
+- Patient dashboard UI
+- Appointment scheduling system
+- Secure messaging interface
+- Basic EHR integration
+
+**Milestone:** Patient Portal Functional
+
+---
+
+### Phase 3: Integration & Testing (Weeks 5-6)
+**Start:** 2026-06-18
+**End:** 2026-07-01
+
+Deliverables:
+- Full EHR integration
+- Data synchronization
+- Audit logging system
+- Integration test suite
+
+**Milestone:** Integration Complete
+
+---
+
+### Phase 4: Launch Preparation (Weeks 7-8)
+**Start:** 2026-07-02
+**End:** 2026-07-15
+
+Deliverables:
+- QA testing complete
+- Security audit passed
+- Performance optimization
+- Production deployment
+
+**Milestone:** Production Launch
+
+## Summary
+8-week delivery timeline with 4 phases, culminating in production launch on 2026-07-15.
+`;
+
+    return {
+      type: "yaml",
+      content,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Generate Definition of Done artifact for Step 9
+   */
+  private generateDefinitionOfDoneArtifact(): Artifact {
+    const content = `# Definition of Done
+
+## Metadata
+generated_at: "${new Date().toISOString()}"
+
+## Acceptance Criteria
+
+### Code Quality
+- [ ] All code reviewed and approved
+- [ ] TypeScript strict mode enabled
+- [ ] No linting errors
+- [ ] Code coverage ≥ 80%
+
+### Testing
+- [ ] Unit tests pass
+- [ ] Integration tests pass
+- [ ] E2E tests pass for critical paths
+- [ ] Manual QA testing complete
+
+### Security
+- [ ] HIPAA compliance verified
+- [ ] Security audit passed
+- [ ] Penetration testing complete
+- [ ] Vulnerability scan clean
+
+### Performance
+- [ ] Load testing passed (10,000+ users)
+- [ ] Response times < 200ms (p95)
+- [ ] Database queries optimized
+- [ ] CDN configured for static assets
+
+### Documentation
+- [ ] API documentation complete
+- [ ] User guide written
+- [ ] Deployment runbook created
+- [ ] Architecture diagrams updated
+
+### Deployment
+- [ ] CI/CD pipeline verified
+- [ ] Rollback procedure tested
+- [ ] Monitoring and alerting configured
+- [ ] Production environment validated
+
+## Exit Checklist
+- [ ] All acceptance criteria met
+- [ ] Stakeholder sign-off received
+- [ ] Production deployment successful
+- [ ] Post-launch monitoring active
+
+## Summary
+Comprehensive definition of done covering code quality, testing, security, performance, documentation, and deployment criteria.
+`;
+
+    return {
+      type: "yaml",
+      content,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Generate Executive Summary artifact for Step 10
+   */
+  private generateExecutiveSummaryArtifact(): Artifact {
+    const content = `# Executive Summary: Healthcare Patient Portal
+
+## Project Overview
+A modern web-based patient portal enabling appointment scheduling and secure messaging between patients and healthcare providers.
+
+## Business Goals
+- **Primary Objective:** Improve patient engagement and reduce administrative burden
+- **Target Users:** Patients seeking appointments and secure provider communication
+- **Success Metrics:** 50% reduction in phone calls, 80% patient adoption within 6 months
+
+## Technical Approach
+- **Frontend:** React + TypeScript for type-safe, maintainable UI
+- **State Management:** XState for complex workflows
+- **Backend:** Node.js with PostgreSQL database
+- **Infrastructure:** AWS deployment with CI/CD automation
+- **Security:** HIPAA-compliant with end-to-end encryption and MFA
+
+## Delivery Timeline
+- **Duration:** 8 weeks
+- **Phase 1:** Foundation (Weeks 1-2)
+- **Phase 2:** Core Features (Weeks 3-4)
+- **Phase 3:** Integration & Testing (Weeks 5-6)
+- **Phase 4:** Launch Preparation (Weeks 7-8)
+- **Target Launch:** 2026-07-15
+
+## Key Risks & Mitigation
+- **HIPAA Compliance:** Early security consultant engagement
+- **EHR Integration:** API testing starts in Phase 1
+- **Performance:** Load testing during Phase 3
+- **Adoption:** User training and support plan
+
+## Resource Requirements
+- **Team Size:** 5-7 engineers
+- **External Dependencies:** EHR system API access, security audit vendor
+- **Budget:** Standard healthcare application development costs
+
+## Expected Outcomes
+✓ Reduced administrative phone call volume by 50%
+✓ Improved patient satisfaction scores
+✓ Streamlined appointment scheduling process
+✓ Enhanced provider-patient communication
+✓ HIPAA-compliant secure messaging platform
+
+## Recommendation
+**Proceed with project as planned.** The technical approach is sound, timeline is realistic, and business case is strong. Early focus on security and compliance will ensure successful deployment.
+
+---
+
+*Generated: ${new Date().toISOString()}*
+`;
+
+    return {
+      type: "markdown",
       content,
       generatedAt: new Date().toISOString(),
     };
