@@ -15,24 +15,10 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { PlanningStateBuilder } from "../../../../tests/fixtures/builders/PlanningStateBuilder";
+import { auditLog } from "../../../../tests/fixtures/config";
+import { requireDevelopmentEnv } from "../../../../tests/fixtures/middleware";
 
-export async function POST(request: NextRequest) {
-  // Security: Block in production
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { error: "Seeding API is disabled in production" },
-      { status: 403 },
-    );
-  }
-
-  // Additional safety: require explicit opt-in
-  if (process.env.ALLOW_TEST_DATA !== "true") {
-    return NextResponse.json(
-      { error: 'ALLOW_TEST_DATA environment variable must be set to "true"' },
-      { status: 403 },
-    );
-  }
-
+export const POST = requireDevelopmentEnv(async (request: NextRequest) => {
   try {
     const body = await request.json();
     const { step, projectName, overrides } = body;
@@ -80,6 +66,13 @@ export async function POST(request: NextRequest) {
       tags: [],
     };
 
+    // Audit log the seeding operation
+    auditLog("Created test project via seed API", {
+      projectId,
+      step,
+      projectName,
+    });
+
     // Return snapshot and instructions
     return NextResponse.json({
       success: true,
@@ -107,4 +100,4 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-}
+});

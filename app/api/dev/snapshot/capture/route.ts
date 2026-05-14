@@ -14,17 +14,11 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
+import { auditLog } from "../../../../../tests/fixtures/config";
+import { requireDevelopmentEnv } from "../../../../../tests/fixtures/middleware";
 import { SnapshotCollector } from "../../../../../tests/fixtures/snapshots/SnapshotCollector";
 
-export async function POST(request: NextRequest) {
-  // Security: Block in production
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { error: "Snapshot capture API is disabled in production" },
-      { status: 403 },
-    );
-  }
-
+export const POST = requireDevelopmentEnv(async (request: NextRequest) => {
   try {
     const body = await request.json();
     const { projectId, step, label, context } = body;
@@ -62,6 +56,14 @@ export async function POST(request: NextRequest) {
     const collector = new SnapshotCollector();
     const filename = await collector.captureSnapshot(context, step, label);
 
+    // Audit log the snapshot capture
+    auditLog("Captured test snapshot", {
+      projectId,
+      step,
+      label,
+      filename,
+    });
+
     return NextResponse.json({
       success: true,
       filename,
@@ -81,4 +83,4 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+});
