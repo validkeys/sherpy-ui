@@ -26,7 +26,24 @@ pnpm storybook    # http://localhost:6006
 
 # Type check
 pnpm tsc -b --noEmit
+
+# Run tests
+pnpm test
+
+# Linting
+pnpm lint         # Check code quality
+pnpm lint:fix     # Auto-fix issues
 ```
+
+### Pre-commit Hooks
+
+This project uses [Husky](https://typicode.github.io/husky/) and [lint-staged](https://github.com/lint-staged/lint-staged) to automatically lint and format code before commits.
+
+**What runs on commit:**
+- **TypeScript/JavaScript files** (`.ts`, `.tsx`, `.js`, `.jsx`): Biome linting and formatting
+- **JSON/Markdown files** (`.json`, `.md`): Biome formatting
+
+The hooks are automatically installed when you run `pnpm install`. If a file fails linting, the commit will be blocked until you fix the issues.
 
 ## Component map
 
