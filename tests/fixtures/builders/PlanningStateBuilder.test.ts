@@ -1,0 +1,496 @@
+/**
+ * PlanningStateBuilder Tests
+ * Verifies builder creates valid PlanningContext states
+ */
+
+import { describe, expect, it } from "vitest";
+import type { PlanningContext } from "../../../src/features/planning/machines/types";
+import { PlanningStateBuilder } from "./PlanningStateBuilder";
+
+describe("PlanningStateBuilder", () => {
+  describe("new()", () => {
+    it("creates minimal valid state", () => {
+      const state = PlanningStateBuilder.new().build();
+
+      expect(state.projectId).toBe("test-project");
+      expect(state.entryPath).toBe("new-project");
+      expect(state.startedAt).toBeDefined();
+      expect(state.updatedAt).toBeDefined();
+      expect(state.step1Responses).toEqual({});
+      expect(state.step2Answers).toEqual([]);
+      expect(state.step2CurrentQuestion).toBeNull();
+      expect(state.step2CurrentOptions).toBeNull();
+      expect(state.step3Answers).toEqual([]);
+      expect(state.step3CurrentQuestion).toBeNull();
+      expect(state.step3CurrentOptions).toBeNull();
+      expect(state.step5Responses).toEqual({});
+      expect(state.step7Edits).toBeNull();
+      expect(state.artifacts).toEqual({});
+      expect(state.completedSteps).toEqual([]);
+      expect(state.currentStepNumber).toBe(1);
+      expect(state.error).toBeNull();
+    });
+
+    it("generates valid ISO timestamps", () => {
+      const state = PlanningStateBuilder.new().build();
+
+      expect(() => new Date(state.startedAt)).not.toThrow();
+      expect(() => new Date(state.updatedAt)).not.toThrow();
+    });
+  });
+
+  describe("atStep()", () => {
+    it("creates state at step 1", () => {
+      const state = PlanningStateBuilder.atStep(1).build();
+
+      expect(state.currentStepNumber).toBe(1);
+      expect(state.completedSteps).toEqual([]);
+    });
+
+    it("creates state at step 5 with completed steps 1-4", () => {
+      const state = PlanningStateBuilder.atStep(5).build();
+
+      expect(state.currentStepNumber).toBe(5);
+      expect(state.completedSteps).toEqual([1, 2, 3, 4]);
+    });
+
+    it("creates state at step 10 with completed steps 1-9", () => {
+      const state = PlanningStateBuilder.atStep(10).build();
+
+      expect(state.currentStepNumber).toBe(10);
+      expect(state.completedSteps).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    });
+  });
+
+  describe("fluent API", () => {
+    it("chains withProjectId", () => {
+      const state = PlanningStateBuilder.new()
+        .withProjectId("custom-project-123")
+        .build();
+
+      expect(state.projectId).toBe("custom-project-123");
+    });
+
+    it("chains withEntryPath", () => {
+      const state = PlanningStateBuilder.new()
+        .withEntryPath("existing-project")
+        .build();
+
+      expect(state.entryPath).toBe("existing-project");
+    });
+
+    it("chains withStep1Responses", () => {
+      const responses = {
+        existingRequirements: "Yes, we have PRD",
+        projectDescription: "A healthcare portal",
+      };
+
+      const state = PlanningStateBuilder.new()
+        .withStep1Responses(responses)
+        .build();
+
+      expect(state.step1Responses).toEqual(responses);
+    });
+
+    it("chains withStep2Answers", () => {
+      const answers = [
+        {
+          question: "What is the primary goal?",
+          value: "Improve user experience",
+          timestamp: "2026-05-14T10:00:00.000Z",
+        },
+      ];
+
+      const state = PlanningStateBuilder.new()
+        .withStep2Answers(answers)
+        .build();
+
+      expect(state.step2Answers).toEqual(answers);
+    });
+
+    it("chains withStep2CurrentQuestion", () => {
+      const state = PlanningStateBuilder.new()
+        .withStep2CurrentQuestion("What is the budget?", ["< $100k", "> $100k"])
+        .build();
+
+      expect(state.step2CurrentQuestion).toBe("What is the budget?");
+      expect(state.step2CurrentOptions).toEqual(["< $100k", "> $100k"]);
+    });
+
+    it("chains withStep3Answers", () => {
+      const answers = [
+        {
+          question: "What framework?",
+          value: "React",
+          timestamp: "2026-05-14T11:00:00.000Z",
+        },
+      ];
+
+      const state = PlanningStateBuilder.new()
+        .withStep3Answers(answers)
+        .build();
+
+      expect(state.step3Answers).toEqual(answers);
+    });
+
+    it("chains withStep3CurrentQuestion", () => {
+      const state = PlanningStateBuilder.new()
+        .withStep3CurrentQuestion("What database?", ["PostgreSQL", "MongoDB"])
+        .build();
+
+      expect(state.step3CurrentQuestion).toBe("What database?");
+      expect(state.step3CurrentOptions).toEqual(["PostgreSQL", "MongoDB"]);
+    });
+
+    it("chains withStep5Responses", () => {
+      const responses = {
+        deploymentStrategy: "Cloud",
+        techStack: "React, Node.js",
+      };
+
+      const state = PlanningStateBuilder.new()
+        .withStep5Responses(responses)
+        .build();
+
+      expect(state.step5Responses).toEqual(responses);
+    });
+
+    it("chains withStep7Edits", () => {
+      const edits = "# Architecture Decision\n\nUpdated content";
+
+      const state = PlanningStateBuilder.new().withStep7Edits(edits).build();
+
+      expect(state.step7Edits).toBe(edits);
+    });
+
+    it("chains withArtifact", () => {
+      const artifact = {
+        type: "yaml" as const,
+        content: "key: value",
+        generatedAt: "2026-05-14T12:00:00.000Z",
+      };
+
+      const state = PlanningStateBuilder.new()
+        .withArtifact(2, artifact)
+        .build();
+
+      expect(state.artifacts[2]).toEqual(artifact);
+    });
+
+    it("chains multiple withArtifact calls", () => {
+      const artifact1 = {
+        type: "yaml" as const,
+        content: "step1: data",
+        generatedAt: "2026-05-14T12:00:00.000Z",
+      };
+      const artifact2 = {
+        type: "markdown" as const,
+        content: "# Step 2",
+        generatedAt: "2026-05-14T13:00:00.000Z",
+      };
+
+      const state = PlanningStateBuilder.new()
+        .withArtifact(1, artifact1)
+        .withArtifact(2, artifact2)
+        .build();
+
+      expect(state.artifacts[1]).toEqual(artifact1);
+      expect(state.artifacts[2]).toEqual(artifact2);
+    });
+
+    it("chains withCompletedSteps", () => {
+      const state = PlanningStateBuilder.new()
+        .withCompletedSteps([1, 2, 3])
+        .build();
+
+      expect(state.completedSteps).toEqual([1, 2, 3]);
+    });
+
+    it("chains withCurrentStepNumber", () => {
+      const state = PlanningStateBuilder.new().withCurrentStepNumber(7).build();
+
+      expect(state.currentStepNumber).toBe(7);
+    });
+
+    it("chains withError", () => {
+      const state = PlanningStateBuilder.new()
+        .withError("API connection failed")
+        .build();
+
+      expect(state.error).toBe("API connection failed");
+    });
+
+    it("chains multiple methods", () => {
+      const state = PlanningStateBuilder.new()
+        .withProjectId("multi-chain-test")
+        .withEntryPath("existing-project")
+        .withStep1Responses({ key: "value" })
+        .withCurrentStepNumber(3)
+        .withCompletedSteps([1, 2])
+        .build();
+
+      expect(state.projectId).toBe("multi-chain-test");
+      expect(state.entryPath).toBe("existing-project");
+      expect(state.step1Responses).toEqual({ key: "value" });
+      expect(state.currentStepNumber).toBe(3);
+      expect(state.completedSteps).toEqual([1, 2]);
+    });
+  });
+
+  describe("complex scenarios", () => {
+    it("builds state for step 2 in progress with partial answers", () => {
+      const state = PlanningStateBuilder.atStep(2)
+        .withStep1Responses({
+          existingRequirements: "No",
+          projectDescription: "E-commerce platform",
+        })
+        .withStep2Answers([
+          {
+            question: "What is the primary goal?",
+            value: "Increase sales",
+            timestamp: "2026-05-14T10:00:00.000Z",
+          },
+        ])
+        .withStep2CurrentQuestion("What is the target audience?", [
+          "B2B",
+          "B2C",
+          "Both",
+        ])
+        .build();
+
+      expect(state.currentStepNumber).toBe(2);
+      expect(state.completedSteps).toEqual([1]);
+      expect(state.step1Responses).toHaveProperty("projectDescription");
+      expect(state.step2Answers).toHaveLength(1);
+      expect(state.step2CurrentQuestion).toBe("What is the target audience?");
+      expect(state.step2CurrentOptions).toEqual(["B2B", "B2C", "Both"]);
+    });
+
+    it("builds state for step 5 with all previous steps completed", () => {
+      const state = PlanningStateBuilder.atStep(5)
+        .withStep1Responses({
+          existingRequirements: "Yes",
+          projectDescription: "Mobile app",
+        })
+        .withStep2Answers([
+          {
+            question: "Q1",
+            value: "A1",
+            timestamp: "2026-05-14T10:00:00.000Z",
+          },
+        ])
+        .withStep3Answers([
+          {
+            question: "Q1",
+            value: "A1",
+            timestamp: "2026-05-14T11:00:00.000Z",
+          },
+        ])
+        .withArtifact(2, {
+          type: "yaml",
+          content: "business: requirements",
+          generatedAt: "2026-05-14T10:30:00.000Z",
+        })
+        .withArtifact(3, {
+          type: "yaml",
+          content: "technical: requirements",
+          generatedAt: "2026-05-14T11:30:00.000Z",
+        })
+        .build();
+
+      expect(state.currentStepNumber).toBe(5);
+      expect(state.completedSteps).toEqual([1, 2, 3, 4]);
+      expect(state.artifacts[2]).toBeDefined();
+      expect(state.artifacts[3]).toBeDefined();
+    });
+
+    it("builds state with error", () => {
+      const state = PlanningStateBuilder.atStep(3)
+        .withError("Network timeout during artifact generation")
+        .build();
+
+      expect(state.currentStepNumber).toBe(3);
+      expect(state.error).toBe("Network timeout during artifact generation");
+    });
+  });
+
+  describe("type safety", () => {
+    it("returns PlanningContext type", () => {
+      const state = PlanningStateBuilder.new().build();
+
+      const context: PlanningContext = state;
+      expect(context).toBeDefined();
+    });
+
+    it("accepts valid artifact types", () => {
+      const yamlArtifact = {
+        type: "yaml" as const,
+        content: "key: value",
+        generatedAt: "2026-05-14T12:00:00.000Z",
+      };
+      const mdArtifact = {
+        type: "markdown" as const,
+        content: "# Title",
+        generatedAt: "2026-05-14T12:00:00.000Z",
+      };
+
+      const state = PlanningStateBuilder.new()
+        .withArtifact(1, yamlArtifact)
+        .withArtifact(2, mdArtifact)
+        .build();
+
+      expect(state.artifacts[1]?.type).toBe("yaml");
+      expect(state.artifacts[2]?.type).toBe("markdown");
+    });
+
+    it("accepts valid entry paths", () => {
+      const newProject = PlanningStateBuilder.new()
+        .withEntryPath("new-project")
+        .build();
+      const existingProject = PlanningStateBuilder.new()
+        .withEntryPath("existing-project")
+        .build();
+
+      expect(newProject.entryPath).toBe("new-project");
+      expect(existingProject.entryPath).toBe("existing-project");
+    });
+  });
+
+  describe("Step 1 (Gap Analysis) methods", () => {
+    describe("withGapAnalysis()", () => {
+      it("populates Step 1 responses and generates artifact", () => {
+        const state = PlanningStateBuilder.new()
+          .withGapAnalysis({
+            existingRequirements: "No",
+            projectDescription: "Healthcare portal",
+          })
+          .build();
+
+        expect(state.step1Responses).toEqual({
+          existingRequirements: "No",
+          projectDescription: "Healthcare portal",
+        });
+        expect(state.artifacts[1]).toBeDefined();
+        expect(state.artifacts[1]?.type).toBe("markdown");
+        expect(state.artifacts[1]?.content).toContain("Healthcare portal");
+        expect(state.artifacts[1]?.content).toContain("Gap Analysis");
+      });
+
+      it("generates artifact with new project guidance", () => {
+        const state = PlanningStateBuilder.new()
+          .withGapAnalysis({
+            existingRequirements: "No",
+            projectDescription: "E-commerce platform",
+          })
+          .build();
+
+        expect(state.artifacts[1]?.content).toContain("new project");
+        expect(state.artifacts[1]?.content).toContain(
+          "business requirements interview",
+        );
+      });
+
+      it("generates artifact with existing project guidance", () => {
+        const state = PlanningStateBuilder.new()
+          .withGapAnalysis({
+            existingRequirements: "Yes, we have a PRD",
+            projectDescription: "Mobile app",
+          })
+          .build();
+
+        expect(state.artifacts[1]?.content).toContain("existing requirements");
+        expect(state.artifacts[1]?.content).toContain(
+          "Review existing documentation",
+        );
+      });
+
+      it("validates responses with Zod schema", () => {
+        const builder = PlanningStateBuilder.new();
+
+        expect(() => {
+          builder.withGapAnalysis({
+            existingRequirements: "", // invalid - cannot be empty
+            projectDescription: "Test",
+          });
+        }).toThrow();
+
+        expect(() => {
+          builder.withGapAnalysis({
+            existingRequirements: "No",
+            projectDescription: "", // invalid - cannot be empty
+          });
+        }).toThrow();
+      });
+
+      it("generates valid ISO timestamp in artifact", () => {
+        const state = PlanningStateBuilder.new()
+          .withGapAnalysis({
+            existingRequirements: "No",
+            projectDescription: "Test project",
+          })
+          .build();
+
+        const generatedAt = state.artifacts[1]?.generatedAt;
+        expect(generatedAt).toBeDefined();
+        expect(() => new Date(generatedAt!)).not.toThrow();
+      });
+
+      it("chains with other builder methods", () => {
+        const state = PlanningStateBuilder.new()
+          .withProjectId("gap-test-123")
+          .withGapAnalysis({
+            existingRequirements: "No",
+            projectDescription: "Chain test",
+          })
+          .withCurrentStepNumber(1)
+          .build();
+
+        expect(state.projectId).toBe("gap-test-123");
+        expect(state.step1Responses.projectDescription).toBe("Chain test");
+        expect(state.artifacts[1]).toBeDefined();
+      });
+    });
+
+    describe("completeStep(1)", () => {
+      it("completes Step 1 with default healthcare data", () => {
+        const state = PlanningStateBuilder.new().completeStep(1).build();
+
+        expect(state.step1Responses.existingRequirements).toBe("No");
+        expect(state.step1Responses.projectDescription).toContain("Healthcare");
+        expect(state.step1Responses.projectDescription).toContain("portal");
+      });
+
+      it("generates Gap Analysis artifact", () => {
+        const state = PlanningStateBuilder.new().completeStep(1).build();
+
+        expect(state.artifacts[1]).toBeDefined();
+        expect(state.artifacts[1]?.type).toBe("markdown");
+        expect(state.artifacts[1]?.content).toContain("Gap Analysis");
+        expect(state.artifacts[1]?.generatedAt).toBeDefined();
+      });
+
+      it("throws for unimplemented steps", () => {
+        const builder = PlanningStateBuilder.new();
+
+        expect(() => {
+          builder.completeStep(2);
+        }).toThrow("completeStep not yet implemented for step 2");
+
+        expect(() => {
+          builder.completeStep(5);
+        }).toThrow("completeStep not yet implemented for step 5");
+      });
+
+      it("chains with atStep() for multi-step scenarios", () => {
+        const state = PlanningStateBuilder.atStep(2)
+          .completeStep(1) // Add Step 1 data even though we're at Step 2
+          .build();
+
+        expect(state.currentStepNumber).toBe(2);
+        expect(state.completedSteps).toEqual([1]);
+        expect(state.step1Responses.projectDescription).toBeTruthy();
+        expect(state.artifacts[1]).toBeDefined();
+      });
+    });
+  });
+});
