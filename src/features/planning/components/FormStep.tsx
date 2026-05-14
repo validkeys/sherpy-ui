@@ -3,7 +3,7 @@
  * Handles form-based input with fixed questions
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePlanningMachine, useSelector } from '../machines/PlanningMachineContext';
 
 type Props = {
@@ -49,7 +49,33 @@ const STEP5_QUESTIONS: FormQuestion[] = [
 export function FormStep({ stepKey, stepName, status }: Props) {
   console.log('[FormStep] Component render - props:', { stepKey, stepName, status });
 
+  // Get actor instance from context
   const actor = usePlanningMachine();
+
+  // ============================================================================
+  // BUG-012 FIX: Use ref to track current actor instance
+  // ============================================================================
+  // PROBLEM: Event handlers capture the actor value from their creation render.
+  // When React StrictMode unmounts/remounts the component, a NEW actor is created
+  // but the old handleSubmit closure still references the OLD (stopped) actor.
+  //
+  // SOLUTION: Store actor in a ref and update it on every render. The ref.current
+  // always points to the latest actor, even after remounts.
+  //
+  // WHY useRef: Refs persist across renders but don't trigger re-renders when updated.
+  // This is perfect for mutable values that need to stay in sync with props/context.
+  const actorRef = useRef(actor);
+
+  // Update ref whenever actor changes (e.g., after provider remount)
+  useEffect(() => {
+    actorRef.current = actor;
+    console.log('[FormStep] ✅ Actor ref updated:', {
+      actorId: actor.id,
+      status: actor.getSnapshot().status,
+      refId: actorRef.current.id,
+    });
+  }, [actor]); // Re-run whenever actor instance changes
+
   console.log('[FormStep] Actor instance ID:', actor.id, 'Status:', actor.getSnapshot().status);
 
   const stepNumber = stepKey === 'step1_gapAnalysis' ? 1 : 5;
@@ -137,17 +163,26 @@ export function FormStep({ stepKey, stepName, status }: Props) {
       responses: actualFormData,
     };
 
-    console.log('[FormStep] Sending event:', event);
-    console.log('[FormStep] Current machine state BEFORE send:', actor.getSnapshot().value);
-    console.log('[FormStep] Can machine accept this event?', actor.getSnapshot().can(event));
+    // ============================================================================
+    // BUG-012 FIX: Use actorRef.current instead of actor
+    // ============================================================================
+    // BEFORE: actor.send(event) - uses captured actor from render, might be stopped
+    // AFTER: actorRef.current.send(event) - uses latest actor from ref, always active
+    //
+    // The ref is updated in the useEffect above whenever the actor instance changes,
+    // so actorRef.current always points to the most recent active actor.
+    console.log('[FormStep] Using actor from ref:', actorRef.current.id);
+    console.log('[FormStep] Actor ref status:', actorRef.current.getSnapshot().status);
+    console.log('[FormStep] Current machine state BEFORE send:', actorRef.current.getSnapshot().value);
+    console.log('[FormStep] Can machine accept this event?', actorRef.current.getSnapshot().can(event));
 
-    actor.send(event);
+    actorRef.current.send(event); // ← FIX: Use ref instead of direct actor
 
     console.log('[FormStep] Event sent to machine');
 
     // Check state after a tick
     setTimeout(() => {
-      const snapshot = actor.getSnapshot();
+      const snapshot = actorRef.current.getSnapshot(); // ← FIX: Use ref
       console.log('[FormStep] Machine state AFTER send:', snapshot.value);
       console.log('[FormStep] Machine context AFTER send:', snapshot.context);
       if (snapshot.context.error) {
@@ -157,7 +192,7 @@ export function FormStep({ stepKey, stepName, status }: Props) {
 
     // Check after a longer delay to see if artifact generation completed
     setTimeout(() => {
-      const snapshot = actor.getSnapshot();
+      const snapshot = actorRef.current.getSnapshot(); // ← FIX: Use ref
       console.log('[FormStep] Machine state after 2 seconds:', snapshot.value);
       if (snapshot.context.error) {
         console.error('[FormStep] ❌ ERROR after 2s:', snapshot.context.error);

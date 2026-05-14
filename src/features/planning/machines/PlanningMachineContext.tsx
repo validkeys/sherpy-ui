@@ -61,8 +61,24 @@ export function PlanningMachineProvider({
   // Start actor and manage lifecycle
   useEffect(() => {
     console.log('[PlanningMachineProvider] Starting actor, current status:', actor.getSnapshot().status);
-    actor.start();
-    console.log('[PlanningMachineProvider] After start, status:', actor.getSnapshot().status);
+
+    // ============================================================================
+    // BUG-012 FIX: Only start if not already started
+    // ============================================================================
+    // PROBLEM: React StrictMode causes mount → unmount → remount. If we blindly
+    // call actor.start() on the remount, XState might have issues.
+    //
+    // SOLUTION: Try to start the actor. XState v5 actors can be started multiple
+    // times safely - the second start() call is a no-op. We just need to ensure
+    // we don't stop the actor in development mode (handled in cleanup below).
+    try {
+      actor.start();
+      console.log('[PlanningMachineProvider] Actor started successfully');
+    } catch (error) {
+      console.warn('[PlanningMachineProvider] Actor start failed (may already be started):', error);
+    }
+
+    console.log('[PlanningMachineProvider] After start check, status:', actor.getSnapshot().status);
 
     // Expose actor globally for debugging
     if (typeof window !== 'undefined') {
@@ -99,11 +115,40 @@ export function PlanningMachineProvider({
 
     return () => {
       console.log('[PlanningMachineProvider] Cleaning up actor');
+      console.log('[PlanningMachineProvider] Actor status before cleanup:', actor.getSnapshot().status);
+      console.log('[PlanningMachineProvider] Actor ID:', actor.id);
+      console.log('[PlanningMachineProvider] Environment:', process.env.NODE_ENV);
+
       // CRITICAL: Unsubscribe BEFORE stopping actor
       // This prevents the stop event from triggering a save with status: 'stopped'
       persistSubscription.unsubscribe();
       debugSubscription.unsubscribe();
-      actor.stop();
+
+      // ============================================================================
+      // BUG-012 FIX: Don't stop actor in development/test mode
+      // ============================================================================
+      // PROBLEM: React StrictMode intentionally unmounts and remounts components
+      // to detect side effects. When we stop the actor on the first unmount,
+      // components from the first mount (like FormStep) still have references to
+      // that stopped actor. When they try to send events, the stopped actor
+      // silently ignores them.
+      //
+      // SOLUTION: In development and test modes (where StrictMode runs), don't
+      // stop the actor on unmount. Let it continue running. The actor will be
+      // reused by the remounted component. In production (no StrictMode), we
+      // DO want to stop the actor on real unmounts to prevent memory leaks.
+      //
+      // WHY THIS WORKS: StrictMode only runs in development and test, not production.
+      // In development, unmounts are often "fake" (StrictMode testing for side effects).
+      // In production, unmounts are real (user navigating away), so we should clean up.
+      if (process.env.NODE_ENV === 'production') {
+        console.log('[PlanningMachineProvider] Production mode: stopping actor');
+        actor.stop();
+      } else {
+        console.log('[PlanningMachineProvider] ✅ Development/test mode: skipping actor.stop() for StrictMode compatibility');
+        console.log('[PlanningMachineProvider] Actor will continue running:', actor.id);
+        console.log('[PlanningMachineProvider] This prevents BUG-012 (stale actor references after StrictMode remount)');
+      }
     };
   }, [actor, storageKey]);
 
