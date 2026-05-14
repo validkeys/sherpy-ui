@@ -47,6 +47,56 @@ updated: "2026-05-13"
 # =============================================================================
 
 # =============================================================================
+# PHASE 2 TESTING FRAMEWORK (2026-05-14)
+# =============================================================================
+#
+# NEW AUTOMATED TESTING TOOLS AVAILABLE:
+#
+# 1. PlanningStateBuilder - Fluent API for test data creation
+#    Location: tests/fixtures/builders/PlanningStateBuilder.ts
+#    Usage: Create test projects at any workflow step programmatically
+#    Example:
+#      const projectId = await new PlanningStateBuilder()
+#        .withBusinessRequirements({ ... })
+#        .withTechnicalRequirements({ ... })
+#        .atStep(5)
+#        .save();
+#
+# 2. Snapshot System - 26 validated regression snapshots
+#    Location: tests/fixtures/snapshots/
+#    Commands:
+#      npm run snapshots:generate    # Generate 20 standard snapshots
+#      npm run snapshots:validate    # Validate all snapshots
+#      npm run snapshots:stats       # Show coverage statistics
+#    Coverage: All 10 workflow steps + 6 edge cases
+#
+# 3. Debug Panel Snapshot Capture - Manual snapshot capture button
+#    Location: Development mode only (http://localhost:5180)
+#    Usage: Click "Capture Snapshot" button in Debug Panel
+#    Saves: JSON snapshot to tests/fixtures/snapshots/ directory
+#    Security: Dev-only endpoint (403 in production)
+#
+# 4. Comprehensive Testing Guide
+#    Location: tests/fixtures/GUIDE.md (998 lines, 28 examples)
+#    Covers: Builder API, snapshot system, test helpers, best practices
+#
+# 5. E2E Workflow Tests
+#    Location: tests/e2e/planning-workflow-builder.spec.ts
+#    Coverage: Steps 1, 2, 5, 10
+#    Uses: Playwright for browser automation
+#
+# RECOMMENDATION: Use automated testing tools (PlanningStateBuilder + snapshots)
+# for regression testing. Reserve AI browser testing for:
+#   - Visual/UX verification
+#   - Complex user interaction flows
+#   - Edge cases not covered by snapshots
+#   - Manual exploratory testing
+#
+# See: .tmp-docs/phase-2-completion-summary.md for full Phase 2 details
+# See: tests/fixtures/GUIDE.md for testing framework documentation
+# =============================================================================
+
+# =============================================================================
 # WHAT TO DO WHEN USER SAYS "Run the AI browser test"
 # =============================================================================
 
