@@ -9,6 +9,7 @@ import { getStepState } from "@/features/planning/store";
 const USE_MOCK_STREAMING = false;
 
 export default defineEventHandler(async (event) => {
+  console.log('========== INTERVIEW API CALLED ==========');
   // Parse and validate input
   const body = await readBody(event);
 
@@ -17,6 +18,13 @@ export default defineEventHandler(async (event) => {
   }
 
   const { projectId, stepNumber, previousAnswers, projectContext } = body;
+
+  console.log('[interview] Received body:', {
+    projectId,
+    stepNumber,
+    previousAnswersLength: previousAnswers?.length,
+    projectContext: projectContext || 'UNDEFINED',
+  });
 
   if (typeof projectId !== "string" || !projectId) {
     throw new Error("projectId required");
@@ -59,8 +67,18 @@ export default defineEventHandler(async (event) => {
     return handleMockStreamingRequest({ projectId, stepNumber, previousAnswers });
   }
 
+  // Debug: log what we're sending to the AI
+  console.log('[interview API] Building prompt with:', {
+    stepName,
+    stepNumber,
+    previousAnswersCount: previousAnswers.length,
+    projectOverview: projectOverview || 'NO PROJECT CONTEXT',
+  });
+
   // Build prompt and stream response from Bedrock
   const messages = buildInterviewPrompt(stepName, stepNumber, previousAnswers, projectOverview);
+
+  console.log('[interview API] First message preview:', messages[0]?.content?.substring(0, 200));
   const stream = await streamQuestion(
     messages,
     stepNumber,

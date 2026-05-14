@@ -1,0 +1,304 @@
+---
+# Sherpy Manual Testing Run Tracking
+# Auto-generated from ai-browser-test.yaml
+
+run_number: "002"
+date: "2026-05-13"
+tester: "Claude AI Browser Agent"
+status: "blocked" # in_progress | blocked | completed | failed
+blocking_bug: "008" # Set to bug report ID if blocked
+
+# Overall Results
+total_duration: "~5 minutes (blocked at Step 3)"
+project_id: "GVAZ_INm"
+final_status: "blocked" # passed | failed | blocked
+
+# Step Tracking
+steps:
+
+  # Project Creation
+  - id: "step-01"
+    name: "Create New Project"
+    status: "passed" # pending | in_progress | passed | failed | blocked | skipped
+    duration: "~1 minute"
+    expected_duration: "2 minutes"
+    screenshot: "test-run-002-01-project-name.png, test-run-002-02-step1-loaded.png"
+    notes: "Project created successfully with ID GVAZ_INm. Dashboard loaded correctly, navigation to /project/GVAZ_INm/build successful, all 10 stages visible in sidebar with Stage 1 marked as 'now'."
+    blocking_bug: null
+
+  # Gap Analysis
+  - id: "step-02"
+    name: "Gap Analysis - Form Fill"
+    status: "passed"
+    duration: "~30 seconds"
+    expected_duration: "2 minutes"
+    screenshot: "test-run-002-03-gap-analysis-filled.png"
+    notes: "Both textareas filled successfully. Submit button enabled as expected."
+    blocking_bug: null
+
+  - id: "step-03"
+    name: "Gap Analysis - Artifact Generation"
+    status: "blocked"
+    duration: "61+ seconds (did not complete)"
+    expected_duration: "15-25 seconds"
+    screenshot: "test-run-002-04-after-submit.png, test-run-002-05-step3-stuck.png"
+    notes: "REGRESSION of BUG-007. Submit button click did not trigger any API call. Form became disabled but no artifact generation occurred. Waited 61 seconds with no transition. formData: {} empty, isFormValid: false. Query error for project GVAZ_INm."
+    blocking_bug: "008"
+    critical_check: "Auto-transition to Step 2 (Business Requirements Interview)"
+
+  # Business Requirements Interview (Step 2 in workflow)
+  - id: "step-04"
+    name: "Business Requirements Interview - Question 1"
+    status: "pending"
+    duration: null
+    expected_duration: "5 seconds"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+    contextual_check: "Question must reference healthcare/portal specifics"
+
+  - id: "step-05"
+    name: "Business Requirements Interview - Answer Question 1"
+    status: "pending"
+    duration: null
+    expected_duration: "5 seconds"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+
+  - id: "step-06"
+    name: "Business Requirements Interview - Questions 2-10"
+    status: "pending"
+    duration: null
+    expected_duration: "5-7 minutes"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+    questions_completed: 0
+    total_questions: 10
+
+  # Technical Requirements Interview (Step 3 in workflow)
+  - id: "step-07"
+    name: "Technical Requirements Interview - Questions 1-10"
+    status: "pending"
+    duration: null
+    expected_duration: "5-7 minutes + 25s generation"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+    questions_completed: 0
+    total_questions: 10
+
+  # Style Anchors Collection (Step 4 - automated)
+  - id: "step-08"
+    name: "Style Anchors Collection"
+    status: "pending"
+    duration: null
+    expected_duration: "20-30 seconds"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+    automated: true
+
+  # Implementation Planner (Step 5)
+  - id: "step-09"
+    name: "Implementation Planner"
+    status: "pending"
+    duration: null
+    expected_duration: "2 minutes + 20s generation"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+
+  # Definition of Done (Step 6 - automated)
+  - id: "step-10"
+    name: "Definition of Done"
+    status: "pending"
+    duration: null
+    expected_duration: "20-30 seconds"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+    automated: true
+
+  # Architecture Decision Records (Step 7 - review only)
+  - id: "step-11"
+    name: "Architecture Decision Records"
+    status: "pending"
+    duration: null
+    expected_duration: "Manual navigation"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+    manual_advance: true
+
+  # Delivery Timeline (Step 8 - automated)
+  - id: "step-12"
+    name: "Delivery Timeline"
+    status: "pending"
+    duration: null
+    expected_duration: "20-30 seconds"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+    automated: true
+
+  # QA Test Plan (Step 9 - automated)
+  - id: "step-13"
+    name: "QA Test Plan"
+    status: "pending"
+    duration: null
+    expected_duration: "20-30 seconds"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+    automated: true
+
+  # Generate Summaries (Step 10 - automated)
+  - id: "step-14"
+    name: "Generate Summaries"
+    status: "pending"
+    duration: null
+    expected_duration: "20-30 seconds"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+    automated: true
+    final_step: true
+
+  # Review Mode Testing
+  - id: "review-mode"
+    name: "Review Mode Testing"
+    status: "pending"
+    duration: null
+    expected_duration: "5 minutes"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+    artifacts_verified: 0
+    total_artifacts: 10
+
+  # Navigation Testing
+  - id: "navigation-backward"
+    name: "Navigation Testing - Backward"
+    status: "pending"
+    duration: null
+    expected_duration: "2 minutes"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+
+  - id: "navigation-forward"
+    name: "Navigation Testing - Forward"
+    status: "pending"
+    duration: null
+    expected_duration: "1 minute"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+
+  # State Persistence Testing
+  - id: "persistence-refresh"
+    name: "State Persistence - Page Refresh"
+    status: "pending"
+    duration: null
+    expected_duration: "1 minute"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+
+  - id: "persistence-navigate"
+    name: "State Persistence - Navigate Away and Return"
+    status: "pending"
+    duration: null
+    expected_duration: "1 minute"
+    screenshot: null
+    notes: null
+    blocking_bug: null
+
+# Artifacts Generated
+artifacts:
+  - name: "Gap Analysis"
+    workflow_step: 1
+    generated: false
+    file_size: null
+    verified: false
+
+  - name: "Business Requirements"
+    workflow_step: 2
+    generated: false
+    file_size: null
+    verified: false
+
+  - name: "Technical Requirements"
+    workflow_step: 3
+    generated: false
+    file_size: null
+    verified: false
+
+  - name: "Style Anchors"
+    workflow_step: 4
+    generated: false
+    file_size: null
+    verified: false
+
+  - name: "Implementation Plan"
+    workflow_step: 5
+    generated: false
+    file_size: null
+    verified: false
+
+  - name: "Definition of Done"
+    workflow_step: 6
+    generated: false
+    file_size: null
+    verified: false
+
+  - name: "Architecture Decisions"
+    workflow_step: 7
+    generated: false
+    file_size: null
+    verified: false
+
+  - name: "Delivery Timeline"
+    workflow_step: 8
+    generated: false
+    file_size: null
+    verified: false
+
+  - name: "QA Test Plan"
+    workflow_step: 9
+    generated: false
+    file_size: null
+    verified: false
+
+  - name: "Summaries"
+    workflow_step: 10
+    generated: false
+    file_size: null
+    verified: false
+
+# Issues Encountered
+bugs_filed: ["008-gap-analysis-regression-bug007"]
+# Format: ["001-gap-analysis-hangs", "002-question-not-contextual"]
+
+# Observations
+observations: []
+# Format:
+# - step: "step-03"
+#   observation: "Artifact generation took 45s, exceeding expected 25s"
+#   severity: "minor" # minor | moderate | critical
+
+# Success Criteria Verification
+success_criteria:
+  all_steps_completed: false
+  all_artifacts_generated: false
+  artifacts_contain_content: false
+  backward_navigation_works: false
+  forward_navigation_works: false
+  state_persists_refresh: false
+  state_persists_navigate: false
+  no_console_errors: true
+  no_server_errors: true
+  contextual_questions_verified: false
+  total_time_within_range: false # 25-35 minutes

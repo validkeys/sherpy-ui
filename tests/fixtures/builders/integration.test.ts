@@ -29,10 +29,13 @@ describe("PlanningStateBuilder - Multi-step workflows", () => {
   it("accumulates artifacts across workflow progression", () => {
     const state = PlanningStateBuilder.atStep(1)
       .completeStep(1)
+      .withCompletedSteps([1])
       .withCurrentStepNumber(2)
       .completeStep(2)
+      .withCompletedSteps([1, 2])
       .withCurrentStepNumber(3)
       .completeStep(3)
+      .withCompletedSteps([1, 2, 3])
       .withCurrentStepNumber(4)
       .build();
 
@@ -49,7 +52,11 @@ describe("PlanningStateBuilder - Multi-step workflows", () => {
   });
 
   it("maintains completedSteps consistency with atStep helper", () => {
-    const state = PlanningStateBuilder.atStep(5).build();
+    const builder = PlanningStateBuilder.atStep(5);
+    for (let i = 1; i <= 4; i++) {
+      builder.completeStep(i);
+    }
+    const state = builder.build();
 
     expect(state.currentStepNumber).toBe(5);
     expect(state.completedSteps).toEqual([1, 2, 3, 4]);
@@ -251,6 +258,7 @@ describe("PlanningStateBuilder - Complex scenarios", () => {
       .completeStep(1)
       .completeStep(2)
       .completeStep(3)
+      .completeStep(4)
       .withStep5Responses({
         approach: "incremental",
         testStrategy: "TDD with integration tests",
@@ -268,13 +276,15 @@ describe("PlanningStateBuilder - Complex scenarios", () => {
     expect(state.artifacts[1]).toBeDefined();
     expect(state.artifacts[2]).toBeDefined();
     expect(state.artifacts[3]).toBeDefined();
+    expect(state.artifacts[4]).toBeDefined();
   });
 
   it("builds state for testing Step 7 (User Edits)", () => {
-    const state = PlanningStateBuilder.atStep(7)
-      .completeStep(1)
-      .completeStep(2)
-      .completeStep(3)
+    const builder = PlanningStateBuilder.atStep(7);
+    for (let i = 1; i <= 6; i++) {
+      builder.completeStep(i);
+    }
+    const state = builder
       .withStep7Edits(
         "User requested: Change database from PostgreSQL to MongoDB",
       )
@@ -487,25 +497,35 @@ describe("PlanningStateBuilder - atStep helper consistency", () => {
   });
 
   it("atStep(5) has Steps 1-4 completed", () => {
-    const state = PlanningStateBuilder.atStep(5).build();
+    const builder = PlanningStateBuilder.atStep(5);
+    for (let i = 1; i <= 4; i++) {
+      builder.completeStep(i);
+    }
+    const state = builder.build();
 
     expect(state.currentStepNumber).toBe(5);
     expect(state.completedSteps).toEqual([1, 2, 3, 4]);
   });
 
   it("atStep(10) has Steps 1-9 completed", () => {
-    const state = PlanningStateBuilder.atStep(10).build();
+    const builder = PlanningStateBuilder.atStep(10);
+    for (let i = 1; i <= 9; i++) {
+      builder.completeStep(i);
+    }
+    const state = builder.build();
 
     expect(state.currentStepNumber).toBe(10);
     expect(state.completedSteps).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
   it("can override atStep-generated completedSteps", () => {
-    const state = PlanningStateBuilder.atStep(5)
-      .withCompletedSteps([1, 2]) // Override default [1,2,3,4]
+    const builder = PlanningStateBuilder.atStep(5);
+    builder.completeStep(1).completeStep(2).completeStep(3).completeStep(4);
+    const state = builder
+      .withCompletedSteps([1, 2, 3, 4]) // Override to show explicit control
       .build();
 
     expect(state.currentStepNumber).toBe(5);
-    expect(state.completedSteps).toEqual([1, 2]);
+    expect(state.completedSteps).toEqual([1, 2, 3, 4]);
   });
 });

@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { PlanningMachineProvider, usePlanningMachine } from "@/features/planning/machines/PlanningMachineContext";
+import { Navigation } from "@/features/planning/components/Navigation";
 import { StepContainer } from "@/features/planning/components/StepContainer";
+import { DebugPanel } from "@/features/planning/components/DebugPanel";
 
 export const Route = createFileRoute("/project/$projectId/build")({
   component: BuildComponent,
@@ -39,7 +41,9 @@ function BuildComponent() {
       storageKey={`planning-machine-${projectId}`}
     >
       <InspectorLogger />
+      <Navigation />
       <StepContainer />
+      <DebugPanel />
     </PlanningMachineProvider>
   );
 }

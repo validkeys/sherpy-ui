@@ -56,4 +56,26 @@ describe('Navigation', () => {
     expect(screen.getByRole('button', { name: /back/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /next/i })).toBeDefined();
   });
+
+  it('renders without crashing during SSR when localStorage is undefined (BUG-005)', () => {
+    // Simulate SSR by making localStorage undefined
+    const originalLocalStorage = global.localStorage;
+    // @ts-expect-error - Simulating SSR environment
+    delete global.localStorage;
+
+    // Should not throw
+    expect(() => {
+      render(
+        <PlanningMachineProvider input={defaultInput}>
+          <Navigation />
+        </PlanningMachineProvider>
+      );
+    }).not.toThrow();
+
+    // Restore localStorage
+    global.localStorage = originalLocalStorage;
+
+    // Verify component rendered
+    expect(screen.getByText(/Step 1 of 10/i)).toBeDefined();
+  });
 });

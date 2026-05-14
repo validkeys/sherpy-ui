@@ -64,10 +64,12 @@ workflow_impact: "BLOCKING - Cannot progress past Step 1, making entire workflow
 workaround: null
 
 # Status
-status: "fixed"
+status: "regressed"
 fixed_in: "defensive-fixes-2026-05-13"
-verified_fixed: true
+verified_fixed: false
 fixed_date: "2026-05-13"
+regression_date: "2026-05-13"
+regression_test_run: "002"
 
 # Resolution
 resolution_type: "defensive-programming"
@@ -101,7 +103,231 @@ code_quality: "97% (68/70) - EXCELLENT"
 code_review: ".tmp-docs/code-reviews/007-defensive-fixes/review.yaml"
 
 # Related
-related_bugs: ["006"]
+related_bugs: ["006", "008"]
+
+# Regression Investigation (2026-05-13)
+regression_details:
+  discovered_in_test: "002"
+  discovery_date: "2026-05-13"
+  project_id_affected: "GVAZ_INm"
+  url_affected: "http://localhost:5182/project/GVAZ_INm/build"
+
+  identical_symptoms:
+    - "Submit button becomes disabled on click"
+    - "No API calls triggered (verified via browser performance API)"
+    - "formData: {} remains empty in server logs"
+    - "isFormValid: false despite valid input"
+    - "Query error: 'Query data cannot be undefined for key: [\"project\",\"GVAZ_INm\"]'"
+    - "No artifact generation server logs"
+    - "Page stuck on Step 1 indefinitely"
+
+  timing:
+    - "Test Run #001: Bug discovered and filed"
+    - "2026-05-13: Defensive fixes applied and marked as 'fixed'"
+    - "Test Run #002: Same bug reproduced hours later"
+    - "Time between fix and regression: < 24 hours"
+
+# Detailed Reproduction Steps (Verified in Test Run #002)
+detailed_reproduction:
+  prerequisites:
+    - "Development server running (pnpm dev)"
+    - "Fresh browser session (incognito recommended)"
+    - "Clear localStorage to ensure clean state"
+    - "Browser DevTools open (Network tab + Console)"
+    - "Terminal visible for server logs"
+
+  step_by_step:
+    1:
+      action: "Navigate to http://localhost:5182 (or whichever port dev server uses)"
+      expected: "Dashboard loads with existing projects and 'New project' button"
+      verify: "No console errors, page renders correctly"
+
+    2:
+      action: "Click 'New project' button"
+      expected: "Modal appears with two options: 'Start from scratch' (recommended) and 'Start with a doc'"
+      verify: "Modal renders, both buttons visible"
+
+    3:
+      action: "Click 'Start from scratch' button"
+      expected: "Modal transitions to project name input form"
+      verify: "Text input for project name visible, 'Create project' button enabled"
+
+    4:
+      action: "Enter project name: 'Healthcare Portal - Test 2026-05-13'"
+      expected: "Text appears in input field"
+      verify: "'Create project' button remains enabled"
+
+    5:
+      action: "Click 'Create project' button"
+      expected: "Navigate to /project/{projectId}/build, Step 1 form loads"
+      verify: |
+        - URL changes to /project/{projectId}/build
+        - All 10 stages visible in sidebar
+        - Stage 1 marked as 'now'
+        - Gap Analysis form with two textareas visible
+        - Submit button disabled (correct initial state)
+        - Back button disabled (correct, at first step)
+        - Next button disabled (correct, form not submitted)
+
+    6:
+      action: "Fill first textarea 'Do you have existing requirements?' with: 'No, starting from scratch'"
+      expected: "Text appears in first textarea"
+      verify: "Textarea accepts input, Submit button still disabled (waiting for second field)"
+
+    7:
+      action: |
+        Fill second textarea 'What are you building?' with:
+        'A comprehensive healthcare patient portal with the following features:
+        - Online appointment scheduling with calendar integration
+        - Secure access to medical records and test results
+        - Direct messaging with healthcare providers
+        - Prescription refill requests and medication tracking
+        - Billing and insurance information management'
+      expected: "Multi-line text appears in second textarea"
+      verify: "Submit button becomes ENABLED (both required fields now filled)"
+
+    8:
+      action: "BEFORE CLICKING SUBMIT: Check Network tab is recording"
+      verify: "Network tab clear, ready to capture API calls"
+
+    9:
+      action: "Click 'Submit' button"
+      expected_behavior: |
+        Should trigger:
+        - API call to /api/ai/interview endpoint
+        - Button shows loading state ('Submitting...' or spinner)
+        - Form fields become disabled
+        - Server logs show artifact generation starting
+        - After 15-25 seconds: auto-transition to Step 2
+        - URL updates, sidebar shows Stage 2 as 'now'
+
+      actual_behavior: |
+        What actually happens:
+        - Submit button becomes disabled
+        - Form fields clear and become disabled
+        - NO API calls appear in Network tab (CRITICAL)
+        - NO server logs for artifact generation
+        - Page remains stuck on Step 1
+        - Sidebar still shows Stage 1 as 'now'
+        - No loading indicators or progress feedback
+
+    10:
+      action: "Wait 60+ seconds"
+      expected: "Should have transitioned to Step 2 by now"
+      actual: "Still stuck on Step 1, no changes"
+
+    11:
+      action: "Check browser console for errors"
+      observe: "Query error: 'Query data cannot be undefined for key: [\"project\",\"{projectId}\"]'"
+
+    12:
+      action: "Check server terminal logs"
+      observe: |
+        [FormStep] Render state: {
+          stepNumber: 1,
+          status: 'collecting',
+          formData: {},           ← EMPTY despite form being filled!
+          isFormValid: false,     ← FALSE despite valid input!
+          isLoading: false,
+          buttonDisabled: true
+        }
+
+# Diagnostic Investigation Steps
+diagnosis_checklist:
+  verify_fix_applied:
+    - "Check if FormStep.tsx contains defensive validation (lines 84-103)"
+    - "Check if PlanningMachineContext.tsx has localStorage recovery (lines 154-182)"
+    - "Run: git log --oneline --grep='BUG-007' to find fix commit"
+    - "Run: git show <commit-hash> to verify changes"
+    - "Confirm tests in FormStep.bug007.test.tsx exist and pass"
+
+  runtime_debugging:
+    - "Add console.log in FormStep submit handler to verify it's being called"
+    - "Add console.log before SUBMIT_FORM event to see formData contents"
+    - "Check if textarea onChange handlers are firing and updating state"
+    - "Verify XState actor is receiving SUBMIT_FORM event"
+    - "Check if form validation logic is running before submission"
+    - "Inspect localStorage for corrupted planning state"
+
+  state_inspection:
+    - "In browser console: localStorage.getItem('planning-state-{projectId}')"
+    - "Check if currentStepNumber exists and is valid"
+    - "Check if projectId is present in stored state"
+    - "Verify formData is being populated in local state before submit"
+
+  network_analysis:
+    - "Browser DevTools → Network tab → Filter: Fetch/XHR"
+    - "Verify zero requests to /api/ai/interview after Submit click"
+    - "Check if any network errors are being silently caught"
+    - "Run: agent-browser eval 'performance.getEntriesByType(\"resource\")' to verify"
+
+  code_review_areas:
+    files_to_inspect:
+      - path: "app/routes/project/$projectId.build.tsx"
+        check: "FormStep submit handler, event listener registration"
+
+      - path: "app/features/planning/components/FormStep.tsx"
+        check: "SUBMIT_FORM event dispatch, formData collection, validation logic"
+
+      - path: "app/features/planning/machines/PlanningMachineContext.tsx"
+        check: "XState machine setup, localStorage persistence, state recovery"
+
+      - path: "app/api/ai/interview.ts"
+        check: "API endpoint exists and is correctly routed"
+
+    specific_checks:
+      - "Is onSubmit handler correctly bound to form element?"
+      - "Is SUBMIT_FORM event being dispatched with correct payload?"
+      - "Is XState actor initialized before FormStep renders?"
+      - "Are textarea values being captured into formData state?"
+      - "Is there a race condition between form state update and submit?"
+      - "Is React StrictMode causing double-unmount affecting actor lifecycle?"
+
+# Root Cause Hypotheses
+possible_causes:
+  hypothesis_1:
+    theory: "Defensive fixes were never committed or were reverted"
+    evidence: "Identical symptoms suggest no fix is active"
+    test: "Search codebase for defensive validation code from BUG-007 resolution"
+
+  hypothesis_2:
+    theory: "Form state (formData) not updating before submit handler fires"
+    evidence: "Server logs show formData: {} empty despite visible user input"
+    test: "Add logging in textarea onChange to verify state updates"
+
+  hypothesis_3:
+    theory: "Submit handler not attached or event listener removed"
+    evidence: "No API call triggered, suggesting handler never runs"
+    test: "Add console.log at top of submit handler to verify it executes"
+
+  hypothesis_4:
+    theory: "XState actor not ready when form renders"
+    evidence: "Query error about undefined project data suggests state issues"
+    test: "Check actor initialization timing vs FormStep mount"
+
+  hypothesis_5:
+    theory: "localStorage corruption preventing proper state initialization"
+    evidence: "Query error + empty formData suggests state not loading correctly"
+    test: "Clear localStorage and retry (Test Run #002 should have done this)"
+
+  hypothesis_6:
+    theory: "React StrictMode double-render breaking event handler registration"
+    evidence: "Multiple actor instances in logs (x:0, x:1, x:2)"
+    test: "Disable StrictMode temporarily and retest"
+
+  hypothesis_7:
+    theory: "Defensive validation is TOO defensive and blocking valid submissions"
+    evidence: "isFormValid: false despite valid input"
+    test: "Review validation logic - is it incorrectly rejecting valid forms?"
+
+# Next Actions
+immediate_next_steps:
+  1: "Verify BUG-007 fix code is present in current codebase (git grep, file inspection)"
+  2: "If code present: Add extensive logging to track execution path"
+  3: "If code missing: Re-apply fixes and commit properly"
+  4: "Add integration test that fills form and verifies API call is made"
+  5: "Run test with browser debugger to step through submit flow"
+  6: "Consider adding Sentry/error tracking to catch silent failures"
 
 notes: |
   This appears different from BUG-006. Here, the Submit click doesn't trigger any
@@ -111,3 +337,14 @@ notes: |
   RESOLUTION: Bug cannot be reproduced in current code, but defensive fixes added
   to prevent similar issues from race conditions or localStorage corruption. All
   tests pass, code review approved at 97% quality.
+
+  **REGRESSION DETECTED (2026-05-13):**
+  Test Run #002 (BUG-008) shows identical symptoms returning. The defensive fixes
+  either:
+  1. Were not actually committed to the codebase
+  2. Were reverted
+  3. Did not address the actual root cause
+  4. Are being bypassed by the bug trigger condition
+
+  Need to investigate whether the fix code is present and why it's not preventing
+  the issue.

@@ -29,7 +29,13 @@ export default defineConfig({
             req.on("end", async () => {
               try {
                 const data = JSON.parse(body);
-                const { stepNumber, previousAnswers = [] } = data;
+                const { stepNumber, previousAnswers = [], projectContext } = data;
+
+                console.log('[vite middleware] Received request:', {
+                  stepNumber,
+                  previousAnswersLength: previousAnswers.length,
+                  projectContext: projectContext || 'UNDEFINED',
+                });
 
                 const USE_MOCK_STREAMING =
                   process.env.USE_MOCK_STREAMING !== "false";
@@ -55,6 +61,7 @@ export default defineConfig({
                     stepName,
                     stepNumber,
                     previousAnswers,
+                    projectContext,
                   );
                   stream = await streamQuestion(
                     messages,

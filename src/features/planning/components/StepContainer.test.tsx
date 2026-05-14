@@ -22,25 +22,24 @@ describe('StepContainer', () => {
         </PlanningMachineProvider>
       );
 
-      // Component should render (may be null for idle state)
       expect(container).toBeDefined();
     });
 
-    it('returns null for idle state', () => {
+    it('renders step1_gapAnalysis on initial load', () => {
       const { container } = render(
         <PlanningMachineProvider input={defaultInput}>
           <StepContainer />
         </PlanningMachineProvider>
       );
 
-      // In idle state or unknown step, returns null
-      // This is expected behavior before START_PLANNING event
-      expect(container.querySelector('.form-step, .interview-step, .automated-step, .artifact-only-step')).toBeNull();
+      // Machine now starts in step1_gapAnalysis (BUG-001 fix)
+      // Should render form step, not null
+      expect(container.querySelector('.form-step')).not.toBeNull();
     });
   });
 
   describe('Unknown step handling', () => {
-    it('logs warning and returns null for unknown step', () => {
+    it('renders step1 on initial load (no longer starts in idle)', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const { container } = render(
@@ -49,8 +48,12 @@ describe('StepContainer', () => {
         </PlanningMachineProvider>
       );
 
-      // Should return null for unknown step
-      expect(container.querySelector('.form-step')).toBeNull();
+      // After BUG-001 fix: machine starts in step1_gapAnalysis, not idle
+      // Should render form step
+      expect(container.querySelector('.form-step')).not.toBeNull();
+
+      // Should NOT log warning (step1 is valid)
+      expect(consoleSpy).not.toHaveBeenCalled();
 
       consoleSpy.mockRestore();
     });

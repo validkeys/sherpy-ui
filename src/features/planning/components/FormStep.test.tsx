@@ -368,4 +368,70 @@ describe('FormStep', () => {
       expect(submitButton.disabled).toBe(true);
     });
   });
+
+  describe('BUG-011: Form data capture on submit', () => {
+    it('should send SUBMIT_FORM event with form data to XState machine', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <PlanningMachineProvider
+          input={defaultInput}
+          storageKey="test-bug-011-submit"
+        >
+          <FormStep
+            stepKey="step1_gapAnalysis"
+            stepName="Gap Analysis"
+            status="active"
+          />
+        </PlanningMachineProvider>
+      );
+
+      const input = screen.getByLabelText(/do you have existing requirements/i) as HTMLInputElement;
+      const textarea = screen.getByLabelText(/what are you building/i) as HTMLTextAreaElement;
+
+      // Fill form
+      await user.type(input, 'No, starting from scratch');
+      await user.type(textarea, 'A healthcare portal for patient records');
+
+      // Verify form values
+      expect(input.value).toBe('No, starting from scratch');
+      expect(textarea.value).toBe('A healthcare portal for patient records');
+
+      // Get global actor before submit
+      const actor = (window as any).__planningActor;
+      if (actor) {
+        const stateBefore = actor.getSnapshot();
+        console.log('[BUG-011 TEST] State before submit:', {
+          value: stateBefore.value,
+          step1Responses: stateBefore.context.step1Responses,
+        });
+        expect(stateBefore.context.step1Responses).toEqual({});
+      }
+
+      // Submit form
+      const submitButton = screen.getByRole('button', { name: /submit/i });
+      await user.click(submitButton);
+
+      // Check state after submit
+      await waitFor(() => {
+        const actor = (window as any).__planningActor;
+        if (actor) {
+          const stateAfter = actor.getSnapshot();
+          console.log('[BUG-011 TEST] State after submit:', {
+            value: stateAfter.value,
+            step1Responses: stateAfter.context.step1Responses,
+          });
+
+          // BUG-011: step1Responses should contain form data
+          expect(stateAfter.context.step1Responses).toHaveProperty('existingRequirements');
+          expect(stateAfter.context.step1Responses).toHaveProperty('projectDescription');
+          expect(stateAfter.context.step1Responses.existingRequirements).toBe('No, starting from scratch');
+          expect(stateAfter.context.step1Responses.projectDescription).toBe('A healthcare portal for patient records');
+
+          // Machine should transition from 'collecting' to 'submitting'
+          expect(stateAfter.value).not.toEqual({ step1_gapAnalysis: 'collecting' });
+        }
+      }, { timeout: 1000 });
+    });
+  });
 });

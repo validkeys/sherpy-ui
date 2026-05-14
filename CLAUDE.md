@@ -4,6 +4,70 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
+---
+
+## ⚠️ CRITICAL: agent-browser Testing Limitation (Discovered 2026-05-13)
+
+**When testing React forms with `agent-browser`, standard fill commands DO NOT work properly.**
+
+### The Problem
+
+Commands like `agent-browser fill`, `keyboard type`, and `keyboard inserttext`:
+- ❌ Do NOT set DOM `input.value` / `textarea.value` properties reliably
+- ❌ Do NOT trigger React `onChange` events properly
+- ❌ Do NOT update React component state
+- ✅ DO create visual appearance of filled fields (misleading!)
+
+**Result:** Forms appear filled but React state remains empty, causing false-positive test failures.
+
+### The Solution (React Fiber Workaround) ✅ VERIFIED IN TEST RUN #009
+
+**For filling controlled inputs/textareas:**
+```bash
+agent-browser eval --stdin <<'EOF'
+const element = document.getElementById('fieldId');
+const key = Object.keys(element).find(k => k.startsWith('__react'));
+const fiber = element[key];
+
+// Set value and trigger React onChange
+element.value = 'your value here';
+const event = { target: element, currentTarget: element };
+fiber.memoizedProps.onChange(event);
+EOF
+```
+
+**For submitting forms:**
+```bash
+agent-browser eval --stdin <<'EOF'
+const form = document.querySelector('form');
+const key = Object.keys(form).find(k => k.startsWith('__react'));
+const event = { 
+  preventDefault: () => {}, 
+  target: form, 
+  currentTarget: form 
+};
+form[key].memoizedProps.onSubmit(event);
+EOF
+```
+
+**Note:** Simple text inputs may work with `agent-browser fill` command, but textareas and multi-line inputs require the React fiber workaround.
+
+### Verification
+
+- ✅ Application code is CORRECT
+- ✅ Integration tests with `@testing-library/user-event` PASS (5/5)
+- ✅ Manual browser testing works perfectly
+- ✅ React fiber workaround validated in Test Run #009
+- ✅ Issue was ONLY with agent-browser testing methodology
+
+**See:** 
+- `.tmp-docs/plan/bug-014-root-cause-analysis.md` for complete analysis
+- `.tmp-docs/plan/runs/009/summary.md` for React fiber workaround validation
+
+**Debug Tool:** The `DebugPanel` component in development mode shows real-time XState state and DOM values, making it easy to verify form data capture.
+
+---
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**

@@ -1,0 +1,88 @@
+---
+# Bug Report
+
+bug_id: "001"
+slug: "dashboard-navigation-broken"
+title: "Dashboard project navigation does not navigate to project pages"
+date_reported: "2026-05-12"
+reporter: "Claude AI Browser Agent"
+
+# Classification
+severity: high
+blocking: true # Blocks normal user workflow from dashboard
+affected_step: null # Pre-workflow - dashboard navigation
+
+# Description
+summary: |
+  Clicking on project cards, recent run buttons, or workspace project buttons in the
+  dashboard does not navigate to the project build page. Multiple navigation attempts
+  either stay on the dashboard or fail to reach the intended project.
+
+expected_behavior: |
+  When clicking on a project card (e.g., "billing-platform") or a recent run button
+  (e.g., "biz-req-04"), the browser should navigate to /project/{projectId}/build
+  and load that project's current step.
+
+actual_behavior: |
+  Navigation does not occur. URL remains at /dashboard or navigates back to dashboard
+  instead of the project page. Tested multiple elements:
+  - Project cards in Active tab (@e12 - billing-platform card)
+  - Recent run buttons (@e5 - biz-req-04, @e6 - biz-req-03)
+  - Workspace project buttons (@e3 - billing-platform)
+
+  None successfully navigated to the project.
+
+# Reproduction
+steps_to_reproduce:
+  - "Navigate to http://localhost:5180 (dashboard loads)"
+  - "Click on any project card in the Active tab (e.g., 'billing-platform' project)"
+  - "Observe URL - it remains at /dashboard or doesn't navigate to project"
+  - "Alternative: Click on recent run button (e.g., 'biz-req-04')"
+  - "Observe same behavior - no navigation occurs"
+
+reproduction_rate: always
+
+# Evidence
+screenshot: ".tmp-docs/screenshots/tc006-12-dashboard-view.png"
+server_logs: null
+console_errors: null
+network_errors: null
+
+# Context
+test_run: "TC-006"
+project_id: "seed-0002"
+url: "http://localhost:5180/dashboard"
+browser: "Chrome (headless via agent-browser)"
+
+# Impact
+workflow_impact: |
+  Users cannot navigate to existing projects from the dashboard using the normal UI
+  controls. This blocks the primary user workflow. Only workaround is to manually
+  construct and enter URLs in the address bar.
+
+workaround: |
+  Direct URL navigation works: manually navigate to http://localhost:5180/project/{projectId}/build
+  Example: http://localhost:5180/project/seed-0002/build successfully loads the project.
+
+# Status
+status: "resolved"
+fixed_in: "2026-05-12"
+verified_fixed: true
+resolution_notes: |
+  Fixed with enterprise-grade solution:
+  1. Implemented navigation in LeftRailNav workspace buttons
+  2. Refactored recent runs to be data-driven with navigation
+  3. Added comprehensive test coverage (14 tests)
+  4. Verified with agent-browser integration testing
+  See: .tmp-docs/plan/bug-reports/001-dashboard-navigation-RESOLVED.md
+
+# Related
+related_bugs: []
+
+notes: |
+  - Recent runs list buttons also don't navigate (biz-req-04, biz-req-03)
+  - Workspace project buttons don't navigate (billing-platform, sherpy-web)
+  - Project cards don't navigate (billing-platform card with Step 2 label)
+  - All navigation elements appear clickable and respond to clicks (no disabled state)
+  - Issue may be with click handlers or routing logic
+  - Direct URL navigation works perfectly, so project pages themselves are functional

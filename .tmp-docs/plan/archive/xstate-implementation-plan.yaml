@@ -1,10 +1,40 @@
 plan:
   name: "XState v5 State Management Migration"
-  version: "1.1"
+  version: "1.2"
   created: "2026-05-09"
-  updated: "2026-05-09"
+  updated: "2026-05-11"
   estimated_duration_days: 7
   changes_from_v1_0: "Added performance optimization, accessibility, and error handling tasks based on React excellence review"
+  changes_from_v1_1: "Updated with QA findings - BUG-001 blocker discovered during t-019"
+
+  status:
+    current_phase: "Phase 4: Testing & Cleanup"
+    overall_progress: "Phase 1-3 Complete (t-001 through t-017), Phase 4 Blocked"
+    completed_tasks: ["t-001", "t-002", "t-003", "t-004", "t-005", "t-006", "t-007", "t-008", "t-009", "t-010", "t-011", "t-012", "t-012a", "t-012b", "t-013", "t-014", "t-015", "t-016", "t-017", "t-018"]
+    in_progress_tasks: []
+    blocked_tasks: ["t-019 (BLOCKER: BUG-001 - idle state handler missing)"]
+    remaining_tasks: ["t-020", "t-021", "t-022", "t-023"]
+
+    blockers:
+      - id: "BUG-001"
+        title: "Missing idle state handler in planning workflow"
+        severity: "BLOCKER"
+        status: "OPEN"
+        report: ".tmp-docs/bugs/BUG-001-idle-state-handler-missing.md"
+        affects: ["t-019 Manual QA"]
+        discovered: "2026-05-11"
+        recommended_fix: "Change planningMachine.ts initial state from 'idle' to 'step1_gapAnalysis'"
+
+    test_results:
+      unit_tests: "✅ 372 passing, 0 failing"
+      type_check: "✅ 0 errors"
+      integration_tests: "✅ Full workflow test passing"
+      manual_qa: "❌ BLOCKED - Cannot proceed past project creation"
+
+    commits:
+      total: 7
+      branch: "feature/structured-output"
+      latest: "9ec371d chore: Add coverage directory to .gitignore"
 
   context:
     branch: "feature/structured-output"
@@ -1585,7 +1615,7 @@ phase_3:
 
       quality_score: null
       issues: []
-      approval: "pending"
+      approval: "completed"
 
 # ═══════════════════════════════════════════════════════════
 # PHASE 4: TESTING & CLEANUP (Day 6)
@@ -1720,8 +1750,12 @@ phase_4:
         failure_handling: "Create bug tickets, fix before proceeding"
 
       quality_score: null
-      issues: []
-      approval: "pending"
+      issues:
+        - "🔴 BLOCKER: BUG-001 - Machine starts in 'idle' state but StepContainer doesn't handle it"
+        - "See: .tmp-docs/bugs/BUG-001-idle-state-handler-missing.md"
+        - "QA halted at step 4 - cannot test BACK/NEXT navigation until bug fixed"
+        - "Recommended fix: Change initial state from 'idle' to 'step1_gapAnalysis'"
+      approval: "blocked"
 
     - id: "t-020"
       name: "Remove old InterviewThread component and hooks"

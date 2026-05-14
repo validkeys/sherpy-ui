@@ -65,14 +65,16 @@ describe('planningMachine structure', () => {
     expect(planningMachine.id).toBe('planning');
   });
 
-  it('should start in idle state', () => {
+  it('should start in step1_gapAnalysis state (BUG-001 fix)', () => {
     const actor = createActor(planningMachine, {
       input: { projectId: 'test-123', entryPath: 'new-project' },
     });
     actor.start();
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.value).toBe('idle');
+    // After BUG-001 fix: machine starts in step1_gapAnalysis instead of idle
+    // This prevents empty screen on project creation
+    expect(snapshot.value).toEqual({ step1_gapAnalysis: 'collecting' });
   });
 
   it('should initialize context with correct shape', () => {
@@ -364,6 +366,54 @@ describe('Step 2: Business Requirements Interview', () => {
       value: 'Build a great product',
       timestamp: expect.any(String),
     });
+  });
+
+  it('should transition to step3 after 10 SUBMIT_ANSWER events complete (BUG-004)', async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: 'test', entryPath: 'new-project' },
+    });
+    actor.start();
+
+    // Start planning and complete step 1
+    actor.send({ type: 'START_PLANNING' });
+    actor.send({
+      type: 'SUBMIT_FORM',
+      stepNumber: 1,
+      responses: { overview: 'Test' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Submit 10 answers
+    for (let i = 0; i < 10; i++) {
+      actor.send({
+        type: 'SUBMIT_ANSWER',
+        stepNumber: 2,
+        question: `Question ${i + 1}?`,
+        answer: `Answer ${i + 1}`,
+      });
+
+      // Small delay to allow state transitions
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    // Wait for artifact generation to complete
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    const snapshot = actor.getSnapshot();
+
+    // After 10 answers, should have all answers accumulated
+    expect(snapshot.context.step2Answers).toHaveLength(10);
+
+    // Step 2 should be marked complete
+    expect(snapshot.context.completedSteps).toContain(2);
+
+    // Should have generated step 2 artifact
+    expect(snapshot.context.artifacts[2]).toBeDefined();
+
+    // Should have automatically advanced to step 3, not stuck in step 2 interview loop
+    expect(snapshot.context.currentStepNumber).toBe(3);
+    expect(snapshot.value).toHaveProperty('step3_techReqs');
   });
 
   it('should clear current question and options after SUBMIT_ANSWER', async () => {

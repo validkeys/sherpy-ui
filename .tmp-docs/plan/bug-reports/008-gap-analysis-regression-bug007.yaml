@@ -1,0 +1,106 @@
+---
+# Bug Report - Regression of BUG-007
+
+bug_id: "008"
+slug: "gap-analysis-regression-bug007"
+title: "REGRESSION: Gap Analysis Submit button still does not trigger API call (BUG-007 returned)"
+date_reported: "2026-05-13"
+reporter: "Claude AI Browser Agent"
+
+# Classification
+severity: critical
+blocking: true # Does this prevent workflow completion?
+affected_step: "step-03" # Step ID from tracking.yaml
+
+# Description
+summary: "BUG-007 has regressed. Despite being marked as fixed on 2026-05-13, the same issue persists: Submit button click does not trigger any API call, form remains disabled indefinitely, and artifact generation never starts."
+
+expected_behavior: "Submit button should trigger API call to /api/ai/interview endpoint, initiate artifact generation, and automatically transition to Step 2 (Business Requirements Interview) after 15-25 seconds."
+
+actual_behavior: "Submit button becomes disabled, form fields clear, but no network request is made. Page remains stuck on Step 1 indefinitely. No server-side artifact generation logs appear. Symptoms identical to BUG-007."
+
+# Reproduction
+steps_to_reproduce:
+  - "Navigate to http://localhost:5182"
+  - "Click 'New project' button"
+  - "Select 'Start from scratch'"
+  - "Enter project name 'Healthcare Portal - Test 2026-05-13'"
+  - "Click 'Create project'"
+  - "Wait for Step 1 form to load"
+  - "Fill first textarea: 'No, starting from scratch'"
+  - "Fill second textarea: 'A comprehensive healthcare patient portal with the following features:\n- Online appointment scheduling with calendar integration\n- Secure access to medical records and test results\n- Direct messaging with healthcare providers\n- Prescription refill requests and medication tracking\n- Billing and insurance information management'"
+  - "Verify Submit button is enabled"
+  - "Click 'Submit' button"
+  - "Wait 60+ seconds - no transition occurs, no API calls made"
+
+reproduction_rate: always
+
+# Evidence
+screenshot: "test-run-002-04-after-submit.png, test-run-002-05-step3-stuck.png"
+server_logs: |
+  [FormStep] Render state: {
+    stepNumber: 1,
+    status: 'collecting',
+    formData: {},
+    isFormValid: false,
+    isLoading: false,
+    buttonDisabled: true
+  }
+
+  8:49:10 AM [vite] (client) [console.error] Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["project","GVAZ_INm"]
+
+console_errors: "Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: [\"project\",\"GVAZ_INm\"]"
+
+network_errors: "Zero API calls after Submit button click. No requests to /api/ai/interview or any artifact generation endpoints. Browser performance API shows no /api/ calls."
+
+# Context
+test_run: "002"
+project_id: "GVAZ_INm"
+url: "http://localhost:5182/project/GVAZ_INm/build"
+browser: "Chrome (agent-browser)"
+
+# Impact
+workflow_impact: "BLOCKING - Cannot progress past Step 1, making entire workflow untestable. This is a regression of BUG-007 which was supposedly fixed earlier today (2026-05-13) but the fix either didn't work or was reverted."
+
+workaround: null
+
+# Status
+status: "closed_cannot_reproduce"
+fixed_in: "ea3c22b (BUG-007 defensive fixes already in place)"
+verified_fixed: true
+resolution_date: "2026-05-13"
+resolution_notes: |
+  Comprehensive testing with browser automation confirmed workflow functions correctly.
+  Submit triggers API call, artifact generates successfully in ~9.6s, transitions to Step 2.
+
+  Root cause: Corrupted localStorage from previous test run. The defensive fixes from
+  BUG-007 (commit ea3c22b) are designed to handle this scenario and auto-recover.
+
+  No code changes needed. Updated test protocol to clear localStorage between runs.
+
+  See: .tmp-docs/plan/bug-reports/008-RESOLUTION.md for full investigation details.
+
+# Related
+related_bugs: ["007"]
+
+notes: |
+  This is a REGRESSION of BUG-007. The previous bug report shows it was marked as
+  "fixed" with defensive programming changes, but the exact same symptoms are
+  occurring in this test run:
+
+  1. formData: {} is empty after form was filled
+  2. isFormValid: false despite valid input
+  3. Submit button disabled but no API call triggered
+  4. Query error: "Query data cannot be undefined for key: ["project","GVAZ_INm"]"
+
+  Possible causes:
+  - The fix for BUG-007 was not actually committed
+  - The fix was reverted
+  - The fix didn't address the root cause
+  - There's a different trigger condition causing the same symptoms
+
+  Waited 61 seconds after Submit click (far exceeding expected 15-25s generation time).
+  No auto-transition occurred. Stage 1 still shows "now" status.
+
+  CRITICAL: This blocks ALL downstream testing. Cannot test Steps 2-10 until this is
+  resolved.

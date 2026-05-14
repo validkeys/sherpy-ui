@@ -48,14 +48,22 @@ describe("PlanningStateBuilder", () => {
     });
 
     it("creates state at step 5 with completed steps 1-4", () => {
-      const state = PlanningStateBuilder.atStep(5).build();
+      const builder = PlanningStateBuilder.atStep(5);
+      for (let i = 1; i <= 4; i++) {
+        builder.completeStep(i);
+      }
+      const state = builder.build();
 
       expect(state.currentStepNumber).toBe(5);
       expect(state.completedSteps).toEqual([1, 2, 3, 4]);
     });
 
     it("creates state at step 10 with completed steps 1-9", () => {
-      const state = PlanningStateBuilder.atStep(10).build();
+      const builder = PlanningStateBuilder.atStep(10);
+      for (let i = 1; i <= 9; i++) {
+        builder.completeStep(i);
+      }
+      const state = builder.build();
 
       expect(state.currentStepNumber).toBe(10);
       expect(state.completedSteps).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -200,6 +208,9 @@ describe("PlanningStateBuilder", () => {
 
     it("chains withCompletedSteps", () => {
       const state = PlanningStateBuilder.new()
+        .completeStep(1)
+        .completeStep(2)
+        .completeStep(3)
         .withCompletedSteps([1, 2, 3])
         .build();
 
@@ -207,7 +218,14 @@ describe("PlanningStateBuilder", () => {
     });
 
     it("chains withCurrentStepNumber", () => {
-      const state = PlanningStateBuilder.new().withCurrentStepNumber(7).build();
+      const builder = PlanningStateBuilder.new();
+      for (let i = 1; i <= 6; i++) {
+        builder.completeStep(i);
+      }
+      const state = builder
+        .withCompletedSteps([1, 2, 3, 4, 5, 6])
+        .withCurrentStepNumber(7)
+        .build();
 
       expect(state.currentStepNumber).toBe(7);
     });
@@ -224,14 +242,14 @@ describe("PlanningStateBuilder", () => {
       const state = PlanningStateBuilder.new()
         .withProjectId("multi-chain-test")
         .withEntryPath("existing-project")
-        .withStep1Responses({ key: "value" })
+        .completeStep(1)
+        .completeStep(2)
         .withCurrentStepNumber(3)
         .withCompletedSteps([1, 2])
         .build();
 
       expect(state.projectId).toBe("multi-chain-test");
       expect(state.entryPath).toBe("existing-project");
-      expect(state.step1Responses).toEqual({ key: "value" });
       expect(state.currentStepNumber).toBe(3);
       expect(state.completedSteps).toEqual([1, 2]);
     });
@@ -240,10 +258,7 @@ describe("PlanningStateBuilder", () => {
   describe("complex scenarios", () => {
     it("builds state for step 2 in progress with partial answers", () => {
       const state = PlanningStateBuilder.atStep(2)
-        .withStep1Responses({
-          existingRequirements: "No",
-          projectDescription: "E-commerce platform",
-        })
+        .completeStep(1)
         .withStep2Answers([
           {
             question: "What is the primary goal?",
@@ -267,45 +282,24 @@ describe("PlanningStateBuilder", () => {
     });
 
     it("builds state for step 5 with all previous steps completed", () => {
-      const state = PlanningStateBuilder.atStep(5)
-        .withStep1Responses({
-          existingRequirements: "Yes",
-          projectDescription: "Mobile app",
-        })
-        .withStep2Answers([
-          {
-            question: "Q1",
-            value: "A1",
-            timestamp: "2026-05-14T10:00:00.000Z",
-          },
-        ])
-        .withStep3Answers([
-          {
-            question: "Q1",
-            value: "A1",
-            timestamp: "2026-05-14T11:00:00.000Z",
-          },
-        ])
-        .withArtifact(2, {
-          type: "yaml",
-          content: "business: requirements",
-          generatedAt: "2026-05-14T10:30:00.000Z",
-        })
-        .withArtifact(3, {
-          type: "yaml",
-          content: "technical: requirements",
-          generatedAt: "2026-05-14T11:30:00.000Z",
-        })
-        .build();
+      const builder = PlanningStateBuilder.atStep(5);
+      for (let i = 1; i <= 4; i++) {
+        builder.completeStep(i);
+      }
+      const state = builder.build();
 
       expect(state.currentStepNumber).toBe(5);
       expect(state.completedSteps).toEqual([1, 2, 3, 4]);
+      expect(state.artifacts[1]).toBeDefined();
       expect(state.artifacts[2]).toBeDefined();
       expect(state.artifacts[3]).toBeDefined();
+      expect(state.artifacts[4]).toBeDefined();
     });
 
     it("builds state with error", () => {
-      const state = PlanningStateBuilder.atStep(3)
+      const builder = PlanningStateBuilder.atStep(3);
+      builder.completeStep(1).completeStep(2);
+      const state = builder
         .withError("Network timeout during artifact generation")
         .build();
 
@@ -595,6 +589,7 @@ describe("PlanningStateBuilder", () => {
       it("chains with other builder methods", () => {
         const state = PlanningStateBuilder.new()
           .withProjectId("business-test-123")
+          .completeStep(1)
           .withBusinessRequirements([
             {
               question: "Goal?",
@@ -602,6 +597,7 @@ describe("PlanningStateBuilder", () => {
               timestamp: "2026-05-14T10:00:00.000Z",
             },
           ])
+          .withCompletedSteps([1])
           .withCurrentStepNumber(2)
           .build();
 
@@ -768,6 +764,8 @@ describe("PlanningStateBuilder", () => {
       it("chains with other builder methods", () => {
         const state = PlanningStateBuilder.new()
           .withProjectId("technical-test-123")
+          .completeStep(1)
+          .completeStep(2)
           .withTechnicalRequirements([
             {
               question: "Constraints?",
@@ -775,6 +773,7 @@ describe("PlanningStateBuilder", () => {
               timestamp: "2026-05-14T11:00:00.000Z",
             },
           ])
+          .withCompletedSteps([1, 2])
           .withCurrentStepNumber(3)
           .build();
 
@@ -955,6 +954,276 @@ describe("PlanningStateBuilder", () => {
         expect(() => {
           PlanningStateBuilder.new().completeStep(0);
         }).toThrow(/not yet implemented for step 0/);
+      });
+    });
+  });
+
+  describe("validation", () => {
+    describe("step progression rules", () => {
+      it("prevents transitioning to step 5 without completing step 3", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(5).withCompletedSteps([1, 2, 4]).build();
+        }).toThrow("Cannot be at step 5 without completing steps 3");
+      });
+
+      it("prevents transitioning to step 7 without completing steps 3, 4, 5", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(7).withCompletedSteps([1, 2, 6]).build();
+        }).toThrow("Cannot be at step 7 without completing steps 3, 4, 5");
+      });
+
+      it("prevents transitioning to step 10 without completing step 9", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(10)
+            .withCompletedSteps([1, 2, 3, 4, 5, 6, 7, 8])
+            .build();
+        }).toThrow("Cannot be at step 10 without completing steps 9");
+      });
+
+      it("prevents skipping to step 3 from step 1", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(3).withCompletedSteps([1]).build();
+        }).toThrow("Cannot be at step 3 without completing steps 2");
+      });
+
+      it("allows valid progression from step 1 to step 2", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(2)
+            .withCompletedSteps([1])
+            .completeStep(1)
+            .build();
+        }).not.toThrow();
+      });
+
+      it("allows valid progression from step 5 to step 6", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(6)
+            .withCompletedSteps([1, 2, 3, 4, 5])
+            .completeStep(1)
+            .completeStep(2)
+            .completeStep(3)
+            .completeStep(4)
+            .completeStep(5)
+            .build();
+        }).not.toThrow();
+      });
+    });
+
+    describe("artifact requirements", () => {
+      it("requires artifact for completed step 1", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(2)
+            .withCompletedSteps([1])
+            .withStep1Responses({
+              existingRequirements: "No",
+              projectDescription: "test",
+            })
+            .build();
+        }).toThrow(
+          "Step 1 is marked complete but has no artifact. Use completeStep(1) or withArtifact(1, artifact)",
+        );
+      });
+
+      it("requires artifact for completed step 2", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(3)
+            .withCompletedSteps([1, 2])
+            .completeStep(1)
+            .withStep2Answers([
+              {
+                question: "test",
+                value: "answer",
+                timestamp: "2026-05-14T10:00:00.000Z",
+              },
+            ])
+            .build();
+        }).toThrow(
+          "Step 2 is marked complete but has no artifact. Use completeStep(2) or withArtifact(2, artifact)",
+        );
+      });
+
+      it("requires artifact for completed step 5", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(6)
+            .withCompletedSteps([1, 2, 3, 4, 5])
+            .completeStep(1)
+            .completeStep(2)
+            .completeStep(3)
+            .completeStep(4)
+            .withStep5Responses({ approach: "incremental" })
+            .build();
+        }).toThrow(
+          "Step 5 is marked complete but has no artifact. Use completeStep(5) or withArtifact(5, artifact)",
+        );
+      });
+
+      it("allows completed step with artifact", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(2)
+            .withCompletedSteps([1])
+            .completeStep(1)
+            .build();
+        }).not.toThrow();
+      });
+    });
+
+    describe("step-specific field requirements", () => {
+      it("requires step1Responses when step 1 is complete", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(2)
+            .withCompletedSteps([1])
+            .withArtifact(1, {
+              type: "markdown",
+              content: "test",
+              generatedAt: "2026-05-14T10:00:00.000Z",
+            })
+            .build();
+        }).toThrow(
+          "Step 1 is marked complete but has no responses. Use withGapAnalysis() or withStep1Responses()",
+        );
+      });
+
+      it("requires step2Answers when step 2 is complete", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(3)
+            .withCompletedSteps([1, 2])
+            .completeStep(1)
+            .withArtifact(2, {
+              type: "yaml",
+              content: "test",
+              generatedAt: "2026-05-14T10:00:00.000Z",
+            })
+            .build();
+        }).toThrow(
+          "Step 2 is marked complete but has no answers. Use withBusinessRequirements() or withStep2Answers()",
+        );
+      });
+
+      it("requires step3Answers when step 3 is complete", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(4)
+            .withCompletedSteps([1, 2, 3])
+            .completeStep(1)
+            .completeStep(2)
+            .withArtifact(3, {
+              type: "yaml",
+              content: "test",
+              generatedAt: "2026-05-14T10:00:00.000Z",
+            })
+            .build();
+        }).toThrow(
+          "Step 3 is marked complete but has no answers. Use withTechnicalRequirements() or withStep3Answers()",
+        );
+      });
+
+      it("requires step5Responses when step 5 is complete", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(6)
+            .withCompletedSteps([1, 2, 3, 4, 5])
+            .completeStep(1)
+            .completeStep(2)
+            .completeStep(3)
+            .completeStep(4)
+            .withArtifact(5, {
+              type: "yaml",
+              content: "test",
+              generatedAt: "2026-05-14T10:00:00.000Z",
+            })
+            .build();
+        }).toThrow(
+          "Step 5 is marked complete but has no responses. Use completeStep(5) or withStep5Responses()",
+        );
+      });
+
+      it("allows step 1 with both responses and artifact", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(2)
+            .withCompletedSteps([1])
+            .withGapAnalysis({
+              existingRequirements: "No",
+              projectDescription: "test project",
+            })
+            .build();
+        }).not.toThrow();
+      });
+
+      it("allows step 2 with both answers and artifact", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(3)
+            .withCompletedSteps([1, 2])
+            .completeStep(1)
+            .withBusinessRequirements([
+              {
+                question: "test",
+                value: "answer",
+                timestamp: "2026-05-14T10:00:00.000Z",
+              },
+            ])
+            .build();
+        }).not.toThrow();
+      });
+
+      it("allows step 3 with both answers and artifact", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(4)
+            .withCompletedSteps([1, 2, 3])
+            .completeStep(1)
+            .completeStep(2)
+            .withTechnicalRequirements([
+              {
+                question: "test",
+                value: "answer",
+                timestamp: "2026-05-14T10:00:00.000Z",
+              },
+            ])
+            .build();
+        }).not.toThrow();
+      });
+    });
+
+    describe("valid state construction", () => {
+      it("allows minimal valid state at step 1", () => {
+        expect(() => {
+          PlanningStateBuilder.new().build();
+        }).not.toThrow();
+      });
+
+      it("allows valid state at step 10 with all steps complete", () => {
+        expect(() => {
+          const builder = PlanningStateBuilder.atStep(10);
+          for (let step = 1; step <= 10; step++) {
+            builder.completeStep(step);
+          }
+          builder.build();
+        }).not.toThrow();
+      });
+
+      it("allows valid mid-workflow state at step 5", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(5)
+            .completeStep(1)
+            .completeStep(2)
+            .completeStep(3)
+            .completeStep(4)
+            .build();
+        }).not.toThrow();
+      });
+
+      it("allows step 4-10 without special field requirements", () => {
+        expect(() => {
+          PlanningStateBuilder.atStep(10)
+            .completeStep(1)
+            .completeStep(2)
+            .completeStep(3)
+            .completeStep(4)
+            .completeStep(5)
+            .completeStep(6)
+            .completeStep(7)
+            .completeStep(8)
+            .completeStep(9)
+            .completeStep(10)
+            .build();
+        }).not.toThrow();
       });
     });
   });

@@ -362,7 +362,7 @@ ${
   ): Artifact {
     const qaSection = answers
       .map(
-        (answer, index) =>
+        (answer, _index) =>
           `  - question: "${answer.question}"\n    answer: "${answer.value}"\n    timestamp: "${answer.timestamp}"`,
       )
       .join("\n");
@@ -396,7 +396,7 @@ Business requirements captured through ${answers.length} interview questions cov
   ): Artifact {
     const qaSection = answers
       .map(
-        (answer, index) =>
+        (answer, _index) =>
           `  - question: "${answer.question}"\n    answer: "${answer.value}"\n    timestamp: "${answer.timestamp}"`,
       )
       .join("\n");
@@ -853,6 +853,76 @@ A modern web-based patient portal enabling appointment scheduling and secure mes
   }
 
   build(): PlanningContext {
+    this.validate();
     return this.state as PlanningContext;
+  }
+
+  /**
+   * Validate state consistency before building
+   * Ensures invalid states cannot be constructed
+   */
+  private validate(): void {
+    const currentStep = this.state.currentStepNumber ?? 1;
+    const completed = this.state.completedSteps ?? [];
+    const artifacts = this.state.artifacts ?? {};
+
+    // Rule 1: Cannot be at step N without completing all steps 1 to N-1
+    const requiredCompletedSteps = Array.from(
+      { length: currentStep - 1 },
+      (_, i) => i + 1,
+    );
+    const missingSteps = requiredCompletedSteps.filter(
+      (step) => !completed.includes(step),
+    );
+
+    if (missingSteps.length > 0) {
+      const stepList = missingSteps.join(", ");
+      throw new Error(
+        `Cannot be at step ${currentStep} without completing steps ${stepList}`,
+      );
+    }
+
+    // Rule 2: Each completed step must have corresponding artifact
+    for (const stepNumber of completed) {
+      if (!artifacts[stepNumber]) {
+        throw new Error(
+          `Step ${stepNumber} is marked complete but has no artifact. Use completeStep(${stepNumber}) or withArtifact(${stepNumber}, artifact)`,
+        );
+      }
+    }
+
+    // Rule 3: Step 2 specific validation
+    if (completed.includes(2) && this.state.step2Answers?.length === 0) {
+      throw new Error(
+        "Step 2 is marked complete but has no answers. Use withBusinessRequirements() or withStep2Answers()",
+      );
+    }
+
+    // Rule 4: Step 3 specific validation
+    if (completed.includes(3) && this.state.step3Answers?.length === 0) {
+      throw new Error(
+        "Step 3 is marked complete but has no answers. Use withTechnicalRequirements() or withStep3Answers()",
+      );
+    }
+
+    // Rule 5: Step 1 specific validation
+    if (completed.includes(1)) {
+      const step1Responses = this.state.step1Responses ?? {};
+      if (Object.keys(step1Responses).length === 0) {
+        throw new Error(
+          "Step 1 is marked complete but has no responses. Use withGapAnalysis() or withStep1Responses()",
+        );
+      }
+    }
+
+    // Rule 6: Step 5 specific validation
+    if (completed.includes(5)) {
+      const step5Responses = this.state.step5Responses ?? {};
+      if (Object.keys(step5Responses).length === 0) {
+        throw new Error(
+          "Step 5 is marked complete but has no responses. Use completeStep(5) or withStep5Responses()",
+        );
+      }
+    }
   }
 }

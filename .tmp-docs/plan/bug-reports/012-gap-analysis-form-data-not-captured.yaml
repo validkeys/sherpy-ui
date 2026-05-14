@@ -1,0 +1,131 @@
+---
+# Bug Report - Test Run #006
+# Regression of BUG-007/BUG-011
+
+bug_id: "012"
+slug: "gap-analysis-form-data-not-captured"
+title: "Gap Analysis form data not captured on Submit - step1Responses remains empty"
+date_reported: "2026-05-13"
+reporter: "Claude AI Browser Agent"
+
+# Classification
+severity: critical
+blocking: true # Does this prevent workflow completion?
+affected_step: "step-03" # Step ID from tracking.yaml (e.g., "step-03")
+
+# Description
+summary: "When clicking Submit on Gap Analysis form after filling both textareas, form data is NOT captured in XState context. step1Responses remains {} and no API call is made. State stays in 'collecting' instead of transitioning to 'generating'."
+
+expected_behavior: "Submit button should capture form values into XState context (step1Responses), send SUBMIT_FORM event, trigger state transition to 'generating', make API call to /api/ai/interview, and auto-advance to Step 2 after 15-25 seconds."
+
+actual_behavior: "Submit button becomes disabled, form fields clear, but step1Responses stays empty {}. State remains 'step1_gapAnalysis: collecting'. No API call made. Page stuck on Step 1 indefinitely with disabled Submit button."
+
+# Reproduction
+steps_to_reproduce:
+  - "Navigate to http://localhost:5180"
+  - "Click 'New project' button"
+  - "Select 'Start from scratch'"
+  - "Enter project name 'Healthcare Portal - Test 2026-05-13'"
+  - "Click 'Create project'"
+  - "Verify localStorage key 'planning-machine-0kHaCxFL' exists"
+  - "Fill first textarea: 'No, starting from scratch'"
+  - "Fill second textarea: 'A comprehensive healthcare patient portal with the following features: [...]'"
+  - "Verify Submit button becomes enabled"
+  - "Click 'Submit' button"
+  - "Check localStorage after 2 seconds: step1Responses is still {}"
+  - "Check performance API: zero API calls made"
+  - "Wait 60+ seconds - no transition occurs"
+
+reproduction_rate: always
+
+# Evidence
+screenshot: "test-run-006-05-after-submit-62s.png"
+before_submit_screenshot: "test-run-006-03-form-filled.png"
+
+localStorage_evidence: |
+  BEFORE SUBMIT:
+  localStorage key exists: "planning-machine-0kHaCxFL"
+
+  AFTER SUBMIT (2 seconds):
+  {
+    "status": "active",
+    "context": {
+      "projectId": "0kHaCxFL",
+      "step1Responses": {},  ← EMPTY despite form being filled!
+      "currentStepNumber": 1,
+      "completedSteps": [],
+      ...
+    },
+    "value": {
+      "step1_gapAnalysis": "collecting"  ← Still collecting, not generating!
+    }
+  }
+
+network_evidence: |
+  performance.getEntriesByType('resource')
+    .filter(e => e.name.includes('/api/'))
+
+  Result: []  ← NO API CALLS MADE
+
+server_logs: |
+  Dev server running on port 5180, process PID 60458.
+  No artifact generation logs appeared.
+  No FormStep warnings about empty formData (because submission never reached server).
+
+console_errors: "No JavaScript errors visible in browser console"
+
+# Context
+test_run: "006"
+project_id: "0kHaCxFL"
+url: "http://localhost:5180/project/0kHaCxFL/build"
+browser: "Chrome (agent-browser)"
+
+# Impact
+workflow_impact: "BLOCKING - Cannot progress past Step 1. Form submission handler not capturing textarea values into XState context before attempting state transition. This is the same symptom as BUG-011 from test run #005."
+
+workaround: null
+
+# Status
+status: "open"
+fixed_in: null
+verified_fixed: false
+
+# Related
+related_bugs: ["007", "008", "011"]
+
+regression_details:
+  previous_bug: "BUG-011"
+  previous_test_run: "005"
+  identical_symptoms: true
+  issue: "BUG-007 was marked fixed, BUG-011 documented same issue in run #005, now reproduced again in run #006"
+
+  evidence_comparison:
+    - "BUG-007: formData: {}, isFormValid: false, no API call"
+    - "BUG-011: step1Responses: {}, state stays 'collecting'"
+    - "BUG-012: step1Responses: {}, state stays 'collecting', no API call"
+
+root_cause_hypothesis: "Form submit handler is not reading textarea values and populating them into step1Responses before sending SUBMIT_FORM event to XState actor. The defensive fixes from BUG-007 may have validated submission requirements, but the actual form value capture logic appears broken or not executed."
+
+investigation_needed:
+  - "Check if textarea onChange handlers are updating local React state"
+  - "Check if Submit button onClick reads current textarea values"
+  - "Verify SUBMIT_FORM event payload includes form data"
+  - "Add logging to FormStep component submit handler"
+  - "Check if there's a race condition between state update and submit"
+
+notes: |
+  This is the THIRD time this exact issue has been reported:
+  - BUG-007 (test run #001, #002): Marked as "fixed" but regressed
+  - BUG-011 (test run #005): Same symptoms, XState initializes but no data captured
+  - BUG-012 (test run #006): Confirmed reproduction with detailed localStorage evidence
+
+  The pattern suggests the fix for BUG-007 did not address the root cause, or the fix
+  was not properly integrated. The defensive validations may prevent some edge cases,
+  but the core issue of form data capture is still broken.
+
+  Test run #006 provides the clearest evidence yet:
+  - localStorage key exists BEFORE submit ✓
+  - XState machine properly initialized ✓
+  - Form fields filled and Submit enabled ✓
+  - On Submit click: fields clear, button disables ✓
+  - BUT: step1Responses stays {}, no API call, no transition ✗

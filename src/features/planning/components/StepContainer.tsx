@@ -43,6 +43,12 @@ export function StepContainer() {
     ? 'active'
     : stateValue[currentStep as keyof typeof stateValue];
 
+  console.log('[StepContainer] Render:', {
+    stateValue,
+    currentStep,
+    stepStatus,
+  });
+
   const config = STEP_CONFIG[currentStep];
   if (!config) {
     console.warn(`[StepContainer] Unknown step: ${currentStep}`);
