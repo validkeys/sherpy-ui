@@ -473,8 +473,8 @@ describe("PlanningStateBuilder", () => {
         const builder = PlanningStateBuilder.new();
 
         expect(() => {
-          builder.completeStep(2);
-        }).toThrow("completeStep not yet implemented for step 2");
+          builder.completeStep(4);
+        }).toThrow("completeStep not yet implemented for step 4");
 
         expect(() => {
           builder.completeStep(5);
@@ -490,6 +490,355 @@ describe("PlanningStateBuilder", () => {
         expect(state.completedSteps).toEqual([1]);
         expect(state.step1Responses.projectDescription).toBeTruthy();
         expect(state.artifacts[1]).toBeDefined();
+      });
+    });
+  });
+
+  describe("Step 2 (Business Requirements) methods", () => {
+    describe("withBusinessRequirements()", () => {
+      it("populates Step 2 answers and generates artifact", () => {
+        const answers = [
+          {
+            question: "What is the primary goal?",
+            value: "Improve patient care",
+            timestamp: "2026-05-14T10:00:00.000Z",
+          },
+        ];
+        const state = PlanningStateBuilder.new()
+          .withBusinessRequirements(answers)
+          .build();
+
+        expect(state.step2Answers).toEqual(answers);
+        expect(state.artifacts[2]).toBeDefined();
+        expect(state.artifacts[2]?.type).toBe("yaml");
+      });
+
+      it("generates YAML artifact with multiple answers", () => {
+        const answers = [
+          {
+            question: "What is the business goal?",
+            value: "Increase revenue",
+            timestamp: "2026-05-14T10:00:00.000Z",
+          },
+          {
+            question: "Who are the users?",
+            value: "Sales team and customers",
+            timestamp: "2026-05-14T10:05:00.000Z",
+          },
+          {
+            question: "What are success metrics?",
+            value: "20% increase in conversions",
+            timestamp: "2026-05-14T10:10:00.000Z",
+          },
+        ];
+        const state = PlanningStateBuilder.new()
+          .withBusinessRequirements(answers)
+          .build();
+
+        const artifact = state.artifacts[2];
+        expect(artifact?.content).toContain("Business Requirements");
+        expect(artifact?.content).toContain("What is the business goal?");
+        expect(artifact?.content).toContain("Increase revenue");
+        expect(artifact?.content).toContain("total_questions: 3");
+      });
+
+      it("validates answers with Zod schema", () => {
+        const builder = PlanningStateBuilder.new();
+
+        expect(() => {
+          builder.withBusinessRequirements([
+            {
+              question: "", // invalid - cannot be empty
+              value: "Test answer",
+              timestamp: "2026-05-14T10:00:00.000Z",
+            },
+          ]);
+        }).toThrow();
+
+        expect(() => {
+          builder.withBusinessRequirements([
+            {
+              question: "Test question",
+              value: "", // invalid - cannot be empty
+              timestamp: "2026-05-14T10:00:00.000Z",
+            },
+          ]);
+        }).toThrow();
+
+        expect(() => {
+          builder.withBusinessRequirements([
+            {
+              question: "Test question",
+              value: "Test answer",
+              timestamp: "not-a-valid-date", // invalid timestamp
+            },
+          ]);
+        }).toThrow();
+      });
+
+      it("generates valid ISO timestamp in artifact", () => {
+        const state = PlanningStateBuilder.new()
+          .withBusinessRequirements([
+            {
+              question: "Test question",
+              value: "Test answer",
+              timestamp: "2026-05-14T10:00:00.000Z",
+            },
+          ])
+          .build();
+
+        const generatedAt = state.artifacts[2]?.generatedAt;
+        expect(generatedAt).toBeDefined();
+        expect(() => new Date(generatedAt!)).not.toThrow();
+      });
+
+      it("chains with other builder methods", () => {
+        const state = PlanningStateBuilder.new()
+          .withProjectId("business-test-123")
+          .withBusinessRequirements([
+            {
+              question: "Goal?",
+              value: "Success",
+              timestamp: "2026-05-14T10:00:00.000Z",
+            },
+          ])
+          .withCurrentStepNumber(2)
+          .build();
+
+        expect(state.projectId).toBe("business-test-123");
+        expect(state.step2Answers).toHaveLength(1);
+        expect(state.currentStepNumber).toBe(2);
+        expect(state.artifacts[2]).toBeDefined();
+      });
+
+      it("handles empty answer array", () => {
+        const state = PlanningStateBuilder.new()
+          .withBusinessRequirements([])
+          .build();
+
+        expect(state.step2Answers).toEqual([]);
+        expect(state.artifacts[2]).toBeDefined();
+        expect(state.artifacts[2]?.content).toContain("total_questions: 0");
+      });
+    });
+
+    describe("completeStep(2)", () => {
+      it("completes Step 2 with default healthcare data", () => {
+        const state = PlanningStateBuilder.new().completeStep(2).build();
+
+        expect(state.step2Answers).toHaveLength(3);
+        expect(state.step2Answers[0]?.question).toContain("business goal");
+        expect(state.step2Answers[0]?.value).toContain("patient engagement");
+      });
+
+      it("generates Business Requirements artifact", () => {
+        const state = PlanningStateBuilder.new().completeStep(2).build();
+
+        expect(state.artifacts[2]).toBeDefined();
+        expect(state.artifacts[2]?.type).toBe("yaml");
+        expect(state.artifacts[2]?.content).toContain("Business Requirements");
+        expect(state.artifacts[2]?.content).toContain("total_questions: 3");
+      });
+
+      it("includes all default answers", () => {
+        const state = PlanningStateBuilder.new().completeStep(2).build();
+
+        const questions = state.step2Answers.map((a) => a.question);
+        expect(questions).toContain(
+          "What is the primary business goal for this project?",
+        );
+        expect(questions).toContain(
+          "Who are the primary users of this system?",
+        );
+        expect(questions).toContain("What are the key success metrics?");
+      });
+
+      it("chains with Step 1 completion", () => {
+        const state = PlanningStateBuilder.atStep(2)
+          .completeStep(1)
+          .completeStep(2)
+          .build();
+
+        expect(state.step1Responses).toBeTruthy();
+        expect(state.step2Answers).toHaveLength(3);
+        expect(state.artifacts[1]).toBeDefined();
+        expect(state.artifacts[2]).toBeDefined();
+      });
+    });
+  });
+
+  describe("Step 3 (Technical Requirements) methods", () => {
+    describe("withTechnicalRequirements()", () => {
+      it("populates Step 3 answers and generates artifact", () => {
+        const answers = [
+          {
+            question: "What are the constraints?",
+            value: "Must scale to 1M users",
+            timestamp: "2026-05-14T11:00:00.000Z",
+          },
+        ];
+        const state = PlanningStateBuilder.new()
+          .withTechnicalRequirements(answers)
+          .build();
+
+        expect(state.step3Answers).toEqual(answers);
+        expect(state.artifacts[3]).toBeDefined();
+        expect(state.artifacts[3]?.type).toBe("yaml");
+      });
+
+      it("generates YAML artifact with multiple answers", () => {
+        const answers = [
+          {
+            question: "What are technical constraints?",
+            value: "HIPAA compliance required",
+            timestamp: "2026-05-14T11:00:00.000Z",
+          },
+          {
+            question: "What is the tech stack?",
+            value: "React, Node.js, PostgreSQL",
+            timestamp: "2026-05-14T11:05:00.000Z",
+          },
+          {
+            question: "What are security requirements?",
+            value: "End-to-end encryption, MFA",
+            timestamp: "2026-05-14T11:10:00.000Z",
+          },
+        ];
+        const state = PlanningStateBuilder.new()
+          .withTechnicalRequirements(answers)
+          .build();
+
+        const artifact = state.artifacts[3];
+        expect(artifact?.content).toContain("Technical Requirements");
+        expect(artifact?.content).toContain("technical constraints");
+        expect(artifact?.content).toContain("HIPAA compliance");
+        expect(artifact?.content).toContain("total_questions: 3");
+      });
+
+      it("validates answers with Zod schema", () => {
+        const builder = PlanningStateBuilder.new();
+
+        expect(() => {
+          builder.withTechnicalRequirements([
+            {
+              question: "", // invalid - cannot be empty
+              value: "Test answer",
+              timestamp: "2026-05-14T11:00:00.000Z",
+            },
+          ]);
+        }).toThrow();
+
+        expect(() => {
+          builder.withTechnicalRequirements([
+            {
+              question: "Test question",
+              value: "", // invalid - cannot be empty
+              timestamp: "2026-05-14T11:00:00.000Z",
+            },
+          ]);
+        }).toThrow();
+
+        expect(() => {
+          builder.withTechnicalRequirements([
+            {
+              question: "Test question",
+              value: "Test answer",
+              timestamp: "invalid-timestamp",
+            },
+          ]);
+        }).toThrow();
+      });
+
+      it("generates valid ISO timestamp in artifact", () => {
+        const state = PlanningStateBuilder.new()
+          .withTechnicalRequirements([
+            {
+              question: "Test question",
+              value: "Test answer",
+              timestamp: "2026-05-14T11:00:00.000Z",
+            },
+          ])
+          .build();
+
+        const generatedAt = state.artifacts[3]?.generatedAt;
+        expect(generatedAt).toBeDefined();
+        expect(() => new Date(generatedAt!)).not.toThrow();
+      });
+
+      it("chains with other builder methods", () => {
+        const state = PlanningStateBuilder.new()
+          .withProjectId("technical-test-123")
+          .withTechnicalRequirements([
+            {
+              question: "Constraints?",
+              value: "High availability",
+              timestamp: "2026-05-14T11:00:00.000Z",
+            },
+          ])
+          .withCurrentStepNumber(3)
+          .build();
+
+        expect(state.projectId).toBe("technical-test-123");
+        expect(state.step3Answers).toHaveLength(1);
+        expect(state.currentStepNumber).toBe(3);
+        expect(state.artifacts[3]).toBeDefined();
+      });
+
+      it("handles empty answer array", () => {
+        const state = PlanningStateBuilder.new()
+          .withTechnicalRequirements([])
+          .build();
+
+        expect(state.step3Answers).toEqual([]);
+        expect(state.artifacts[3]).toBeDefined();
+        expect(state.artifacts[3]?.content).toContain("total_questions: 0");
+      });
+    });
+
+    describe("completeStep(3)", () => {
+      it("completes Step 3 with default healthcare data", () => {
+        const state = PlanningStateBuilder.new().completeStep(3).build();
+
+        expect(state.step3Answers).toHaveLength(3);
+        expect(state.step3Answers[0]?.question).toContain(
+          "technical constraints",
+        );
+        expect(state.step3Answers[0]?.value).toContain("HIPAA");
+      });
+
+      it("generates Technical Requirements artifact", () => {
+        const state = PlanningStateBuilder.new().completeStep(3).build();
+
+        expect(state.artifacts[3]).toBeDefined();
+        expect(state.artifacts[3]?.type).toBe("yaml");
+        expect(state.artifacts[3]?.content).toContain("Technical Requirements");
+        expect(state.artifacts[3]?.content).toContain("total_questions: 3");
+      });
+
+      it("includes all default answers", () => {
+        const state = PlanningStateBuilder.new().completeStep(3).build();
+
+        const questions = state.step3Answers.map((a) => a.question);
+        expect(questions).toContain(
+          "What are the technical constraints for this project?",
+        );
+        expect(questions).toContain("What is the preferred technology stack?");
+        expect(questions).toContain("What are the security requirements?");
+      });
+
+      it("chains with previous step completions", () => {
+        const state = PlanningStateBuilder.atStep(3)
+          .completeStep(1)
+          .completeStep(2)
+          .completeStep(3)
+          .build();
+
+        expect(state.step1Responses).toBeTruthy();
+        expect(state.step2Answers).toHaveLength(3);
+        expect(state.step3Answers).toHaveLength(3);
+        expect(state.artifacts[1]).toBeDefined();
+        expect(state.artifacts[2]).toBeDefined();
+        expect(state.artifacts[3]).toBeDefined();
       });
     });
   });

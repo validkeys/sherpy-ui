@@ -9,7 +9,9 @@ import type {
   PlanningContext,
 } from "../../../src/features/planning/machines/types";
 import {
+  InterviewAnswerSchema,
   Step1ResponsesSchema,
+  type ValidatedInterviewAnswer,
   type ValidatedStep1Responses,
 } from "../validation";
 
@@ -149,6 +151,48 @@ export class PlanningStateBuilder {
   }
 
   /**
+   * Populate Step 2 (Business Requirements) answers and generate artifact
+   * @param answers Step 2 interview answers (validated with Zod)
+   */
+  withBusinessRequirements(
+    answers: ValidatedInterviewAnswer[],
+  ): PlanningStateBuilder {
+    const validated = answers.map((answer) =>
+      InterviewAnswerSchema.parse(answer),
+    );
+    this.state.step2Answers = validated;
+
+    const artifact = this.generateBusinessReqsArtifact(validated);
+    if (!this.state.artifacts) {
+      this.state.artifacts = {};
+    }
+    this.state.artifacts[2] = artifact;
+
+    return this;
+  }
+
+  /**
+   * Populate Step 3 (Technical Requirements) answers and generate artifact
+   * @param answers Step 3 interview answers (validated with Zod)
+   */
+  withTechnicalRequirements(
+    answers: ValidatedInterviewAnswer[],
+  ): PlanningStateBuilder {
+    const validated = answers.map((answer) =>
+      InterviewAnswerSchema.parse(answer),
+    );
+    this.state.step3Answers = validated;
+
+    const artifact = this.generateTechnicalReqsArtifact(validated);
+    if (!this.state.artifacts) {
+      this.state.artifacts = {};
+    }
+    this.state.artifacts[3] = artifact;
+
+    return this;
+  }
+
+  /**
    * Complete a step with default data
    * @param stepNumber Step to complete (1-10)
    */
@@ -159,6 +203,52 @@ export class PlanningStateBuilder {
         projectDescription:
           "Healthcare patient portal with appointment scheduling and secure messaging",
       });
+    }
+
+    if (stepNumber === 2) {
+      return this.withBusinessRequirements([
+        {
+          question: "What is the primary business goal for this project?",
+          value:
+            "Improve patient engagement and reduce administrative burden on healthcare staff",
+          timestamp: "2026-05-14T10:00:00.000Z",
+        },
+        {
+          question: "Who are the primary users of this system?",
+          value:
+            "Patients seeking appointments and secure communication with their healthcare providers",
+          timestamp: "2026-05-14T10:05:00.000Z",
+        },
+        {
+          question: "What are the key success metrics?",
+          value:
+            "50% reduction in phone calls for appointment scheduling, 80% patient adoption within 6 months",
+          timestamp: "2026-05-14T10:10:00.000Z",
+        },
+      ]);
+    }
+
+    if (stepNumber === 3) {
+      return this.withTechnicalRequirements([
+        {
+          question: "What are the technical constraints for this project?",
+          value:
+            "Must comply with HIPAA, integrate with existing EHR system, support 10,000+ concurrent users",
+          timestamp: "2026-05-14T11:00:00.000Z",
+        },
+        {
+          question: "What is the preferred technology stack?",
+          value:
+            "React + TypeScript frontend, Node.js backend, PostgreSQL database, deployed on AWS",
+          timestamp: "2026-05-14T11:05:00.000Z",
+        },
+        {
+          question: "What are the security requirements?",
+          value:
+            "End-to-end encryption for messages, MFA authentication, audit logging for all data access",
+          timestamp: "2026-05-14T11:10:00.000Z",
+        },
+      ]);
     }
 
     // TODO: Implement other steps in future tasks
@@ -191,6 +281,74 @@ ${
 
     return {
       type: "markdown",
+      content,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Generate Business Requirements artifact from Step 2 answers
+   */
+  private generateBusinessReqsArtifact(
+    answers: ValidatedInterviewAnswer[],
+  ): Artifact {
+    const qaSection = answers
+      .map(
+        (answer, index) =>
+          `  - question: "${answer.question}"\n    answer: "${answer.value}"\n    timestamp: "${answer.timestamp}"`,
+      )
+      .join("\n");
+
+    const content = `# Business Requirements
+
+## Metadata
+generated_at: "${new Date().toISOString()}"
+total_questions: ${answers.length}
+
+## Interview Responses
+responses:
+${qaSection}
+
+## Summary
+Business requirements captured through ${answers.length} interview questions covering project goals, user needs, and success criteria.
+`;
+
+    return {
+      type: "yaml",
+      content,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Generate Technical Requirements artifact from Step 3 answers
+   */
+  private generateTechnicalReqsArtifact(
+    answers: ValidatedInterviewAnswer[],
+  ): Artifact {
+    const qaSection = answers
+      .map(
+        (answer, index) =>
+          `  - question: "${answer.question}"\n    answer: "${answer.value}"\n    timestamp: "${answer.timestamp}"`,
+      )
+      .join("\n");
+
+    const content = `# Technical Requirements
+
+## Metadata
+generated_at: "${new Date().toISOString()}"
+total_questions: ${answers.length}
+
+## Interview Responses
+responses:
+${qaSection}
+
+## Summary
+Technical requirements captured through ${answers.length} interview questions covering constraints, technology stack, and security requirements.
+`;
+
+    return {
+      type: "yaml",
       content,
       generatedAt: new Date().toISOString(),
     };
