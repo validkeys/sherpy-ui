@@ -10,9 +10,12 @@ import {
   flushLangfuse,
   type TraceMetadata,
 } from "../../lib/langfuse-helpers";
+import { isStructuredOutputEnabled } from "./feature-flags";
+import { getStepResponseSchema } from "../planning/step-config";
 
 export async function streamQuestion(
   messages: Array<{ role: string; content: string }>,
+  stepNumber: number,
   traceMetadata?: TraceMetadata,
 ): Promise<ReadableStream<string>> {
   // Create Langfuse trace (no-op if disabled)
@@ -33,14 +36,28 @@ export async function streamQuestion(
 
   const startTime = Date.now();
 
+  // Build request body
+  const body: any = {
+    anthropic_version: "bedrock-2023-05-31",
+    max_tokens: 512,
+    messages,
+  };
+
+  // Add JSON Schema constraint if enabled for this step
+  if (isStructuredOutputEnabled(stepNumber)) {
+    const schema = getStepResponseSchema(stepNumber);
+    if (schema) {
+      body.response_format = {
+        type: "json_schema",
+        json_schema: schema,
+      };
+    }
+  }
+
   const cmd = new InvokeModelWithResponseStreamCommand({
     modelId: BEDROCK_MODEL_ID,
     contentType: "application/json",
-    body: JSON.stringify({
-      anthropic_version: "bedrock-2023-05-31",
-      max_tokens: 512,
-      messages,
-    }),
+    body: JSON.stringify(body),
   });
   const res = await bedrockClient.send(cmd);
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArtifactCard } from "@/components/thread/ArtifactCard";
 import { Composer } from "@/components/thread/Composer";
 import { OptionCard } from "@/components/thread/OptionCard";
@@ -38,6 +38,7 @@ export function InterviewThread({
     stepName: string;
   } | null>(null);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Get previous answers for current step (supports multi-turn Q&A)
   const currentStepData = stepState.steps.find(
@@ -57,6 +58,7 @@ export function InterviewThread({
     loading: isStreaming,
     error: streamError,
     isComplete,
+    options: streamedOptions,
     refetch: refetchQuestion,
   } = useStreamingQuestion({
     projectId,
@@ -64,15 +66,6 @@ export function InterviewThread({
     previousAnswers: completedAnswers,
     enabled: true,
     refetchTrigger,
-    onOptionsReady: (options) => {
-      // Update step with parsed options when streaming completes
-      console.log("[InterviewThread] Options parsed from question:", options);
-      console.log("[InterviewThread] Updating step", stepState.currentStep, "with options");
-      updateOptions({
-        stepNumber: stepState.currentStep,
-        options,
-      });
-    },
   });
 
   const { mutate: submitAnswer, isPending } = useSubmitAnswer(projectId);
@@ -86,15 +79,41 @@ export function InterviewThread({
   });
 
   // Auto-advance when AI signals step completion
+  // Track which step we completed to avoid duplicate calls
+  const lastCompletedStepRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (isComplete && !isStreaming) {
+      const currentStepNum = stepState.currentStep;
+
+      // Prevent duplicate completion calls for the same step
+      if (lastCompletedStepRef.current === currentStepNum) {
+        console.log("[InterviewThread] Step already completed, skipping duplicate call", {
+          stepNumber: currentStepNum,
+        });
+        return;
+      }
+
       console.log("[InterviewThread] Step completion detected, calling completeStep", {
-        stepNumber: stepState.currentStep,
+        stepNumber: currentStepNum,
         stepName: currentStepData?.name,
       });
-      completeStep({ stepNumber: stepState.currentStep });
+
+      lastCompletedStepRef.current = currentStepNum;
+      completeStep({ stepNumber: currentStepNum });
     }
   }, [isComplete, isStreaming, stepState.currentStep, completeStep, currentStepData?.name]);
+
+  // Reset completion tracker when step changes (but not on initial mount)
+  useEffect(() => {
+    if (lastCompletedStepRef.current !== null && lastCompletedStepRef.current !== stepState.currentStep) {
+      console.log("[InterviewThread] Step changed, resetting completion tracker", {
+        oldStep: lastCompletedStepRef.current,
+        newStep: stepState.currentStep,
+      });
+      lastCompletedStepRef.current = null;
+    }
+  }, [stepState.currentStep]);
 
   // Refetch question when step changes (BUG-005 fix)
   useEffect(() => {
@@ -104,8 +123,13 @@ export function InterviewThread({
 
   const completedSteps = stepState.steps.filter((s) => s.status === "complete");
   const currentStep = currentStepData;
+
+  // Use streamedOptions from hook result during streaming or when available
+  // Fall back to currentStep.options for cached/completed questions
+  const optionsToRender = streamedOptions.length > 0 ? streamedOptions : currentStep?.options;
+
   const selectedOptionTitle =
-    currentStep?.options?.find((o) => o.letter === selectedOption)?.title ?? "";
+    optionsToRender?.find((o) => o.letter === selectedOption)?.title ?? "";
 
   // Calculate question counter: sum of all answers from all steps + 1 for current question
   const totalAnswersFromCompletedSteps = completedSteps.reduce(
@@ -135,9 +159,10 @@ export function InterviewThread({
       stepName: currentStep.name,
     });
 
-    // Clear input immediately
+    // Clear input and enter transition state immediately
     setInputText("");
     setSelectedOption(null);
+    setIsTransitioning(true);
 
     submitAnswer(
       {
@@ -149,13 +174,21 @@ export function InterviewThread({
         onSuccess: () => {
           // Clear optimistic answer once server confirms
           setOptimisticAnswer(null);
+          // Clear old options immediately before fetching next question
+          updateOptions({
+            stepNumber: currentStep.stepNumber,
+            options: [],
+          });
           // Increment trigger to force refetch of next question
           console.log("[InterviewThread] Incrementing refetch trigger");
           setRefetchTrigger(prev => prev + 1);
+          // Exit transition state
+          setIsTransitioning(false);
         },
         onError: () => {
-          // If submission fails, clear optimistic answer
+          // If submission fails, clear optimistic answer and exit transition
           setOptimisticAnswer(null);
+          setIsTransitioning(false);
         },
       },
     );
@@ -252,14 +285,16 @@ export function InterviewThread({
 
   // Debug logging for options
   console.log("[InterviewThread] Render options:", {
-    hasOptions: !!currentStep?.options,
-    optionsLength: currentStep?.options?.length ?? 0,
-    options: currentStep?.options,
+    hasStreamedOptions: streamedOptions.length > 0,
+    hasCurrentStepOptions: !!currentStep?.options,
+    optionsLength: optionsToRender?.length ?? 0,
+    options: optionsToRender,
   });
 
-  const options = currentStep?.options?.length ? (
+  // Hide options during transition to prevent old options from showing
+  const options = !isTransitioning && optionsToRender?.length ? (
     <OptionStack>
-      {currentStep.options.map((opt) => (
+      {optionsToRender.map((opt) => (
         <OptionCard
           key={opt.letter}
           letter={opt.letter}

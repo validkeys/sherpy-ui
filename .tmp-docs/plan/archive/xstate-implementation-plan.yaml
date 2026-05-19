@@ -1,0 +1,2033 @@
+plan:
+  name: "XState v5 State Management Migration"
+  version: "1.2"
+  created: "2026-05-09"
+  updated: "2026-05-11"
+  estimated_duration_days: 7
+  changes_from_v1_0: "Added performance optimization, accessibility, and error handling tasks based on React excellence review"
+  changes_from_v1_1: "Updated with QA findings - BUG-001 blocker discovered during t-019"
+
+  status:
+    current_phase: "Phase 4: Testing & Cleanup"
+    overall_progress: "Phase 1-3 Complete (t-001 through t-017), Phase 4 Blocked"
+    completed_tasks: ["t-001", "t-002", "t-003", "t-004", "t-005", "t-006", "t-007", "t-008", "t-009", "t-010", "t-011", "t-012", "t-012a", "t-012b", "t-013", "t-014", "t-015", "t-016", "t-017", "t-018"]
+    in_progress_tasks: []
+    blocked_tasks: ["t-019 (BLOCKER: BUG-001 - idle state handler missing)"]
+    remaining_tasks: ["t-020", "t-021", "t-022", "t-023"]
+
+    blockers:
+      - id: "BUG-001"
+        title: "Missing idle state handler in planning workflow"
+        severity: "BLOCKER"
+        status: "OPEN"
+        report: ".tmp-docs/bugs/BUG-001-idle-state-handler-missing.md"
+        affects: ["t-019 Manual QA"]
+        discovered: "2026-05-11"
+        recommended_fix: "Change planningMachine.ts initial state from 'idle' to 'step1_gapAnalysis'"
+
+    test_results:
+      unit_tests: "✅ 372 passing, 0 failing"
+      type_check: "✅ 0 errors"
+      integration_tests: "✅ Full workflow test passing"
+      manual_qa: "❌ BLOCKED - Cannot proceed past project creation"
+
+    commits:
+      total: 7
+      branch: "feature/structured-output"
+      latest: "9ec371d chore: Add coverage directory to .gitignore"
+
+  context:
+    branch: "feature/structured-output"
+    base_branch: "main"
+    proposal: ".tmp-docs/plan/xstate-proposal.md"
+    current_architecture: "src/features/planning/components/InterviewThread.tsx (1500+ lines god component)"
+    target_architecture: "XState v5 actor-based state machine with hierarchical states"
+
+  constraints:
+    dependencies:
+      only_use:
+        - "xstate@^5.31.0"
+        - "@xstate/react@^5.0.0"
+      no_additional: true
+
+    files:
+      preserve:
+        - "src/features/planning/types.ts (extend, don't replace)"
+        - "src/features/planning/step-config.ts (reference only)"
+        - "src/features/ai/parse-options.ts (reuse as-is)"
+
+      delete_after_migration:
+        - "src/features/planning/hooks.ts (old useStreamingQuestion)"
+        - "src/features/planning/components/InterviewThread.tsx"
+
+    quality_gates:
+      pre_commit:
+        - "npm run lint -- --max-warnings 0"
+        - "npm run typecheck"
+        - "npm test -- --run"
+
+      per_task:
+        - "All existing tests still pass"
+        - "New tests for new code"
+        - "Type errors = 0"
+
+    drift_policy:
+      stop_immediately_if:
+        - "Files outside task scope modified (>3 unexpected files)"
+        - "Dependencies added beyond xstate + @xstate/react"
+        - "Tests fail and AI suggests modifying tests"
+        - "Type errors cannot be resolved in task scope"
+
+      allowed_deviations:
+        - "Formatting changes (prettier/eslint auto-fix)"
+        - "Import reordering"
+        - "Single-line type annotations within scope"
+
+  style_anchors:
+    - path: "src/features/planning/types.ts"
+      lines: "1-50"
+      pattern: "TypeScript discriminated unions for step types"
+      rationale: "Use same pattern for XState context types"
+
+    - path: "src/features/planning/components/InterviewThread.tsx"
+      lines: "56-69"
+      pattern: "React Query hook with mutation pattern"
+      rationale: "Replace with XState useSelector pattern"
+
+    - path: "src/features/ai/hooks.ts"
+      lines: "38-141"
+      pattern: "Promise-based async side effects with state management"
+      rationale: "Replace with XState fromPromise actors and invoke"
+
+# ═══════════════════════════════════════════════════════════
+# PHASE 1: FOUNDATION (Day 1)
+# ═══════════════════════════════════════════════════════════
+
+phase_1:
+  name: "Foundation & Setup"
+  goal: "Install XState, create base machine structure, wire up types"
+  duration_hours: 8
+
+  tasks:
+    - id: "t-001"
+      name: "Install XState dependencies and verify compatibility"
+      estimate_minutes: 30
+      files:
+        create: []
+        modify: ["package.json", "package-lock.json"]
+        touch_only: []
+
+      instructions: |
+        # Install XState v5
+
+        CRITICAL CONSTRAINTS:
+        - ONLY install: xstate@^5.31.0, @xstate/react@^5.0.0
+        - NO other dependencies
+        - MUST verify TypeScript types work
+
+        ## Steps
+        1. Run: npm install xstate@^5.31.0 @xstate/react@^5.0.0
+        2. Create test file: src/features/planning/__xstate-verify.test.ts
+        3. Import { setup, createActor } from 'xstate'
+        4. Create minimal machine and verify types work
+        5. Run: npm run typecheck
+        6. Delete test file after verification
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        npm list xstate @xstate/react
+        ```
+
+        Expected: xstate@5.31.0, @xstate/react@5.0.0, typecheck passes
+
+      validation:
+        commands:
+          - "npm run typecheck"
+          - "npm list xstate @xstate/react"
+        expected_output: "xstate@5.31.0, @xstate/react@5.0.0, 0 type errors"
+        failure_handling: "STOP. Report compatibility issue."
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-002"
+      name: "Create XState type definitions for planning context"
+      estimate_minutes: 60
+      files:
+        create: ["src/features/planning/machines/types.ts"]
+        modify: []
+        touch_only: []
+
+      style_anchors:
+        - path: "src/features/planning/types.ts"
+          lines: "1-50"
+          pattern: "Discriminated unions for step-specific data"
+
+      instructions: |
+        # Create Planning Context Types
+
+        CRITICAL CONSTRAINTS:
+        - Touch ONLY: src/features/planning/machines/types.ts (new file)
+        - Reference (do not modify): src/features/planning/types.ts
+        - All types must be JSON-serializable (for persistence)
+
+        ## Style Anchor
+        See src/features/planning/types.ts:1-50 for existing step types.
+        Use same discriminated union pattern.
+
+        ## Required Types
+        1. StepType = 'form' | 'interview' | 'automated' | 'artifact-only'
+        2. Artifact type (from proposal)
+        3. FormQuestion type
+        4. InterviewAnswer type
+        5. PlanningContext (main context shape - see proposal lines 147-177)
+
+        ## Validation
+        - Import in a test file and verify TypeScript accepts it
+        - All fields must be serializable (no functions, classes)
+
+        ```bash
+        npm run typecheck
+        ```
+
+        Expected: 0 errors
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors before proceeding"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-003"
+      name: "Create base planning machine skeleton (no logic yet)"
+      estimate_minutes: 90
+      files:
+        create: ["src/features/planning/machines/planningMachine.ts"]
+        modify: []
+        touch_only: []
+
+      style_anchors:
+        - path: "src/features/ai/hooks.ts"
+          lines: "38-141"
+          pattern: "Promise-based async with state updates"
+
+      instructions: |
+        # Create Planning Machine Skeleton
+
+        CRITICAL CONSTRAINTS:
+        - Touch ONLY: src/features/planning/machines/planningMachine.ts (new file)
+        - Import types from: ./types
+        - NO actor implementations yet (stub them)
+        - NO real API calls
+
+        ## Structure
+        1. Import: setup, assign, fromPromise from 'xstate'
+        2. Import types from './types'
+        3. Create stub actors (fetchQuestion, generateArtifact) - return mock data
+        4. Use setup() to define machine with:
+           - types.context (PlanningContext)
+           - types.events (see proposal lines 282-290)
+           - actors: { fetchQuestion, generateArtifact }
+        5. Create machine with all 10 step states (idle → step1 → ... → complete)
+        6. Each step state has initial: 'placeholder' substate
+        7. NO transitions yet (just structure)
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        node -e "import('./src/features/planning/machines/planningMachine.js').then(m => console.log('Machine created:', m.planningMachine.id))"
+        ```
+
+        Expected: "Machine created: planning", 0 type errors
+
+      validation:
+        commands:
+          - "npm run typecheck"
+          - "node -e \"import('./src/features/planning/machines/planningMachine.js').then(m => console.log('OK'))\""
+        expected_output: "0 type errors, machine imports successfully"
+        failure_handling: "Fix type errors and import issues"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-004"
+      name: "Write machine structure unit tests (no logic tests yet)"
+      estimate_minutes: 60
+      files:
+        create: ["src/features/planning/machines/planningMachine.test.ts"]
+        modify: []
+        touch_only: ["src/features/planning/machines/planningMachine.ts"]
+
+      instructions: |
+        # Machine Structure Tests
+
+        CRITICAL CONSTRAINTS:
+        - Touch ONLY: planningMachine.test.ts (new), planningMachine.ts (reference)
+        - Test ONLY structure, not behavior (transitions come later)
+        - Use: createActor, expect from vitest
+
+        ## TDD Checklist
+        - [ ] Test: machine starts in 'idle' state
+        - [ ] Test: machine has all 10 step states defined
+        - [ ] Test: context initializes with correct shape
+        - [ ] Test: machine accepts input { projectId, entryPath }
+
+        ## Test Structure
+        ```typescript
+        describe('planningMachine structure', () => {
+          it('starts in idle state', () => {
+            const actor = createActor(planningMachine, {
+              input: { projectId: 'test', entryPath: 'new-project' }
+            });
+            actor.start();
+            expect(actor.getSnapshot().value).toBe('idle');
+          });
+
+          // ... more structure tests
+        });
+        ```
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/machines/planningMachine.test.ts
+        ```
+
+        Expected: All tests pass
+
+      validation:
+        commands: ["npm test src/features/planning/machines/planningMachine.test.ts -- --run"]
+        expected_output: "4 tests passed"
+        failure_handling: "STOP. Fix tests before proceeding."
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+# ═══════════════════════════════════════════════════════════
+# PHASE 2: MACHINE LOGIC (Day 2-3)
+# ═══════════════════════════════════════════════════════════
+
+phase_2:
+  name: "Implement Machine Logic"
+  goal: "Add transitions, actors, guards for all 10 steps"
+  duration_hours: 16
+
+  tasks:
+    - id: "t-005"
+      name: "Implement Step 1 (form) state logic with tests"
+      estimate_minutes: 120
+      files:
+        create: []
+        modify: ["src/features/planning/machines/planningMachine.ts"]
+        touch_only: ["src/features/planning/machines/planningMachine.test.ts"]
+
+      instructions: |
+        # Step 1: Gap Analysis Form Logic
+
+        CRITICAL CONSTRAINTS:
+        - Modify ONLY: planningMachine.ts
+        - Reference proposal lines 344-392 for Step 1 implementation
+        - MUST write tests BEFORE implementation
+
+        ## TDD Checklist
+        1. Write failing test: START_PLANNING transitions to step1_gapAnalysis.collecting
+        2. Implement transition in machine
+        3. Write failing test: SUBMIT_FORM with stepNumber=1 triggers artifact generation
+        4. Implement SUBMIT_FORM handler with assign() and invoke
+        5. Write failing test: artifact generation success transitions to step2
+        6. Implement onDone transition
+        7. Run tests, all pass
+
+        ## Style Anchor
+        See proposal lines 344-392 for exact structure:
+        - step1_gapAnalysis state with 'collecting' and 'submitting' substates
+        - SUBMIT_FORM event with guard
+        - invoke generateArtifact actor
+        - onDone/onError handlers
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/machines/planningMachine.test.ts -- --run
+        npm run typecheck
+        ```
+
+        Expected: All tests pass (6+ tests now), 0 type errors
+
+      validation:
+        commands:
+          - "npm test src/features/planning/machines/planningMachine.test.ts -- --run"
+          - "npm run typecheck"
+        expected_output: "6+ tests passed, 0 type errors"
+        failure_handling: "STOP. Revise implementation to pass tests. Do NOT modify tests."
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-006"
+      name: "Implement Step 2 (interview) state logic with tests"
+      estimate_minutes: 150
+      files:
+        create: []
+        modify: ["src/features/planning/machines/planningMachine.ts"]
+        touch_only: ["src/features/planning/machines/planningMachine.test.ts"]
+
+      instructions: |
+        # Step 2: Business Requirements Interview Logic
+
+        CRITICAL CONSTRAINTS:
+        - Modify ONLY: planningMachine.ts
+        - Reference proposal lines 394-490
+        - MUST implement buildProjectContext() helper first
+        - Tests BEFORE implementation
+
+        ## TDD Checklist
+        1. Write test: transition from step1 to step2_businessReqs.asking
+        2. Write test: asking state invokes fetchQuestion actor
+        3. Write test: fetchQuestion resolves → transitions to answering
+        4. Write test: SUBMIT_ANSWER appends to context.step2Answers
+        5. Write test: checkingComplete guard prevents advance if <10 answers
+        6. Write test: checkingComplete allows advance if >=10 answers
+        7. Write test: generatingArtifact invokes actor → transitions to step3
+
+        ## Implementation Steps
+        1. Add buildProjectContext() function (see proposal lines 263-274)
+        2. Implement step2_businessReqs state (see proposal lines 394-490)
+        3. Add tests incrementally, run after each
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/machines/planningMachine.test.ts -- --run
+        npm run typecheck
+        ```
+
+        Expected: 13+ tests passed, 0 type errors
+
+      validation:
+        commands:
+          - "npm test src/features/planning/machines/planningMachine.test.ts -- --run"
+          - "npm run typecheck"
+        expected_output: "13+ tests passed, 0 type errors"
+        failure_handling: "STOP. Fix failing tests."
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-007"
+      name: "Implement Step 3 (interview) state logic - similar to Step 2"
+      estimate_minutes: 90
+      files:
+        create: []
+        modify: ["src/features/planning/machines/planningMachine.ts"]
+        touch_only: ["src/features/planning/machines/planningMachine.test.ts"]
+
+      instructions: |
+        # Step 3: Technical Requirements Interview Logic
+
+        CRITICAL CONSTRAINTS:
+        - Modify ONLY: planningMachine.ts
+        - Copy Step 2 structure, change: step2 → step3
+        - Reference proposal lines 493-588
+        - Tests first
+
+        ## TDD Checklist (same as Step 2)
+        1. Test: transition from step2 → step3
+        2. Test: asking invokes fetchQuestion
+        3. Test: answering handles SUBMIT_ANSWER
+        4. Test: checkingComplete guard (<10 vs >=10)
+        5. Test: generatingArtifact → step4
+
+        ## Implementation
+        Copy step2_businessReqs structure, replace:
+        - step2Answers → step3Answers
+        - step2CurrentQuestion → step3CurrentQuestion
+        - step2CurrentOptions → step3CurrentOptions
+        - stepNumber: 2 → stepNumber: 3
+        - target: step3_techReqs → step4_styleAnchors
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/machines/planningMachine.test.ts -- --run
+        ```
+
+        Expected: 18+ tests passed
+
+      validation:
+        commands: ["npm test src/features/planning/machines/planningMachine.test.ts -- --run"]
+        expected_output: "18+ tests passed"
+        failure_handling: "Fix tests before continuing"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-008"
+      name: "Implement Steps 4-10 (automated/form/artifact-only)"
+      estimate_minutes: 120
+      files:
+        create: []
+        modify: ["src/features/planning/machines/planningMachine.ts"]
+        touch_only: ["src/features/planning/machines/planningMachine.test.ts"]
+
+      instructions: |
+        # Steps 4-10 Implementation
+
+        CRITICAL CONSTRAINTS:
+        - Modify ONLY: planningMachine.ts
+        - All remaining steps from proposal
+        - Tests for each step
+
+        ## Steps to Implement
+        - Step 4: styleAnchors (automated) - proposal lines 592-624
+        - Step 5: implPlanner (form) - proposal lines 627-675
+        - Step 6: definitionOfDone (automated) - proposal lines 678-711
+        - Step 7: archDecisions (artifact-only) - proposal lines 714-748
+        - Step 8: deliveryTimeline (automated) - proposal lines 751-785
+        - Step 9: qaTestPlan (automated) - proposal lines 788-821
+        - Step 10: summaries (automated) - proposal lines 824-857
+
+        ## Pattern
+        Automated steps: single 'generating' substate with invoke
+        Form steps: 'collecting' + 'submitting' substates
+        Artifact-only: 'reviewing' with EDIT/APPROVE handlers
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/machines/planningMachine.test.ts -- --run
+        npm run typecheck
+        ```
+
+        Expected: 30+ tests passed, 0 type errors
+
+      validation:
+        commands:
+          - "npm test src/features/planning/machines/planningMachine.test.ts -- --run"
+          - "npm run typecheck"
+        expected_output: "30+ tests passed"
+        failure_handling: "Fix implementation and tests"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-009"
+      name: "Implement real API actor logic (fetchQuestion, generateArtifact)"
+      estimate_minutes: 90
+      files:
+        create: []
+        modify: ["src/features/planning/machines/planningMachine.ts"]
+        touch_only: []
+
+      instructions: |
+        # Real API Actors
+
+        CRITICAL CONSTRAINTS:
+        - Modify ONLY: planningMachine.ts (actor definitions)
+        - Reference: src/features/ai/hooks.ts:56-137 for API call pattern
+        - Reference: src/features/ai/parse-options.ts for option parsing
+        - NO changes to API endpoints
+
+        ## Implementation
+        1. Replace stub fetchQuestion actor with real implementation
+           - See proposal lines 193-235
+           - Use existing /api/ai/interview endpoint
+           - Reuse parseOptions() from src/features/ai/parse-options.ts
+
+        2. Replace stub generateArtifact actor with real implementation
+           - See proposal lines 237-259
+           - Use existing /api/ai/artifact endpoint (if exists)
+           - Or call appropriate backend function
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        # Manual: start dev server, test one step end-to-end
+        npm run dev
+        ```
+
+        Expected: 0 type errors, API calls work in browser
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+# ═══════════════════════════════════════════════════════════
+# PHASE 3: REACT INTEGRATION (Day 4-5)
+# ═══════════════════════════════════════════════════════════
+
+phase_3:
+  name: "React Integration"
+  goal: "Wire XState machine to React components with performance optimization"
+  duration_hours: 21
+
+  tasks:
+    - id: "t-010"
+      name: "Create PlanningContext and selectors with equality functions"
+      estimate_minutes: 90
+      files:
+        create:
+          - "src/features/planning/PlanningContext.tsx"
+          - "src/features/planning/selectors.ts"
+        modify: []
+        touch_only: []
+
+      instructions: |
+        # Planning Context & Selectors
+
+        CRITICAL CONSTRAINTS:
+        - Create ONLY: PlanningContext.tsx, selectors.ts
+        - Use: createActorContext from '@xstate/react'
+        - Reference: proposal lines 891-896 (context), 924-978 (selectors)
+        - MUST use PRIMITIVE selectors (not object selectors) to avoid re-renders
+
+        ## Implementation
+        1. PlanningContext.tsx:
+           - Import createActorContext from '@xstate/react'
+           - Import planningMachine
+           - Export: export const PlanningContext = createActorContext(planningMachine)
+
+        2. selectors.ts:
+           - Import Snapshot from 'xstate'
+           - Import planningMachine type
+           - Implement all selectors from proposal lines 932-978
+           - **PERFORMANCE CRITICAL:** Use primitive selectors (return single values)
+
+           CORRECT (primitive):
+           ```typescript
+           export const selectStep2Answers = (s) => s.context.step2Answers;
+           export const selectStep2CurrentQuestion = (s) => s.context.step2CurrentQuestion;
+           export const selectStep2CurrentOptions = (s) => s.context.step2CurrentOptions;
+           ```
+
+           INCORRECT (object - causes re-renders):
+           ```typescript
+           export const selectStep2Data = (s) => ({
+             answers: s.context.step2Answers,
+             currentQuestion: s.context.step2CurrentQuestion,
+             currentOptions: s.context.step2CurrentOptions,
+           });
+           ```
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        ```
+
+        Expected: 0 type errors, all selectors return primitives or arrays (not new objects)
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-011"
+      name: "Create PlanningProvider with persistence"
+      estimate_minutes: 90
+      files:
+        create:
+          - "src/features/planning/components/PlanningProvider.tsx"
+          - "src/features/planning/persistence.ts"
+        modify: []
+        touch_only: []
+
+      instructions: |
+        # Planning Provider + Persistence
+
+        CRITICAL CONSTRAINTS:
+        - Create ONLY: PlanningProvider.tsx, persistence.ts
+        - Reference: proposal lines 900-922 (provider), 1163-1226 (persistence)
+        - Use: localStorage for persistence
+
+        ## Implementation
+        1. persistence.ts:
+           - savePlanningState() - uses actor.getPersistedSnapshot()
+           - loadPlanningState(projectId)
+           - clearPlanningState()
+           - See proposal lines 1163-1195
+
+        2. PlanningProvider.tsx:
+           - Import PlanningContext, persistence helpers
+           - Load restored state from localStorage
+           - Create actor with snapshot: restoredState
+           - Subscribe to actor, call savePlanningState on changes
+           - Wrap children in PlanningContext.Provider
+           - See proposal lines 1198-1226
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        ```
+
+        Expected: 0 type errors
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-012"
+      name: "Create StepContainer router component"
+      estimate_minutes: 60
+      files:
+        create: ["src/features/planning/components/StepContainer.tsx"]
+        modify: []
+        touch_only: []
+
+      instructions: |
+        # Step Container Router
+
+        CRITICAL CONSTRAINTS:
+        - Create ONLY: StepContainer.tsx
+        - Reference: proposal lines 983-1024
+        - Import: PlanningContext, selectors
+
+        ## Implementation
+        1. Define STEP_CONFIG mapping (stepKey → type + name)
+        2. Use PlanningContext.useSelector(selectCurrentStep)
+        3. Use PlanningContext.useSelector(selectStepStatus)
+        4. Switch on config.type:
+           - 'form' → <FormStep />
+           - 'interview' → <InterviewStep />
+           - 'automated' → <AutomatedStep />
+           - 'artifact-only' → <ArtifactReview />
+        5. Pass stepKey, stepName, status as props
+
+        See proposal lines 983-1024 for exact structure
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        ```
+
+        Expected: 0 type errors
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-012a"
+      name: "Add Navigation component with NEXT/BACK events"
+      estimate_minutes: 90
+      files:
+        create:
+          - "src/features/planning/components/Navigation.tsx"
+          - "src/features/planning/components/Navigation.test.tsx"
+        modify:
+          - "src/features/planning/machines/types.ts"
+          - "src/features/planning/machines/planningMachine.ts"
+        touch_only: []
+
+      instructions: |
+        # Navigation Component with Manual Step Navigation
+
+        CRITICAL CONSTRAINTS:
+        - Add NEXT/BACK events to PlanningEvent type
+        - Track completedSteps and currentStepNumber in context
+        - Create Navigation component with progress indicator and buttons
+        - Write tests FIRST (TDD)
+
+        ## Implementation (TDD Approach)
+        1. Update types.ts:
+           - Add completedSteps: number[] to PlanningContext
+           - Add currentStepNumber: number to PlanningContext
+           - Add NEXT and BACK to PlanningEvent union
+
+        2. Update planningMachine.ts:
+           - Initialize completedSteps: [], currentStepNumber: 1
+           - Add navigation helper functions
+           - Add global NEXT/BACK event handlers with guards
+           - Update all step transitions to mark steps complete
+
+        3. Create Navigation.tsx:
+           - Display "Step X of 10"
+           - Back button (disabled on step 1)
+           - Next button (disabled if step incomplete)
+           - Use useSelector for currentStepNumber and completedSteps
+           - Send NEXT/BACK events via actor.send()
+
+        4. Create Navigation.test.tsx:
+           - Test progress display
+           - Test button disabled states
+           - Test navigation events sent correctly
+
+        ## Validation
+        ```bash
+        npm run typecheck  # Must pass
+        npm test           # All tests must pass
+        ```
+
+        Expected: 0 type errors, all tests passing
+
+      validation:
+        commands: ["npm run typecheck", "npm test"]
+        expected_output: "0 type errors, all tests passing"
+        failure_handling: "Fix errors before proceeding"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+      completion_date: "2026-05-11"
+      notes: "Added manual navigation with completedSteps tracking. All 266 tests passing."
+
+    - id: "t-012b"
+      name: "Add comprehensive test coverage for all generated code (Phases 1-2)"
+      estimate_minutes: 180
+      files:
+        create:
+          - "src/features/planning/machines/planningMachine.test.ts" # enhance existing
+          - "src/features/planning/machines/PlanningMachineContext.test.tsx"
+          - "src/features/planning/components/FormStep.test.tsx"
+          - "src/features/planning/components/InterviewStep.test.tsx"
+          - "src/features/planning/components/AutomatedStep.test.tsx"
+          - "src/features/planning/components/ArtifactOnlyStep.test.tsx"
+          - "src/features/planning/components/StepContainer.test.tsx"
+        modify: []
+        touch_only: []
+
+      instructions: |
+        # Comprehensive Test Coverage for Generated Code
+
+        GOAL: Add thorough test coverage for all code generated in tasks t-001 through t-012a
+
+        CRITICAL CONSTRAINTS:
+        - Write tests for ALL components and machine logic
+        - Aim for >80% code coverage
+        - Test happy paths AND edge cases
+        - Test error states and loading states
+        - Follow TDD patterns for remaining work
+
+        ## Files to Test
+
+        ### 1. PlanningMachineContext.test.tsx (NEW)
+        Test the React Context provider:
+        - Provider renders children correctly
+        - usePlanningMachine hook throws outside provider
+        - useSelector hook works correctly
+        - localStorage persistence (save/load)
+        - Actor starts on mount, stops on unmount
+
+        ### 2. FormStep.test.tsx (NEW)
+        Test FormStep component:
+        - Renders form fields for step 1 and step 5
+        - Shows correct questions per step
+        - Handles form input changes
+        - Sends SUBMIT_FORM event with correct data
+        - Disables submit during submission
+        - Shows loading state
+
+        ### 3. InterviewStep.test.tsx (NEW)
+        Test InterviewStep component:
+        - Renders question and options
+        - Shows loading during asking state
+        - Renders answer history
+        - Sends SUBMIT_ANSWER event correctly
+        - Handles generateArtifact loading state
+        - Works for both step 2 and step 3
+
+        ### 4. AutomatedStep.test.tsx (NEW)
+        Test AutomatedStep component:
+        - Shows loading spinner during generation
+        - Displays artifact when complete
+        - Handles error states
+        - Works for steps 4, 6, 8, 9, 10
+
+        ### 5. ArtifactOnlyStep.test.tsx (NEW)
+        Test ArtifactOnlyStep component:
+        - Displays artifact content
+        - Allows editing
+        - Sends EDIT_ARTIFACT event
+        - Sends APPROVE_ARTIFACT event
+        - Handles step 7 correctly
+
+        ### 6. StepContainer.test.tsx (NEW)
+        Test StepContainer router:
+        - Routes to correct component based on step
+        - Passes correct props to child components
+        - Handles all 10 steps
+        - Handles unknown step gracefully
+
+        ### 7. planningMachine.test.ts (ENHANCE EXISTING)
+        Add tests for new navigation features:
+        - NEXT event navigation works
+        - BACK event navigation works
+        - NEXT disabled when step incomplete
+        - BACK disabled on step 1
+        - completedSteps array updates correctly
+        - currentStepNumber updates correctly
+
+        ## Testing Patterns
+
+        Use these patterns consistently:
+        ```typescript
+        // Setup
+        const defaultInput = {
+          projectId: 'test-project',
+          entryPath: 'new-project' as const,
+        };
+
+        // Render with context
+        render(
+          <PlanningMachineProvider input={defaultInput}>
+            <ComponentUnderTest />
+          </PlanningMachineProvider>
+        );
+
+        // Test state transitions
+        const actor = createActor(planningMachine, { input });
+        actor.start();
+        actor.send({ type: 'EVENT' });
+        expect(actor.getSnapshot().value).toBe('expectedState');
+        ```
+
+        ## Validation
+        ```bash
+        npm test                    # All tests must pass
+        npm run typecheck           # 0 errors
+        npm test -- --coverage      # Check coverage %
+        ```
+
+        Expected: All tests passing, >80% coverage for new code
+
+      validation:
+        commands:
+          - "npm test"
+          - "npm run typecheck"
+        expected_output: "All tests passing, 0 type errors"
+        failure_handling: "Fix failing tests before proceeding"
+
+      quality_score: 10
+      issues: []
+      approval: "completed"
+      notes: "✅ COMPLETE: All 7 test files created with 97 tests, 363 total passing"
+
+    - id: "t-013"
+      name: "Create InterviewStep component for Steps 2, 3"
+      estimate_minutes: 120
+      files:
+        create: ["src/features/planning/components/InterviewStep.tsx"]
+        modify: []
+        touch_only: []
+
+      style_anchors:
+        - path: "src/features/planning/components/InterviewThread.tsx"
+          lines: "277-305"
+          pattern: "QuestionCard and OptionCard rendering"
+
+      instructions: |
+        # Interview Step Component
+
+        CRITICAL CONSTRAINTS:
+        - Create ONLY: InterviewStep.tsx
+        - Reference: proposal lines 1027-1116
+        - Reuse existing: QuestionCard, OptionCard, Composer components
+        - Import: PlanningContext, selectors
+
+        ## Style Anchor
+        See InterviewThread.tsx:277-305 for QuestionCard/OptionCard usage
+
+        ## Implementation
+        1. Accept props: { stepKey, stepName, status }
+        2. Use PlanningContext.useActorRef() to get actor
+        3. Use PlanningContext.useSelector() to get step data
+        4. Determine stepNumber from stepKey (2 or 3)
+        5. Render loading states based on status (asking, generatingArtifact)
+        6. Render answer history
+        7. Render current question with options (if any)
+        8. Handle submit: actor.send({ type: 'SUBMIT_ANSWER', ... })
+
+        See proposal lines 1027-1116 for complete implementation
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        ```
+
+        Expected: 0 type errors
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: 10
+      issues: []
+      approval: "completed"
+      notes: "✅ COMPLETE: InterviewStep.tsx exists with full test coverage"
+
+    - id: "t-014"
+      name: "Create FormStep component for Steps 1, 5"
+      estimate_minutes: 90
+      files:
+        create: ["src/features/planning/components/FormStep.tsx"]
+        modify: []
+        touch_only: []
+
+      instructions: |
+        # Form Step Component
+
+        CRITICAL CONSTRAINTS:
+        - Create ONLY: FormStep.tsx
+        - Accept props: { stepKey, stepName, status }
+        - Use PlanningContext for actor and selectors
+
+        ## Implementation
+        1. Determine stepNumber from stepKey (1 or 5)
+        2. Use selector to get form responses (step1Responses or step5Responses)
+        3. Define fixed questions for each step
+        4. Render form fields (controlled inputs)
+        5. Handle submit: actor.send({ type: 'SUBMIT_FORM', stepNumber, responses })
+        6. Show loading state during submission
+
+        ## Fixed Questions
+        Step 1:
+        - "Do you have existing requirements?" (text)
+        - "What are you building?" (textarea)
+
+        Step 5:
+        - "What is the deployment strategy?" (select)
+        - "What is the tech stack?" (text)
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        ```
+
+        Expected: 0 type errors
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: 10
+      issues: []
+      approval: "completed"
+      notes: "✅ COMPLETE: FormStep.tsx exists with full test coverage"
+
+    - id: "t-015"
+      name: "Create AutomatedStep component for Steps 4, 6, 8, 9, 10"
+      estimate_minutes: 60
+      files:
+        create: ["src/features/planning/components/AutomatedStep.tsx"]
+        modify: []
+        touch_only: []
+
+      instructions: |
+        # Automated Step Component
+
+        CRITICAL CONSTRAINTS:
+        - Create ONLY: AutomatedStep.tsx
+        - Reference: proposal lines 1120-1158
+        - Use PlanningContext
+
+        ## Implementation
+        1. Accept props: { stepKey, stepName }
+        2. Extract stepNumber from stepKey via STEP_NUMBERS map
+        3. Use selectIsLoading and selectArtifact(stepNumber)
+        4. Render loading spinner if generating
+        5. Render artifact preview if complete
+        6. NO user input needed
+
+        See proposal lines 1120-1158 for implementation
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        ```
+
+        Expected: 0 type errors
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: 10
+      issues: []
+      approval: "completed"
+      notes: "✅ COMPLETE: AutomatedStep.tsx exists with full test coverage"
+
+    - id: "t-016"
+      name: "Create ArtifactOnlyStep component for Step 7"
+      estimate_minutes: 60
+      files:
+        create: ["src/features/planning/components/ArtifactOnlyStep.tsx"]
+        modify: []
+        touch_only: []
+
+      instructions: |
+        # Artifact Review Component
+
+        CRITICAL CONSTRAINTS:
+        - Create ONLY: ArtifactOnlyStep.tsx (renamed from ArtifactReview)
+        - Accept props: { stepKey, stepName }
+        - Use PlanningContext
+
+        ## Implementation
+        1. Get actorRef from PlanningContext
+        2. Get artifact for step 7 via selectArtifact(7)
+        3. Get step7Edits from context
+        4. Render artifact content (readonly or editable textarea)
+        5. Handle edit: actor.send({ type: 'EDIT_ARTIFACT', stepNumber: 7, content })
+        6. Handle approve: actor.send({ type: 'APPROVE_ARTIFACT', stepNumber: 7 })
+        7. Approve button advances to next step
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        ```
+
+        Expected: 0 type errors
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: 10
+      issues: []
+      approval: "completed"
+      notes: "✅ COMPLETE: ArtifactOnlyStep.tsx exists with full test coverage"
+
+    - id: "t-016a"
+      name: "Add React.memo and performance optimization to all step components"
+      estimate_minutes: 90
+      files:
+        create: []
+        modify:
+          - "src/features/planning/components/InterviewStep.tsx"
+          - "src/features/planning/components/FormStep.tsx"
+          - "src/features/planning/components/AutomatedStep.tsx"
+          - "src/features/planning/components/ArtifactOnlyStep.tsx"
+        touch_only: []
+
+      instructions: |
+        # Performance Optimization
+
+        CRITICAL CONSTRAINTS:
+        - Modify ONLY: component files listed above
+        - Add React.memo() wrapper to ALL components
+        - Add useCallback() for ALL event handlers
+        - Add useMemo() for derived values
+
+        ## Implementation
+
+        For EACH component file:
+
+        1. **Wrap component in React.memo()**
+           ```typescript
+           export const InterviewStep = React.memo(function InterviewStep(props) {
+             // component body
+           });
+           ```
+
+        2. **Memoize event handlers with useCallback()**
+           ```typescript
+           const handleSubmit = useCallback(
+             (answer: string) => {
+               if (!currentQuestion) return;
+               actorRef.send({
+                 type: 'SUBMIT_ANSWER',
+                 stepNumber,
+                 question: currentQuestion,
+                 answer,
+               });
+             },
+             [actorRef, currentQuestion, stepNumber]
+           );
+           ```
+
+        3. **Memoize derived values with useMemo()**
+           ```typescript
+           const stepNumber = useMemo(
+             () => (stepKey === 'step2_businessReqs' ? 2 : 3),
+             [stepKey]
+           );
+           ```
+
+        4. **Import React at top**
+           ```typescript
+           import React, { useCallback, useMemo } from 'react';
+           ```
+
+        ## Checklist Per Component
+        - [ ] Wrapped in React.memo()
+        - [ ] All event handlers use useCallback()
+        - [ ] All derived computations use useMemo()
+        - [ ] Dependency arrays are complete and minimal
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        npm run lint
+        # Manual: Open React DevTools Profiler
+        # Record Step 1 → Step 2 transition
+        # Verify InterviewStep doesn't re-render when FormStep changes
+        ```
+
+        Expected: 0 type errors, 0 lint warnings, <20 commits in profiler
+
+      validation:
+        commands:
+          - "npm run typecheck"
+          - "npm run lint -- --max-warnings 0"
+        expected_output: "0 type errors, 0 lint warnings"
+        failure_handling: "Fix errors before proceeding"
+
+      quality_score: null
+      issues: []
+      approval: "pending"
+
+    - id: "t-016b"
+      name: "Add error boundary for step components"
+      estimate_minutes: 45
+      files:
+        create: ["src/features/planning/components/StepErrorBoundary.tsx"]
+        modify: ["src/features/planning/components/StepContainer.tsx"]
+        touch_only: []
+
+      instructions: |
+        # Error Boundary Implementation
+
+        CRITICAL CONSTRAINTS:
+        - Create ONLY: StepErrorBoundary.tsx
+        - Modify ONLY: StepContainer.tsx
+        - Use class component (error boundaries must be classes)
+
+        ## Create StepErrorBoundary.tsx
+
+        ```typescript
+        import React, { Component, type ReactNode } from 'react';
+
+        interface Props {
+          currentStep: string;
+          children: ReactNode;
+        }
+
+        interface State {
+          hasError: boolean;
+          error: Error | null;
+        }
+
+        export class StepErrorBoundary extends Component<Props, State> {
+          constructor(props: Props) {
+            super(props);
+            this.state = { hasError: false, error: null };
+          }
+
+          static getDerivedStateFromError(error: Error): State {
+            return { hasError: true, error };
+          }
+
+          componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+            console.error('[StepErrorBoundary]', {
+              currentStep: this.props.currentStep,
+              error,
+              errorInfo,
+            });
+            // TODO: Send to error monitoring service (Sentry, etc.)
+          }
+
+          handleReset = () => {
+            this.setState({ hasError: false, error: null });
+          };
+
+          render() {
+            if (this.state.hasError) {
+              return (
+                <div className="error-boundary" role="alert">
+                  <h2>Something went wrong</h2>
+                  <p>Error in step: {this.props.currentStep}</p>
+                  <pre>{this.state.error?.message}</pre>
+                  <button onClick={this.handleReset}>Try Again</button>
+                  <a href="https://github.com/yourorg/repo/issues">Report Issue</a>
+                </div>
+              );
+            }
+
+            return this.props.children;
+          }
+        }
+        ```
+
+        ## Update StepContainer.tsx
+
+        Wrap return value:
+        ```typescript
+        import { StepErrorBoundary } from './StepErrorBoundary';
+
+        export function StepContainer() {
+          const currentStep = PlanningContext.useSelector(selectCurrentStep);
+          // ... rest of component
+
+          return (
+            <StepErrorBoundary currentStep={currentStep}>
+              {/* existing switch/component render */}
+            </StepErrorBoundary>
+          );
+        }
+        ```
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        # Add test that throws error, verify boundary catches it
+        ```
+
+        Expected: 0 type errors, error boundary catches errors
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: null
+      issues: []
+      approval: "pending"
+
+    - id: "t-016c"
+      name: "Add accessibility features to InterviewStep"
+      estimate_minutes: 75
+      files:
+        create: []
+        modify: ["src/features/planning/components/InterviewStep.tsx"]
+        touch_only: []
+
+      instructions: |
+        # Accessibility Enhancements for InterviewStep
+
+        CRITICAL CONSTRAINTS:
+        - Modify ONLY: InterviewStep.tsx
+        - Add ARIA labels, keyboard navigation, focus management
+        - Test with keyboard only (no mouse)
+
+        ## Implementation
+
+        1. **Focus Management**
+           ```typescript
+           const questionRef = useRef<HTMLHeadingElement>(null);
+
+           useEffect(() => {
+             // When new question loads, focus it
+             if (currentQuestion && questionRef.current) {
+               questionRef.current.focus();
+             }
+           }, [currentQuestion]);
+           ```
+
+        2. **ARIA Labels**
+           ```tsx
+           <h2
+             ref={questionRef}
+             tabIndex={-1}
+             aria-live="polite"
+             aria-atomic="true"
+           >
+             {currentQuestion}
+           </h2>
+
+           <div role="group" aria-label="Answer options">
+             {currentOptions?.map((opt) => (
+               <button
+                 key={opt}
+                 onClick={() => handleSubmit(opt)}
+                 disabled={isLoading}
+                 aria-pressed={selectedOption === opt}
+               >
+                 {opt}
+               </button>
+             ))}
+           </div>
+           ```
+
+        3. **Keyboard Navigation**
+           ```typescript
+           const handleKeyDown = (e: React.KeyboardEvent, option: string) => {
+             if (e.key === 'Enter' || e.key === ' ') {
+               e.preventDefault();
+               handleSubmit(option);
+             }
+           };
+           ```
+
+        4. **Form Labels**
+           ```tsx
+           <label htmlFor="answer-input" className="sr-only">
+             Your answer
+           </label>
+           <textarea
+             id="answer-input"
+             placeholder="Type your answer..."
+             aria-required="true"
+             disabled={isLoading}
+             aria-busy={isLoading}
+           />
+           ```
+
+        5. **Loading States**
+           ```tsx
+           {isLoading && (
+             <div role="status" aria-live="polite">
+               <span className="sr-only">Loading next question...</span>
+               <div className="spinner" aria-hidden="true" />
+             </div>
+           )}
+           ```
+
+        6. **Error Messages**
+           ```tsx
+           {error && (
+             <div role="alert" aria-live="assertive">
+               {error.message}
+             </div>
+           )}
+           ```
+
+        ## CSS for Screen Reader Only
+        Add utility class (or use existing):
+        ```css
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border-width: 0;
+        }
+        ```
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        npm run dev
+        # Manual testing:
+        # 1. Navigate with Tab key only
+        # 2. Activate buttons with Enter/Space
+        # 3. Test with screen reader (NVDA/JAWS/VoiceOver)
+        ```
+
+        Expected: 0 type errors, fully keyboard accessible
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: null
+      issues: []
+      approval: "pending"
+
+    - id: "t-016d"
+      name: "Add accessibility features to FormStep"
+      estimate_minutes: 60
+      files:
+        create: []
+        modify: ["src/features/planning/components/FormStep.tsx"]
+        touch_only: []
+
+      instructions: |
+        # Accessibility Enhancements for FormStep
+
+        CRITICAL CONSTRAINTS:
+        - Modify ONLY: FormStep.tsx
+        - All form fields must have labels
+        - Form must have fieldset/legend
+        - Validation errors must be accessible
+
+        ## Implementation
+
+        1. **Form Structure**
+           ```tsx
+           <form onSubmit={handleSubmit} aria-labelledby="form-title">
+             <h2 id="form-title">{stepName}</h2>
+             <fieldset>
+               <legend className="sr-only">{stepName} form fields</legend>
+
+               <div className="form-field">
+                 <label htmlFor="question-1">
+                   Do you have existing requirements?
+                 </label>
+                 <input
+                   id="question-1"
+                   type="text"
+                   value={responses['question-1'] || ''}
+                   onChange={handleChange('question-1')}
+                   aria-required="true"
+                   aria-invalid={!!errors['question-1']}
+                   aria-describedby={errors['question-1'] ? 'error-1' : undefined}
+                 />
+                 {errors['question-1'] && (
+                   <p id="error-1" role="alert" aria-live="polite">
+                     {errors['question-1']}
+                   </p>
+                 )}
+               </div>
+
+               {/* More form fields */}
+             </fieldset>
+
+             <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+               {isSubmitting ? 'Submitting...' : 'Submit'}
+             </button>
+           </form>
+           ```
+
+        2. **Focus on First Field**
+           ```typescript
+           const firstFieldRef = useRef<HTMLInputElement>(null);
+
+           useEffect(() => {
+             firstFieldRef.current?.focus();
+           }, []);
+           ```
+
+        3. **Validation Error Summary**
+           ```tsx
+           {Object.keys(errors).length > 0 && (
+             <div role="alert" aria-live="assertive" className="error-summary">
+               <h3>Please fix the following errors:</h3>
+               <ul>
+                 {Object.entries(errors).map(([field, msg]) => (
+                   <li key={field}>
+                     <a href={`#${field}`}>{msg}</a>
+                   </li>
+                 ))}
+               </ul>
+             </div>
+           )}
+           ```
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        # Manual: Tab through form, verify all fields accessible
+        ```
+
+        Expected: 0 type errors, keyboard accessible
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors"
+
+      quality_score: null
+      issues: []
+      approval: "pending"
+
+    - id: "t-017"
+      name: "Wire up PlanningProvider in route with XState inspector"
+      estimate_minutes: 60
+      files:
+        create: []
+        modify: ["src/routes/project.$projectId.build.tsx"]
+        touch_only: []
+
+      style_anchors:
+        - path: "src/routes/project.$projectId.build.tsx"
+          lines: "1-50"
+          pattern: "Route component structure"
+
+      instructions: |
+        # Wire Provider in Route
+
+        CRITICAL CONSTRAINTS:
+        - Modify ONLY: src/routes/project.$projectId.build.tsx
+        - Replace <InterviewThread /> with <StepContainer />
+        - Wrap in <PlanningProvider>
+
+        ## Style Anchor
+        Keep existing route structure, just replace render logic
+
+        ## Implementation
+        1. Import: PlanningProvider, StepContainer
+        2. Get projectId from route params
+        3. Get entryPath from project data (or default 'new-project')
+        4. Wrap content:
+           ```tsx
+           <PlanningProvider projectId={projectId} entryPath={entryPath}>
+             <StepContainer />
+           </PlanningProvider>
+           ```
+        5. Remove old InterviewThread import and usage
+
+        ## Add XState Inspector (development only)
+        In PlanningProvider.tsx, add inspect configuration:
+        ```typescript
+        import { useActorRef } from '@xstate/react';
+
+        export function PlanningProvider({ projectId, entryPath, children }) {
+          const actorRef = useActorRef(planningMachine, {
+            input: { projectId, entryPath },
+            inspect: (inspectionEvent) => {
+              // Log state transitions in development
+              if (import.meta.env.DEV) {
+                console.log('[XState]', inspectionEvent.type, inspectionEvent);
+              }
+            },
+          });
+
+          // ... rest of provider
+        }
+        ```
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        npm run dev
+        # Manual: navigate to /project/test-123/build
+        # Check console for [XState] logs
+        ```
+
+        Expected: 0 type errors, page loads, XState logs appear
+
+      validation:
+        commands: ["npm run typecheck"]
+        expected_output: "0 type errors"
+        failure_handling: "Fix type errors and import issues"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+# ═══════════════════════════════════════════════════════════
+# PHASE 4: TESTING & CLEANUP (Day 6)
+# ═══════════════════════════════════════════════════════════
+
+phase_4:
+  name: "Testing & Cleanup"
+  goal: "E2E tests, remove old code, verify migration complete"
+  duration_hours: 8
+
+  tasks:
+    - id: "t-018"
+      name: "Write integration test for full workflow"
+      estimate_minutes: 90
+      files:
+        create: ["src/features/planning/__integration.test.tsx"]
+        modify: []
+        touch_only: []
+
+      instructions: |
+        # Integration Test
+
+        CRITICAL CONSTRAINTS:
+        - Create ONLY: __integration.test.tsx
+        - Use: @testing-library/react, vitest
+        - Test full workflow: Step 1 → Step 10
+
+        ## Test Structure
+        1. Render PlanningProvider with test actor
+        2. Verify starts in Step 1
+        3. Fill form, submit
+        4. Wait for Step 2
+        5. Answer 10 questions
+        6. Verify Step 3 loads
+        7. Answer 10 questions
+        8. Verify automated steps advance automatically
+        9. Verify Step 7 shows artifact
+        10. Approve artifact
+        11. Verify remaining steps complete
+        12. Verify final state is 'complete'
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/__integration.test.tsx -- --run
+        ```
+
+        Expected: Integration test passes (may take 30s+)
+
+      validation:
+        commands: ["npm test src/features/planning/__integration.test.tsx -- --run"]
+        expected_output: "1 test passed"
+        failure_handling: "Debug and fix workflow issues"
+
+      quality_score: null
+      issues: []
+      approval: "completed"
+
+    - id: "t-019"
+      name: "Manual QA testing in browser (functional + accessibility)"
+      estimate_minutes: 90
+      files:
+        create: [".tmp-docs/plan/qa-results.md"]
+        modify: []
+        touch_only: []
+
+      instructions: |
+        # Manual QA Session
+
+        CRITICAL CONSTRAINTS:
+        - NO code changes
+        - Document findings in .tmp-docs/plan/qa-results.md
+        - Test ONLY new XState implementation
+        - MUST test with keyboard only AND screen reader
+
+        ## Functional QA Checklist
+        1. Start dev server: npm run dev
+        2. Create new project "qa-test-xstate"
+        3. Select "Start from scratch"
+        4. Complete Step 1 form
+        5. Verify Step 2 loads with question + options
+        6. Answer 10 questions (mix of options + text)
+        7. Verify Step 2 completes, artifact generated
+        8. Verify Step 3 loads with question + options
+        9. Answer 10 questions
+        10. Verify automated steps advance automatically
+        11. Verify Step 7 shows artifact for review
+        12. Edit artifact, approve
+        13. Verify remaining steps complete
+        14. Verify project shows as complete
+        15. Test persistence: refresh page, verify state restored
+        16. Test errors: disconnect network during API call, verify error handling
+
+        ## Accessibility QA Checklist
+        17. **Keyboard Navigation Test**
+            - Navigate entire workflow using ONLY keyboard (no mouse)
+            - Tab through all interactive elements
+            - Activate buttons with Enter/Space
+            - Verify focus visible on all elements
+            - Verify focus moves to new question after submit
+            - Document: any elements unreachable, focus traps, missing focus indicators
+
+        18. **Screen Reader Test** (use NVDA/JAWS/VoiceOver)
+            - Navigate with screen reader shortcuts
+            - Verify question text is announced
+            - Verify button labels are clear
+            - Verify loading states are announced
+            - Verify error messages are announced
+            - Verify form labels are associated
+            - Document: any missing labels, confusing announcements
+
+        ## Performance Check
+        19. Open React DevTools → Profiler
+        20. Record Step 1 → Step 2 transition
+        21. Verify <20 commits
+        22. Check for unnecessary re-renders
+        23. Document any performance issues
+
+        ## Document in qa-results.md
+        - Date, tester name
+        - Each step: PASS/FAIL + notes
+        - Bugs found (with steps to reproduce)
+        - Accessibility issues (severity: critical/major/minor)
+        - Performance observations
+        - UX feedback
+
+        ## Validation
+        All critical paths PASS, zero critical accessibility bugs
+
+      validation:
+        commands: []
+        expected_output: "QA results documented, all critical paths PASS"
+        failure_handling: "Create bug tickets, fix before proceeding"
+
+      quality_score: null
+      issues:
+        - "🔴 BLOCKER: BUG-001 - Machine starts in 'idle' state but StepContainer doesn't handle it"
+        - "See: .tmp-docs/bugs/BUG-001-idle-state-handler-missing.md"
+        - "QA halted at step 4 - cannot test BACK/NEXT navigation until bug fixed"
+        - "Recommended fix: Change initial state from 'idle' to 'step1_gapAnalysis'"
+      approval: "blocked"
+
+    - id: "t-020"
+      name: "Remove old InterviewThread component and hooks"
+      estimate_minutes: 30
+      files:
+        create: []
+        modify: []
+        delete:
+          - "src/features/planning/components/InterviewThread.tsx"
+          - "src/features/planning/components/InterviewThread.test.tsx"
+          - "src/features/planning/hooks.ts (only useStreamingQuestion)"
+        touch_only: []
+
+      instructions: |
+        # Remove Old Code
+
+        CRITICAL CONSTRAINTS:
+        - Delete ONLY files listed above
+        - Verify NO other files import these
+        - Keep: parseOptions, step-config, types (still used)
+
+        ## Steps
+        1. Search codebase for imports of InterviewThread
+        2. Verify only src/routes/project.$projectId.build.tsx imported it
+        3. Verify that import was already removed in t-017
+        4. Delete InterviewThread.tsx and InterviewThread.test.tsx
+        5. Check hooks.ts - remove useStreamingQuestion, keep other exports if any
+        6. Run typecheck to verify no broken imports
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        npm test -- --run
+        grep -r "InterviewThread" src/
+        grep -r "useStreamingQuestion" src/
+        ```
+
+        Expected: 0 type errors, no matches found, all tests pass
+
+      validation:
+        commands:
+          - "npm run typecheck"
+          - "npm test -- --run"
+          - "bash -c 'grep -r InterviewThread src/ || echo OK'"
+        expected_output: "0 type errors, all tests pass, no InterviewThread references"
+        failure_handling: "Fix broken imports before deleting"
+
+      quality_score: null
+      issues: []
+      approval: "pending"
+
+    - id: "t-021"
+      name: "Update documentation and add migration notes"
+      estimate_minutes: 45
+      files:
+        create: [".tmp-docs/plan/migration-complete.md"]
+        modify: ["README.md"]
+        touch_only: []
+
+      instructions: |
+        # Documentation Update
+
+        CRITICAL CONSTRAINTS:
+        - Create: migration-complete.md
+        - Modify: README.md (add XState section)
+
+        ## migration-complete.md Contents
+        - Date completed
+        - Summary of changes
+        - Before/after architecture diagram (text/ASCII)
+        - Files added, modified, deleted
+        - Test results (unit + integration)
+        - QA summary
+        - Known issues / tech debt
+        - Next steps (if any)
+
+        ## README.md Update
+        Add section "State Management" with:
+        - XState v5 for planning workflow
+        - Link to machine definition
+        - Link to Stately Studio visualization (if published)
+        - How to debug with XState inspector
+
+        ## Validation
+        Review by team lead
+
+      validation:
+        commands: []
+        expected_output: "Docs updated, reviewed"
+        failure_handling: "Revise based on feedback"
+
+      quality_score: null
+      issues: []
+      approval: "pending"
+
+    - id: "t-022"
+      name: "Final smoke test and performance check"
+      estimate_minutes: 45
+      files:
+        create: []
+        modify: []
+        touch_only: []
+
+      instructions: |
+        # Final Verification
+
+        ## Smoke Tests
+        1. Clean install: rm -rf node_modules && npm install
+        2. Build: npm run build
+        3. Preview: npm run preview
+        4. Complete full workflow in preview build
+        5. Check browser console for errors
+        6. Check network tab for failed requests
+        7. Check bundle size (compare before/after)
+
+        ## Performance Check with React DevTools
+        1. Open React DevTools → Profiler tab
+        2. Click "Record" (red circle)
+        3. Complete Step 1 → Step 2 workflow
+        4. Click "Stop"
+        5. Review flamegraph:
+           - Look for components that re-rendered unnecessarily
+           - Check "Why did this render?" for each component
+           - Verify InterviewStep only re-renders when its data changes
+           - Verify FormStep doesn't re-render when InterviewStep changes
+        6. Commit count should be <20 for 2-step workflow
+
+        ## Chrome Performance Tab (optional deeper analysis)
+        1. Open Chrome DevTools Performance tab
+        2. Record full workflow (Step 1 → Step 10)
+        3. Check for:
+           - Long tasks (>50ms)
+           - Memory leaks
+           - Layout thrashing
+        4. Compare with baseline (if available)
+
+        ## Bundle Size
+        ```bash
+        npm run build
+        ls -lh dist/assets/*.js
+        ```
+        Expected: +20KB for XState, -50KB from removed code = net -30KB
+
+        ## Validation
+        All smoke tests pass, no performance regressions
+
+      validation:
+        commands: ["npm run build"]
+        expected_output: "Build succeeds, bundle size acceptable"
+        failure_handling: "Investigate and optimize"
+
+      quality_score: null
+      issues: []
+      approval: "pending"
+
+# ═══════════════════════════════════════════════════════════
+# SUCCESS CRITERIA & ROLLBACK PLAN
+# ═══════════════════════════════════════════════════════════
+
+success_criteria:
+  functionality:
+    - "All 10 steps work end-to-end"
+    - "Option cards render correctly in Steps 2, 3"
+    - "Question text updates immediately after submission"
+    - "Context preserved between steps"
+    - "Persistence works (localStorage)"
+    - "All existing tests pass"
+    - "New machine tests pass (30+)"
+    - "Integration test passes"
+    - "Error boundary catches and recovers from errors"
+
+  performance:
+    - "React DevTools Profiler shows <20 commits for 2-step workflow"
+    - "No unnecessary re-renders (verified via 'why did this render?')"
+    - "All components wrapped in React.memo()"
+    - "All event handlers use useCallback()"
+    - "Bundle size increase <25KB (XState 20KB, removed code -50KB)"
+
+  accessibility:
+    - "Full workflow completable with keyboard only (no mouse)"
+    - "Screen reader can navigate and understand all content"
+    - "All interactive elements keyboard accessible (Tab, Enter, Space)"
+    - "Focus management works (focus moves to new question)"
+    - "ARIA labels on all form fields and buttons"
+    - "Loading states have aria-live announcements"
+    - "Error messages have aria-live='assertive'"
+    - "No critical accessibility bugs"
+
+  code_quality:
+    - "Zero TypeScript errors"
+    - "Zero linting warnings"
+    - "Code coverage >80% for machine logic"
+    - "No console errors in production build"
+
+  documentation:
+    - "README updated with XState section"
+    - "Migration notes complete"
+    - "QA results documented (functional + accessibility)"
+
+rollback_plan:
+  trigger_conditions:
+    - "Critical bugs in production"
+    - "Performance regression >20%"
+    - "Bundle size increase >50KB"
+    - "Cannot complete migration in 7 days"
+    - "Critical accessibility issues discovered in production"
+
+  steps:
+    - "Revert branch to pre-migration commit"
+    - "Cherry-pick any bug fixes from migration branch"
+    - "Document learnings in .tmp-docs/plan/rollback-notes.md"
+    - "Schedule post-mortem to identify issues"
+
+deployment:
+  strategy: "Feature flag rollout"
+  steps:
+    - "Merge to main with feature flag disabled"
+    - "Deploy to staging, enable flag"
+    - "QA in staging (2 days)"
+    - "Deploy to production, enable for 10% users"
+    - "Monitor metrics (errors, performance, user feedback)"
+    - "Gradual rollout: 10% → 50% → 100% over 1 week"
+    - "Remove feature flag after 2 weeks at 100%"
+
+react_excellence_checklist:
+  description: "Final checklist before merging - verify React best practices"
+
+  performance:
+    - "All step components wrapped in React.memo()"
+    - "Event handlers use useCallback() with correct dependencies"
+    - "Expensive computations use useMemo() with correct dependencies"
+    - "Selectors return primitives (not new objects on every call)"
+    - "React DevTools Profiler shows <20 commits for 2-step workflow"
+    - "No unnecessary re-renders (check 'why did this render?')"
+
+  accessibility:
+    - "All interactive elements keyboard accessible (Tab, Enter, Space)"
+    - "ARIA labels on all form fields and buttons"
+    - "Focus management works (focus moves to new question after submit)"
+    - "Loading states have aria-live='polite' announcements"
+    - "Error messages have aria-live='assertive'"
+    - "Can complete workflow with keyboard only"
+    - "Can complete workflow with screen reader (NVDA/JAWS/VoiceOver)"
+    - "Semantic HTML used (<button> not <div onclick>)"
+
+  error_handling:
+    - "Error boundary catches component errors"
+    - "Error boundary shows retry button"
+    - "Network errors display user-friendly message"
+    - "Loading states prevent double-submission"
+    - "Error boundary logs to console (for debugging)"
+
+  testing:
+    - "Machine unit tests pass (30+)"
+    - "Integration test passes (full workflow)"
+    - "Manual QA checklist complete"
+    - "Accessibility testing complete (keyboard + screen reader)"
+    - "Performance testing complete (React DevTools Profiler)"
+
+  developer_experience:
+    - "XState inspector works in development (console logs appear)"
+    - "React DevTools shows component tree correctly"
+    - "TypeScript errors = 0"
+    - "Linting warnings = 0"
+    - "Code formatted consistently"
+
+notes:
+  - "All tasks sized to 30-150 minutes"
+  - "Tests written before implementation (TDD)"
+  - "Commit after each task"
+  - "If any task exceeds estimate by >50%, STOP and reassess"
+  - "Revert immediately on drift (files outside scope, new deps, etc.)"
+  - "Pair programming recommended for t-005 through t-009 (complex logic)"
+  - "Timeline updated from 6 days to 7 days based on React excellence review"
+  - "Performance, accessibility, and error handling are HIGH PRIORITY - do not skip"

@@ -4,6 +4,92 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
+---
+
+## ✅ AUTOMATED TESTING: Use Playwright MCP (Updated 2026-05-15)
+
+**For testing React forms, use Playwright MCP tools (NOT agent-browser).**
+
+### The Problem with agent-browser
+
+After comprehensive testing (Test Run #011), agent-browser was proven **fundamentally incompatible** with React form testing:
+- ❌ 5 different approaches tested - ALL FAILED to update React state
+- ❌ Cannot trigger React's synthetic event system
+- ❌ Visual fill succeeds but state remains empty
+- ❌ Causes false-positive test failures
+
+**Approaches tested and failed:**
+1. Standard `fill` commands
+2. React Fiber `memoizedProps.onChange()`
+3. IIFE wrappers
+4. Native `Event()` + `dispatchEvent()`
+5. `InputEvent()` with blur events
+
+### ✅ WORKING SOLUTION: Playwright MCP
+
+Use Playwright MCP tools which properly simulate user interactions:
+
+```javascript
+// Navigate
+mcp__playwright__browser_navigate({ url: "http://localhost:5180" })
+
+// Fill form (properly triggers React onChange)
+mcp__playwright__browser_fill_form({
+  fields: [
+    {
+      target: "#fieldId",
+      name: "Field Name",
+      type: "textbox",
+      value: "Your value here"
+    }
+  ]
+})
+
+// Click button
+mcp__playwright__browser_click({ 
+  target: "button:has-text('Submit')",
+  element: "Submit button"
+})
+
+// Screenshot
+mcp__playwright__browser_take_screenshot({ 
+  type: "png",
+  filename: ".tmp-docs/screenshots/result.png"
+})
+```
+
+### Why Playwright Works
+
+- ✅ Playwright properly simulates real user interactions
+- ✅ Triggers React's synthetic event system correctly
+- ✅ Updates component state and XState context
+- ✅ Playwright MCP available via Claude Code
+
+### Verification
+
+- ✅ Application code is CORRECT
+- ✅ Integration tests with `@testing-library/user-event` PASS (5/5)
+- ✅ Manual browser testing works perfectly
+- ✅ Playwright MCP properly updates React state (Test Run #011)
+- ❌ agent-browser FAILS for React forms (5 approaches tested, all failed)
+
+**See:** 
+- `.tmp-docs/plan/agent-browser-form-filling-guide.md` - Complete research (5 approaches documented)
+- `.tmp-docs/plan/agent-browser-quick-reference.md` - Quick reference
+- `.tmp-docs/plan/runs/011/summary.md` - Test Run #011 findings
+- `.tmp-docs/plan/learnings.md` section "step-02" - Playwright MCP examples
+- `src/features/planning/__tests__/bug-014-form-data-capture.test.tsx` - Reproduction tests (4/4 passing)
+
+**Debug Tool:** The `DebugPanel` component in development mode shows real-time XState state and DOM values, making it easy to verify form data capture.
+
+**Testing Status:**
+- ✅ 4/4 reproduction tests pass (proves root cause)
+- ✅ 5/5 integration tests pass (proves app code correct)
+- ✅ Manual browser testing works perfectly
+- ❌ Standard agent-browser commands documented as not working
+
+---
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**

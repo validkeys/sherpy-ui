@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "capturedAt": "2026-05-14T15:35:20.869Z",
+  "stepNumber": 3,
+  "label": "standard",
+  "xstateSnapshot": {
+    "status": "active",
+    "value": "step3",
+    "context": {
+      "projectId": "test-project",
+      "entryPath": "new-project",
+      "startedAt": "2026-05-14T15:35:20.869Z",
+      "updatedAt": "2026-05-14T15:35:20.869Z",
+      "step1Responses": {
+        "existingRequirements": "No",
+        "projectDescription": "Healthcare patient portal with appointment scheduling and secure messaging"
+      },
+      "step2Answers": [
+        {
+          "question": "What is the primary business goal for this project?",
+          "value": "Improve patient engagement and reduce administrative burden on healthcare staff",
+          "timestamp": "2026-05-14T10:00:00.000Z"
+        },
+        {
+          "question": "Who are the primary users of this system?",
+          "value": "Patients seeking appointments and secure communication with their healthcare providers",
+          "timestamp": "2026-05-14T10:05:00.000Z"
+        },
+        {
+          "question": "What are the key success metrics?",
+          "value": "50% reduction in phone calls for appointment scheduling, 80% patient adoption within 6 months",
+          "timestamp": "2026-05-14T10:10:00.000Z"
+        }
+      ],
+      "step2CurrentQuestion": null,
+      "step2CurrentOptions": null,
+      "step3Answers": [],
+      "step3CurrentQuestion": null,
+      "step3CurrentOptions": null,
+      "step5Responses": {},
+      "step7Edits": null,
+      "artifacts": {
+        "1": {
+          "type": "markdown",
+          "content": "# Gap Analysis Worksheet\n\n## Project Overview\nHealthcare patient portal with appointment scheduling and secure messaging\n\n## Existing Requirements\n**Do you have existing requirements?** No\n\n## Gap Analysis\nBased on the information provided, this is a new project that requires comprehensive planning.\n\n**Next Steps:**\n- Conduct business requirements interview\n- Define technical requirements\n- Establish project scope and constraints\n",
+          "generatedAt": "2026-05-14T15:35:20.869Z"
+        },
+        "2": {
+          "type": "yaml",
+          "content": "# Business Requirements\n\n## Metadata\ngenerated_at: \"2026-05-14T15:35:20.869Z\"\ntotal_questions: 3\n\n## Interview Responses\nresponses:\n  - question: \"What is the primary business goal for this project?\"\n    answer: \"Improve patient engagement and reduce administrative burden on healthcare staff\"\n    timestamp: \"2026-05-14T10:00:00.000Z\"\n  - question: \"Who are the primary users of this system?\"\n    answer: \"Patients seeking appointments and secure communication with their healthcare providers\"\n    timestamp: \"2026-05-14T10:05:00.000Z\"\n  - question: \"What are the key success metrics?\"\n    answer: \"50% reduction in phone calls for appointment scheduling, 80% patient adoption within 6 months\"\n    timestamp: \"2026-05-14T10:10:00.000Z\"\n\n## Summary\nBusiness requirements captured through 3 interview questions covering project goals, user needs, and success criteria.\n",
+          "generatedAt": "2026-05-14T15:35:20.869Z"
+        }
+      },
+      "completedSteps": [1, 2],
+      "currentStepNumber": 3,
+      "error": null
+    },
+    "children": {},
+    "historyValue": {},
+    "tags": []
+  }
+}

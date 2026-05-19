@@ -1,0 +1,98 @@
+---
+# Bug Report Template
+# Copy this template when filing new bugs
+
+bug_id: "009" # Format: "001", "002", etc.
+slug: "xstate-machine-not-initializing" # Short kebab-case descriptor
+title: "XState machine not initializing - no localStorage created after form submission"
+date_reported: "2026-05-13"
+reporter: "Claude AI Browser Agent"
+
+# Classification
+severity: "critical" # critical | high | moderate | low
+blocking: true # Does this prevent workflow completion?
+affected_step: "step-03" # Step ID from tracking.yaml (e.g., "step-03")
+
+# Description
+summary: "Gap Analysis form submission does not initialize XState machine. No localStorage planning-machine key is created, form becomes disabled but never transitions to Stage 2."
+# Brief 1-2 sentence description
+
+expected_behavior: "After clicking Submit, form data should be persisted to localStorage under key 'planning-machine-{projectId}', artifact generation should begin, and page should transition to Stage 2 (Business Requirements Interview) within 15-25 seconds."
+# What should happen
+
+actual_behavior: "Submit button click disables the form and clears field values, but NO localStorage key is created. Page remains on Stage 1. No transition occurs even after 60+ seconds. Submit button and form fields remain disabled indefinitely."
+# What actually happened
+
+# Reproduction
+steps_to_reproduce:
+  - "Clear localStorage completely (localStorage.clear())"
+  - "Navigate to http://localhost:5180"
+  - "Create new project: 'Healthcare Portal - Test 2026-05-13'"
+  - "Fill Gap Analysis form with test data"
+  - "Click Submit button"
+  - "Wait 60+ seconds"
+  - "Check localStorage - no planning-machine-{projectId} key exists"
+  - "Observe: form disabled, still on Stage 1, no transition"
+  # Exact steps to trigger the bug
+
+reproduction_rate: "always" # always | often | sometimes | rare
+
+# Evidence
+screenshot: "test-run-3-07-blocked-at-60s.png" # Path to screenshot in .tmp-docs/screenshots/
+server_logs: "No server logs captured - need to check if API call was ever made"
+console_errors: "Not checked yet - need to open DevTools console"
+network_errors: "Not checked yet - need to verify if /api/ai/generate-artifact was called"
+
+# Context
+test_run: "003" # Test run number (e.g., "001")
+project_id: "L5WIIxKU" # Project ID if applicable
+url: "http://localhost:5180/project/L5WIIxKU/build" # Full URL where bug occurred
+browser: "Chrome (agent-browser headless)" # Chrome, Firefox, etc.
+
+# Impact
+workflow_impact: "BLOCKING - Cannot test any steps beyond Gap Analysis. This is the same blocker as BUG-006, BUG-007, and BUG-008, but with a different root cause: XState machine is not initializing at all."
+# How does this affect the testing workflow?
+
+workaround: null
+# Any workaround available? (null if none)
+
+# Status
+status: "fixed" # open | investigating | fixed | wontfix | duplicate
+fixed_in: "fbcfac7" # Commit hash or PR number when fixed
+verified_fixed: true # Set to true after re-test confirms fix
+
+# Related
+related_bugs: ["006", "007", "008"]
+# IDs of related or duplicate bugs
+
+notes: |
+  CRITICAL DISTINCTION from previous bugs:
+
+  - BUG-006: Artifact generation attempted but hung
+  - BUG-007: formData was empty, isFormValid was false (corrupted localStorage suspected)
+  - BUG-008: Marked as regression of BUG-007 (later closed as "cannot reproduce" due to corrupted localStorage)
+  - BUG-009 (THIS BUG): NO localStorage created at all - XState machine never initialized
+
+  BUG-007 fix (commit ea3c22b) added defensive validation and localStorage recovery, but assumed
+  the machine was already initialized with corrupted data. This bug shows the machine may not
+  be initializing in the first place.
+
+  VERIFICATION NEEDED:
+  1. Check browser console for React/XState errors during form submission
+  2. Check network tab to verify if /api/ai/generate-artifact API call was made
+  3. Check server logs to see if any request was received
+  4. Debug XState machine initialization code to find why localStorage is never created
+  5. Verify React component mounting and actor lifecycle
+
+  TEST ENVIRONMENT:
+  - Clean localStorage (verified empty before test)
+  - Fresh project creation (not using cached/existing project)
+  - Dev server running on port 5180
+  - Project ID: L5WIIxKU
+
+  HYPOTHESIS:
+  The XState actor may not be starting properly, possibly due to:
+  - React StrictMode double-mounting issues
+  - Actor lifecycle problems during component initialization
+  - Missing context or loader data during initial render
+  - Race condition between component mount and actor start

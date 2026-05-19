@@ -1,0 +1,638 @@
+---
+metadata:
+  reviewed_plan: "/workspace/.tmp-docs/plans/structured-output-refactor.yaml"
+  review_date: "2026-05-08"
+  reviewer: "Claude Sonnet 4.5 (implementation-plan-review skill)"
+  plan_version: "1.0"
+
+overall_scores:
+  structure: 9/10
+  best_practices: 8/10
+  task_sizing: 9/10
+  completeness: 8/10
+  alignment: 9/10
+  development_readiness: 8/10
+  overall: 8.4/10
+
+summary: |
+  This is a well-structured, thoughtful implementation plan for migrating from text parsing
+  to JSON Schema structured output. The plan demonstrates strong architectural thinking,
+  comprehensive risk mitigation, and careful attention to backward compatibility.
+
+  The plan excels in clarity, task decomposition, and phased rollout strategy. The use of
+  feature flags for gradual migration is excellent engineering practice. Style anchors are
+  concrete and well-chosen.
+
+  Areas for improvement include: adding TDD checklists to more tasks, clarifying some
+  drift policies, and adding more explicit validation commands for integration testing.
+
+  **Recommendation:** READY FOR DEVELOPMENT with minor refinements suggested below.
+
+critical_issues: []
+
+high_priority_issues:
+  - id: WARN-001
+    severity: high
+    category: tdd_requirements
+    title: "TDD checklists missing from most code tasks"
+    description: |
+      Only t-struct-001 and t-struct-003 explicitly mention creating tests. Tasks t-struct-004
+      through t-struct-008 modify critical code paths but don't include TDD checklists requiring
+      tests-first approach.
+    location:
+      - tasks: ["t-struct-004", "t-struct-005", "t-struct-006", "t-struct-007", "t-struct-008"]
+    impact: |
+      Without TDD guidance, implementation might skip test coverage or write tests after code,
+      reducing test quality and missing edge cases.
+    recommendation: |
+      Add TDD checklists to each code task:
+
+      ```yaml
+      tdd_checklist:
+        - [ ] Write failing test for JSON response parsing
+        - [ ] Implement minimal code to pass test
+        - [ ] Add tests for edge cases (invalid JSON, missing fields)
+        - [ ] Refactor for clarity while keeping tests green
+        - [ ] Run validation: npm test <specific-file>.test.ts
+      ```
+
+  - id: WARN-002
+    severity: high
+    category: drift_policy
+    title: "Drift policy not explicitly stated in all task instructions"
+    description: |
+      Tasks mention "CRITICAL CONSTRAINTS" and "Touch ONLY" but don't include explicit drift
+      policy with stop criteria and revert instructions in the task instructions section.
+    location:
+      - tasks: ["t-struct-001", "t-struct-002", "t-struct-003", "t-struct-004", "t-struct-005", "t-struct-006", "t-struct-007", "t-struct-008"]
+    impact: |
+      Without explicit drift policy, implementer might not know when to stop and revert,
+      potentially introducing scope creep or unexpected dependencies.
+    recommendation: |
+      Add drift policy section to each task's instructions:
+
+      ```
+      ## DRIFT POLICY
+      STOP and revert immediately if:
+      - New dependencies introduced (not in allowed list)
+      - Files touched outside specified targets
+      - Linting/type errors cannot be resolved within task scope
+      - Tests fail and you consider modifying tests instead of implementation
+
+      If drift occurs:
+      1. STOP immediately
+      2. Revert changes: git checkout <files>
+      3. Document in docs/drift-incidents/
+      4. Report issue before proceeding
+      ```
+
+  - id: WARN-003
+    severity: high
+    category: validation
+    title: "Integration testing plan lacks executable commands"
+    description: |
+      The validation.integration_tests section lists manual tests but doesn't provide
+      executable commands or scripts. "Manual test: Step 1 with USE_STRUCTURED_OUTPUT=true"
+      is not actionable without specific steps.
+    location:
+      - section: "validation.integration_tests"
+    impact: |
+      Manual tests without clear steps are often skipped or executed inconsistently,
+      reducing confidence in the implementation.
+    recommendation: |
+      Create integration test script or provide explicit steps:
+
+      ```bash
+      # scripts/test-structured-output-integration.sh
+
+      # Test Phase 1: Step 1 only
+      USE_STRUCTURED_OUTPUT=true STRUCTURED_OUTPUT_STEPS=1 npm run dev &
+      PID=$!
+      sleep 5
+
+      # Open browser and navigate to Step 1
+      # Verify: Options render as cards (not text)
+      # Verify: Question text clean (no **Options:** section)
+      # Verify: isComplete works
+
+      kill $PID
+      ```
+
+      Or add to t-struct-009 as automated integration tests using Playwright/Cypress.
+
+medium_priority_issues:
+  - id: INFO-001
+    severity: medium
+    category: task_sizing
+    title: "t-struct-009 is at upper limit (120 minutes)"
+    description: |
+      t-struct-009 "Add comprehensive tests" is estimated at 120 minutes, which is near
+      the 150-minute maximum. The task creates one new file and modifies two existing
+      test files, which could be split for better isolation.
+    location:
+      - task: "t-struct-009"
+    impact: |
+      Large test tasks are harder to review and may take longer than estimated if edge
+      cases are discovered during implementation.
+    recommendation: |
+      Consider splitting into two tasks:
+      - t-struct-009a: "Create structured-output.test.ts" (60 min)
+      - t-struct-009b: "Update hooks.test.ts and streaming.test.ts" (60 min)
+
+      This provides a natural checkpoint and makes the work more reviewable.
+
+  - id: INFO-002
+    severity: medium
+    category: style_anchors
+    title: "Test style anchors could be more explicit"
+    description: |
+      While style anchors reference test files (e.g., "src/features/ai/server.test.ts:90-120"),
+      they could be more specific about test patterns like mocking strategies, assertion
+      patterns, and test structure.
+    location:
+      - style_anchors: ["src/features/ai/server.test.ts"]
+    impact: |
+      New tests might not follow existing testing patterns for Bedrock mocks, TextEncoder
+      usage, or error handling.
+    recommendation: |
+      Add test-specific style anchor with pattern description:
+
+      ```yaml
+      - path: "src/features/ai/server.test.ts"
+        lines: "90-120"
+        pattern: "Mocking Bedrock with TextEncoder/Decoder for JSON responses"
+        notes: "Use vi.mock for bedrockClient.send, wrap JSON in TextEncoder"
+      ```
+
+  - id: INFO-003
+    severity: medium
+    category: affirmative_instructions
+    title: "Some tasks use negative framing"
+    description: |
+      Task instructions occasionally use "DO NOT" or "MUST NOT" phrasing instead of
+      affirmative "ONLY use" or "MUST" phrasing.
+    location:
+      - tasks: ["t-struct-007"]
+      - example: "Remove onOptionsReady callback" could be "Use hook result for options"
+    impact: |
+      Negative framing is harder to follow and more prone to misinterpretation than
+      affirmative instructions.
+    recommendation: |
+      Reframe negative instructions positively:
+      - "DO NOT add new dependencies" → "ONLY use: @aws-sdk/client-bedrock-runtime"
+      - "Remove X" → "Use Y instead of X"
+      - "MUST NOT modify tests" → "MUST fix implementation to pass existing tests"
+
+  - id: INFO-004
+    severity: medium
+    category: dependencies
+    title: "Task dependency graph could show parallel opportunities"
+    description: |
+      Tasks are sequenced linearly, but some could run in parallel to reduce total time.
+      For example, t-struct-003 (feature flags) doesn't depend on t-struct-001 or t-struct-002.
+    location:
+      - tasks: ["t-struct-003"]
+    impact: |
+      Linear sequencing adds unnecessary time. Total duration could be reduced from 10-12
+      hours to 8-10 hours with parallelization.
+    recommendation: |
+      Identify parallel work streams:
+
+      **Phase 1 (parallel):**
+      - Stream A: t-struct-001 → t-struct-002 (schemas + step config)
+      - Stream B: t-struct-003 (feature flags, independent)
+
+      **Phase 2 (parallel after Phase 1):**
+      - Stream A: t-struct-004 (streaming)
+      - Stream B: t-struct-005 (non-streaming)
+
+      Document this in migration_strategy with time savings estimate.
+
+  - id: INFO-005
+    severity: medium
+    category: quality_gates
+    title: "Pre-commit hooks not specified"
+    description: |
+      The plan mentions "Pre-commit hooks" in quality gates but doesn't specify what
+      hooks should run (lint, typecheck, tests) or how to configure them.
+    location:
+      - section: "validation.quality_gates"
+    impact: |
+      Without explicit pre-commit configuration, drift might not be caught until CI runs.
+    recommendation: |
+      Add task or section specifying pre-commit configuration:
+
+      ```yaml
+      # .husky/pre-commit or package.json
+      "lint-staged": {
+        "*.ts": ["npm run lint:fix", "npm run typecheck"],
+        "*.tsx": ["npm run lint:fix", "npm run typecheck"]
+      }
+      ```
+
+      Or add to t-struct-010 (rollout) as part of setup.
+
+best_practices_violations:
+  style_anchors:
+    score: 9/10
+    issues:
+      - "5 style anchors provided (excellent)"
+      - "All reference concrete file paths with line numbers"
+      - "Missing: Test patterns could be more explicit (INFO-002)"
+    recommendation: "Add test-specific style anchor with mocking patterns"
+
+  task_sizing:
+    score: 9/10
+    issues:
+      - "All tasks between 30-120 minutes (optimal range)"
+      - "t-struct-009 at upper limit (120 min) - consider splitting (INFO-001)"
+      - "File scopes clearly defined (1-3 files per task)"
+    recommendation: "Consider splitting t-struct-009 for better isolation"
+
+  tdd_requirements:
+    score: 6/10
+    issues:
+      - "TDD checklists missing from most code tasks (WARN-001)"
+      - "t-struct-009 dedicated to testing (good)"
+      - "Validation commands present but not test-first approach"
+    recommendation: "Add TDD checklists requiring tests before implementation"
+
+  affirmative_instructions:
+    score: 8/10
+    issues:
+      - "Good use of 'Touch ONLY' and 'CRITICAL CONSTRAINTS'"
+      - "Some negative framing ('DO NOT', 'Remove X') (INFO-003)"
+      - "File scopes explicit and affirmative"
+    recommendation: "Reframe negative instructions as positive requirements"
+
+  drift_prevention:
+    score: 7/10
+    issues:
+      - "Drift policy not explicitly stated in task instructions (WARN-002)"
+      - "File scopes well-defined (helps prevent drift)"
+      - "Validation commands help catch drift early"
+    recommendation: "Add explicit drift policy to each task with stop criteria"
+
+  quality_gates:
+    score: 8/10
+    issues:
+      - "Validation commands specified per task (good)"
+      - "Quality gates section comprehensive"
+      - "Pre-commit hooks mentioned but not configured (INFO-005)"
+    recommendation: "Specify pre-commit hook configuration explicitly"
+
+  prompt_positioning:
+    score: 9/10
+    issues:
+      - "CRITICAL CONSTRAINTS at beginning (excellent)"
+      - "Style anchors early in task definitions"
+      - "Validation at end of each task (good structure)"
+    recommendation: "No changes needed - excellent positioning"
+
+gaps:
+  missing_task_types:
+    - type: "infrastructure"
+      importance: low
+      description: "No infrastructure setup task (environment variables, feature flags)"
+      recommendation: "Add brief setup task or document in t-struct-003"
+
+  missing_requirements_coverage:
+    - requirement: "Error handling for Bedrock API failures"
+      category: non-functional
+      impact: medium
+      recommendation: "Add task or section on error handling strategy"
+
+  undocumented_assumptions:
+    - task: "t-struct-001"
+      assumption: "JSON Schema Draft 2020-12 is supported by AWS Bedrock in all regions"
+      recommendation: "Document this assumption and add validation step to test in dev"
+
+    - task: "t-struct-004"
+      assumption: "response_format parameter is available in AWS SDK 3.1044.0+"
+      recommendation: "Add verification step or note in dependencies section"
+
+  missing_sections:
+    - section: "Rollback testing"
+      importance: high
+      description: |
+        The plan mentions rollback procedure but doesn't include a task to test it.
+        Testing rollback (setting USE_STRUCTURED_OUTPUT=false) is critical for production
+        confidence.
+      recommendation: "Add rollback test to t-struct-010 or create separate task"
+
+strong_areas:
+  - "Excellent phased rollout strategy with feature flags"
+  - "Strong backward compatibility approach (text + JSON)"
+  - "Clear risk identification and mitigation"
+  - "Good use of style anchors with concrete file paths"
+  - "Well-defined file scopes (1-3 files per task)"
+  - "Comprehensive acceptance criteria per task"
+  - "Clear architecture and data flow documentation"
+  - "Thoughtful migration strategy (keep parse-options.ts during rollout)"
+
+optimization_opportunities:
+  - title: "Parallel task execution"
+    description: |
+      Tasks t-struct-001, t-struct-002, and t-struct-003 could partially overlap.
+      Feature flags (t-struct-003) are independent and could start before schemas complete.
+    impact: "Could reduce Phase 1 from 2-3 hours to 1.5-2 hours"
+    recommendation: "Document parallel work streams in migration_strategy"
+
+  - title: "Automated integration testing"
+    description: |
+      Manual integration tests could be automated with Playwright/Cypress to increase
+      confidence and reduce QA time.
+    impact: "Faster validation, repeatable tests"
+    recommendation: "Consider adding to t-struct-009 or separate task"
+
+  - title: "Schema validation tooling"
+    description: |
+      Task t-struct-001 mentions npx ajv compile but could use JSON Schema validation
+      library in tests to ensure runtime schema compliance.
+    impact: "Catch schema issues earlier in development"
+    recommendation: "Add ajv or zod validation to structured-output.test.ts"
+
+specific_recommendations:
+  by_task:
+    t-struct-001:
+      - "Add TDD checklist: write tests for schema validation before creating schemas"
+      - "Add drift policy: STOP if schema doesn't match StepOption interface"
+      - "Verify JSON Schema Draft 2020-12 compatibility with AWS Bedrock in dev"
+
+    t-struct-002:
+      - "Add TDD checklist: write test for getStepResponseSchema() before implementation"
+      - "Add drift policy with file scope enforcement"
+
+    t-struct-003:
+      - "Test file should include both unit tests and integration scenarios"
+      - "Document feature flag default values and rollback behavior"
+
+    t-struct-004:
+      - "Add TDD checklist: mock Bedrock responses with response_format"
+      - "Test both streaming modes (JSON vs text) in same test file"
+      - "Verify Langfuse spans work with JSON responses"
+
+    t-struct-005:
+      - "Apply same TDD approach as t-struct-004"
+      - "Ensure consistency between streaming and non-streaming implementations"
+
+    t-struct-006:
+      - "Add TDD checklist for JSON parsing logic"
+      - "Test error handling for malformed JSON"
+      - "Verify fallback to parseOptions() works"
+
+    t-struct-007:
+      - "Reframe 'Remove onOptionsReady' as 'Use streamedOptions from hook result'"
+      - "Test that isTransitioning still prevents stale options"
+
+    t-struct-008:
+      - "Simple task, could be merged with t-struct-004 to reduce context switching"
+
+    t-struct-009:
+      - "Consider splitting into t-struct-009a (new tests) and t-struct-009b (update tests)"
+      - "Add automated integration tests using Playwright/Cypress"
+      - "Include rollback scenario testing"
+
+    t-struct-010:
+      - "Add rollback testing to acceptance criteria"
+      - "Document pre-commit hook configuration"
+      - "Create monitoring dashboard or alerts for error rates"
+
+  by_phase:
+    phase_1:
+      - "Consider parallelizing t-struct-003 with t-struct-001/002"
+      - "Add infrastructure setup documentation"
+
+    phase_2:
+      - "t-struct-004 and t-struct-005 can run in parallel (different files)"
+      - "Ensure consistency between streaming and non-streaming implementations"
+
+    phase_3:
+      - "Critical path: t-struct-006 → t-struct-007 must be sequential"
+      - "t-struct-008 could merge with earlier task"
+
+    phase_4:
+      - "Add automated integration testing to reduce manual QA"
+      - "Test rollback procedure as part of acceptance"
+
+task_sizing_analysis:
+  total_tasks: 10
+  total_estimate_minutes: 630
+  total_estimate_hours: 10.5
+
+  by_duration:
+    optimal_30_90:
+      count: 6
+      tasks: ["t-struct-001", "t-struct-002", "t-struct-003", "t-struct-005", "t-struct-007", "t-struct-008"]
+      percentage: 60%
+
+    optimal_90_150:
+      count: 4
+      tasks: ["t-struct-004", "t-struct-006", "t-struct-009", "t-struct-010"]
+      percentage: 40%
+
+    too_small: []
+    too_large: []
+
+  by_file_scope:
+    single_file: 3  # t-struct-001, t-struct-003, t-struct-010 (creates)
+    two_to_three_files: 6  # t-struct-002, t-struct-004, t-struct-005, t-struct-006, t-struct-007, t-struct-008
+    more_than_three: 1  # t-struct-009 (3 files)
+
+  assessment: |
+    Task sizing is excellent. All tasks fall within optimal range (30-150 minutes).
+    File scopes are well-defined (1-3 files per task). Only t-struct-009 touches 3 files
+    but is justified as a comprehensive testing task.
+
+    Consider splitting t-struct-009 for better isolation, but current sizing is acceptable.
+
+dependency_analysis:
+  critical_path:
+    - t-struct-001  # 60 min
+    - t-struct-002  # 45 min (depends on 001)
+    - t-struct-004  # 90 min (depends on 002, 003)
+    - t-struct-005  # 60 min (depends on 004)
+    - t-struct-006  # 90 min (depends on 005)
+    - t-struct-007  # 45 min (depends on 006)
+    - t-struct-009  # 120 min (depends on 007, 008)
+    - t-struct-010  # 60 min (depends on 009)
+
+  critical_path_duration_minutes: 570
+  critical_path_duration_hours: 9.5
+
+  parallel_opportunities:
+    - phase: "Phase 1"
+      can_parallelize:
+        - stream_a: ["t-struct-001", "t-struct-002"]  # 105 min
+        - stream_b: ["t-struct-003"]  # 30 min
+      time_saved: "75 minutes (stream_b completes while stream_a still running)"
+      total_phase_duration: 105  # instead of 135
+
+    - phase: "Phase 2"
+      can_parallelize:
+        - stream_a: ["t-struct-004"]  # 90 min (streaming)
+        - stream_b: ["t-struct-005"]  # 60 min (non-streaming, independent)
+      time_saved: "60 minutes (stream_b completes while stream_a continues)"
+      total_phase_duration: 90  # instead of 150
+
+  optimized_duration:
+    original: 630  # minutes (10.5 hours)
+    with_parallelization: 495  # minutes (8.25 hours)
+    time_saved: 135  # minutes (2.25 hours)
+
+  dependency_issues: []
+  circular_dependencies: []
+
+  assessment: |
+    Dependency graph is clean with no circular dependencies. Critical path is well-defined.
+
+    Significant optimization opportunity: parallelizing independent tasks in Phase 1 and
+    Phase 2 could reduce total time from 10.5 hours to ~8.25 hours (21% reduction).
+
+requirement_coverage:
+  functional_requirements:
+    - requirement: "Zero duplicate option text in UI"
+      coverage: ["t-struct-001", "t-struct-006", "t-struct-007"]
+      status: "covered"
+
+    - requirement: "Question text clean (no **Options:** section)"
+      coverage: ["t-struct-001", "t-struct-006"]
+      status: "covered"
+
+    - requirement: "Type-safe responses from LLM"
+      coverage: ["t-struct-001", "t-struct-002", "t-struct-004", "t-struct-005", "t-struct-006"]
+      status: "covered"
+
+    - requirement: "Feature flag enables gradual rollout"
+      coverage: ["t-struct-003", "t-struct-010"]
+      status: "covered"
+
+    - requirement: "All 159 tests passing"
+      coverage: ["t-struct-009"]
+      status: "covered"
+
+    - requirement: "Backward compatibility (text + JSON)"
+      coverage: ["t-struct-004", "t-struct-005", "t-struct-006"]
+      status: "covered"
+
+  non_functional_requirements:
+    - requirement: "Zero downtime migration"
+      coverage: ["t-struct-003", "t-struct-010"]
+      status: "covered"
+
+    - requirement: "Response time ≤ current"
+      coverage: ["validation.performance"]
+      status: "partially covered (manual testing)"
+      gap: "No automated performance testing specified"
+
+    - requirement: "Langfuse observability preserved"
+      coverage: ["t-struct-004", "t-struct-005"]
+      status: "covered"
+
+    - requirement: "No breaking changes to StepOption interface"
+      coverage: ["t-struct-001", "t-struct-009"]
+      status: "covered"
+
+  gaps:
+    - requirement: "Error handling for Bedrock API failures"
+      status: "not explicitly covered"
+      recommendation: "Add error handling scenarios to t-struct-006 or t-struct-009"
+
+    - requirement: "Performance regression testing"
+      status: "manual only"
+      recommendation: "Add automated performance benchmarks to t-struct-009"
+
+readiness_assessment:
+  overall_readiness: "ready_with_improvements"
+  confidence_level: "high"
+
+  strengths:
+    - "Well-structured with clear phases and dependencies"
+    - "Excellent backward compatibility strategy"
+    - "Feature flags enable safe, gradual rollout"
+    - "Good risk identification and mitigation"
+    - "Style anchors are concrete and actionable"
+    - "Task sizing within optimal range"
+    - "Clear acceptance criteria per task"
+
+  blockers: []
+
+  recommended_improvements:
+    critical: []
+    high:
+      - "Add TDD checklists to code tasks (WARN-001)"
+      - "Add explicit drift policy to all tasks (WARN-002)"
+      - "Create executable integration test script (WARN-003)"
+    medium:
+      - "Consider splitting t-struct-009 for better isolation (INFO-001)"
+      - "Add test-specific style anchors (INFO-002)"
+      - "Reframe negative instructions positively (INFO-003)"
+      - "Document parallel task opportunities (INFO-004)"
+      - "Specify pre-commit hook configuration (INFO-005)"
+    low:
+      - "Add rollback testing to acceptance criteria"
+      - "Document assumptions about AWS Bedrock capabilities"
+
+  estimated_timeline:
+    with_current_plan: "10.5 hours development + 3 weeks rollout"
+    with_improvements: "11 hours development (added test rigor) + 3 weeks rollout"
+    with_parallelization: "8.25 hours development + 3 weeks rollout"
+
+  recommendation: |
+    **READY FOR DEVELOPMENT** with high confidence after addressing high-priority improvements.
+
+    The plan is well-thought-out and demonstrates strong engineering practices. The phased
+    rollout strategy with feature flags is excellent. Style anchors are concrete and helpful.
+
+    Before starting development:
+    1. Add TDD checklists to tasks t-struct-004 through t-struct-008 (WARN-001)
+    2. Add explicit drift policy to all task instructions (WARN-002)
+    3. Create or specify integration testing approach (WARN-003)
+
+    Optional optimizations:
+    - Document parallel work opportunities to reduce timeline by ~2 hours
+    - Consider splitting t-struct-009 for better isolation
+    - Add automated performance regression tests
+
+    With these improvements, the plan will be production-ready and follow all best practices.
+    The team can begin development with high confidence in success.
+
+next_steps:
+  immediate:
+    - "Address WARN-001: Add TDD checklists to code modification tasks"
+    - "Address WARN-002: Add drift policy to all task instructions"
+    - "Address WARN-003: Create integration test script or automate"
+
+  before_development:
+    - "Review and approve updated plan"
+    - "Set up development environment with feature flags"
+    - "Verify AWS Bedrock JSON Schema support in target region"
+
+  during_development:
+    - "Follow TDD approach strictly (tests before code)"
+    - "Monitor drift and revert immediately if criteria met"
+    - "Commit after each completed task"
+    - "Run validation commands per task"
+
+  after_development:
+    - "Execute Phase 1 rollout (Step 1 only, 1 week)"
+    - "Monitor error rates, response times, user feedback"
+    - "Proceed to Phase 2 if metrics good"
+    - "Document lessons learned"
+
+approval_status: "approved_with_conditions"
+approval_conditions:
+  - "Add TDD checklists to tasks t-struct-004 through t-struct-008"
+  - "Add explicit drift policy section to all task instructions"
+  - "Create or specify integration testing approach"
+
+notes: |
+  This is one of the better implementation plans I've reviewed. The architectural thinking
+  is sound, the phased approach is prudent, and the backward compatibility strategy shows
+  mature engineering judgment.
+
+  The main gaps are around TDD rigor and drift prevention - both easily addressed by adding
+  standard sections to task instructions.
+
+  The team should feel confident proceeding with this plan after addressing the three
+  high-priority improvements.

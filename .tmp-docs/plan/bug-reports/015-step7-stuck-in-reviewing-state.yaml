@@ -1,0 +1,272 @@
+---
+bug_id: "BUG-015"
+title: "Step 7 (Architecture Decisions) stuck in 'reviewing' state indefinitely"
+severity: "blocker"
+status: "resolved"
+priority: "high"
+discovered_date: "2026-05-15"
+discovered_in: "test-run-012"
+discovered_by: "Claude + Playwright MCP"
+resolved_date: "2026-05-15"
+resolved_by: "Claude Sonnet 4.5"
+
+# Summary
+summary: |
+  Step 7 (Architecture Decision Records) enters the "reviewing" state after
+  loading but never exits it. The workflow becomes stuck showing "Waiting for
+  artifact generation..." indefinitely, blocking progression to Steps 8-10.
+
+# Environment
+environment:
+  project_id: "ao6ddBzC"
+  url: "http://localhost:5180/project/ao6ddBzC/build"
+  browser: "Chromium 147.0.7727.137"
+  platform: "Linux (Debian GNU/Linux 12)"
+  dev_server: "Vite (port 5180)"
+  testing_tool: "Playwright MCP"
+
+# Reproduction Steps
+reproduction_steps:
+  - step: 1
+    action: "Complete Steps 1-6 successfully"
+    expected: "Progress through Gap Analysis → Definition of Done"
+    actual: "Steps 1-6 complete normally"
+
+  - step: 2
+    action: "Wait for Step 7 to load"
+    expected: "Step 7 loads and begins artifact generation"
+    actual: "Step 7 loads, enters 'reviewing' state"
+
+  - step: 3
+    action: "Observe application state"
+    expected: "Artifact generation completes within 30 seconds"
+    actual: "State remains stuck showing 'Waiting for artifact generation...'"
+
+  - step: 4
+    action: "Wait 15-20 minutes"
+    expected: "Artifact generation completes or times out with error"
+    actual: "No state change occurs, remains in 'reviewing' state"
+
+  - step: 5
+    action: "Refresh browser page"
+    expected: "Page reloads and recovers or shows error"
+    actual: "State persists from localStorage, still stuck in 'reviewing'"
+
+# Observed Behavior
+observed_behavior:
+  xstate_machine_state: '{"step7_archDecisions":"reviewing"}'
+  ui_message: "Waiting for artifact generation..."
+  next_button_state: "disabled"
+  artifacts_generated: 6  # Steps 1-6 only
+  step_7_artifact_status: "not generated"
+  duration_observed: "17+ minutes"
+  console_errors: "6 React StrictMode warnings (not related)"
+  network_errors: "unknown (needs investigation)"
+
+# Expected Behavior
+expected_behavior:
+  description: |
+    Step 7 should generate the Architecture Decision Records artifact and
+    progress to Step 8 automatically (or enable Next button).
+
+  expected_flow:
+    - "Step 7 enters 'reviewing' state"
+    - "Artifact generation API call completes"
+    - "Artifact added to XState context.artifacts[7]"
+    - "State transitions from 'reviewing' to completion"
+    - "Next button becomes enabled"
+    - "Workflow auto-progresses to Step 8 (or waits for user to click Next)"
+
+# Technical Details
+technical_details:
+  xstate_context:
+    projectId: "ao6ddBzC"
+    currentStepNumber: 7
+    completedSteps: [1, 2, 3, 4, 5, 6]
+    artifacts_count: 6
+    step1Responses:
+      existingRequirements: "No"
+      projectDescription: "Healthcare patient portal with appointment scheduling and secure messaging"
+    step2Answers: "10 items"
+    step3Answers: "10 items"
+
+  state_persistence:
+    storage: "localStorage"
+    key: "planning-machine-ao6ddBzC"
+    persists_after_refresh: true
+
+  debug_panel_output: |
+    Actor Status: active
+    Actor ID: x:2
+    Current State: {"step7_archDecisions":"reviewing"}
+    Current Step Number: 7
+    Completed Steps: [1, 2, 3, 4, 5, 6]
+    Artifacts: 6 generated
+
+# Impact
+impact:
+  user_impact: "Blocks completion of full 10-step workflow"
+  workflow_impact: "Cannot test or reach Steps 8, 9, 10"
+  data_impact: "Step 7 artifact never generated"
+  recovery_method: "Requires localStorage clearing or new project"
+  affected_features:
+    - "Step 7: Architecture Decision Records"
+    - "Step 8: Delivery Timeline"
+    - "Step 9: QA Test Plan"
+    - "Step 10: Generate Summaries"
+
+# Root Cause Analysis (Preliminary)
+root_cause_analysis:
+  suspected_causes:
+    - "Artifact generation API call failing silently"
+    - "XState transition condition not met"
+    - "Timeout in artifact generation with no error handling"
+    - "Missing state transition from 'reviewing' to next state"
+    - "Backend artifact generation endpoint not responding"
+
+  investigation_needed:
+    - "Check Step 7 artifact generation endpoint (backend)"
+    - "Review XState machine definition for step7_archDecisions transitions"
+    - "Inspect network requests during Step 7 loading"
+    - "Check backend server logs for errors/timeouts"
+    - "Verify artifact generation logic for Step 7"
+    - "Test with browser DevTools Network tab to see API calls"
+
+# Workarounds
+workarounds:
+  - workaround: "Clear localStorage and restart workflow"
+    effectiveness: "Temporary - bug will recur at Step 7"
+    steps:
+      - "Open browser DevTools"
+      - "Application tab → Local Storage"
+      - "Delete 'planning-machine-ao6ddBzC' key"
+      - "Refresh page"
+      - "Start new project"
+
+  - workaround: "Test Steps 1-6 only"
+    effectiveness: "Sufficient for form data capture validation (BUG-014)"
+    limitation: "Cannot test Steps 8-10"
+
+# Fix Recommendations
+fix_recommendations:
+  - recommendation: "Add timeout handling for artifact generation"
+    priority: "high"
+    description: |
+      Implement a 30-second timeout for artifact generation. If generation
+      doesn't complete, show error message and allow retry or skip.
+
+  - recommendation: "Add error boundaries for state machine transitions"
+    priority: "high"
+    description: |
+      Catch and handle state transition failures. Log errors to console and
+      show user-friendly error messages.
+
+  - recommendation: "Improve artifact generation observability"
+    priority: "medium"
+    description: |
+      Add progress indicators, show API call status in Debug Panel, log
+      generation attempts and failures.
+
+  - recommendation: "Add manual recovery options"
+    priority: "medium"
+    description: |
+      Provide "Skip Step" or "Retry Generation" buttons in development mode
+      to manually recover from stuck states.
+
+# Testing Recommendations
+testing_recommendations:
+  - test: "Add integration test for Step 7 artifact generation"
+    type: "integration"
+    description: "Test that Step 7 completes within 30 seconds"
+
+  - test: "Add timeout test for Step 7"
+    type: "error_handling"
+    description: "Test behavior when artifact generation times out"
+
+  - test: "Add state machine transition tests"
+    type: "unit"
+    description: "Verify all state transitions work correctly"
+
+  - test: "Add end-to-end test for full workflow"
+    type: "e2e"
+    description: "Test Steps 1-10 completion in single run"
+
+# Related Issues
+related_issues:
+  - issue_id: "BUG-012"
+    relationship: "resolved_in_same_test_run"
+    description: "Form data not captured - resolved"
+
+  - issue_id: "BUG-014"
+    relationship: "resolved_in_same_test_run"
+    description: "Form data not captured (Run 008) - resolved"
+
+# Test Evidence
+test_evidence:
+  screenshots:
+    - file: ".tmp-docs/screenshots/test-run-012-11-step7-architecture-decisions.png"
+      description: "Step 7 loading state"
+      timestamp: "2026-05-15T14:50:00Z"
+
+    - file: ".tmp-docs/screenshots/test-run-012-12-final-state-step7.png"
+      description: "Step 7 stuck in reviewing state"
+      timestamp: "2026-05-15T14:52:00Z"
+
+    - file: ".tmp-docs/screenshots/test-run-012-13-step7-stuck.png"
+      description: "Step 7 still stuck after page refresh"
+      timestamp: "2026-05-15T15:08:00Z"
+
+  tracking_file: ".tmp-docs/plan/runs/012/tracking.yaml"
+  test_summary: ".tmp-docs/plan/runs/012/final-summary.md"
+
+# Notes
+notes: |
+  This bug was discovered during Test Run #012 while validating the resolution
+  of BUG-014 (form data capture). Steps 1-6 completed successfully, demonstrating
+  that the primary test objective (form data capture validation) was achieved.
+
+  However, the workflow became stuck at Step 7, preventing validation of the
+  final three steps (8-10). This is a new issue not present in previous test runs.
+
+  The bug's persistence across page refreshes (due to localStorage) suggests the
+  issue is in the artifact generation logic or state machine transitions, not
+  just a transient loading issue.
+
+# Assignment
+assigned_to: null
+assigned_date: null
+
+# Resolution
+resolution:
+  status: "resolved"
+  resolved_date: "2026-05-15"
+  resolved_by: "Claude Sonnet 4.5"
+  resolution_notes: |
+    Changed Step 7 machine definition to start in 'generating' state instead
+    of 'reviewing' state. Now matches pattern of Steps 4, 6, 8, 9, 10.
+
+    Fix adds artifact generation phase before review phase:
+    - Initial state: 'generating' (was 'reviewing')
+    - Invokes generateArtifact actor
+    - On success: stores artifact and transitions to 'reviewing'
+    - On error: retries with error message
+
+    Verified with 5 integration tests covering:
+    1. Initial state is 'generating'
+    2. Generating state invokes generateArtifact
+    3. Reviewing state handles edit/approve
+    4. Transition from generating to reviewing works
+    5. Pattern matches other automated steps
+  fix_commit: null
+  verified_in_test_run: "integration-tests"
+  files_changed:
+    - path: "src/features/planning/machines/planningMachine.ts"
+      lines: "764-802"
+      change_type: "modified"
+    - path: "src/features/planning/__tests__/bug-015-step7-stuck.test.tsx"
+      lines: "1-105"
+      change_type: "added"
+  tests_added: 5
+  tests_passing: 5
+
+---

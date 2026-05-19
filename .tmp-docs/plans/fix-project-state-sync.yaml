@@ -1,0 +1,875 @@
+---
+# Implementation Plan: Fix Project State Synchronization
+# Bug #002: Dashboard and Build Page Show Different Steps
+
+metadata:
+  plan_id: fix-state-sync-001
+  created: 2026-05-13
+  status: ready
+  estimated_duration: 2-3 days
+  bug_report: .tmp-docs/plan/bug-reports/002-project-state-display-mismatch.yaml
+  closes_bug: "002"
+
+problem_statement: |
+  Dashboard shows "Step 2" while build page shows "Step 1" for the same project.
+  Root cause: Planning machine (localStorage) and backend (Project.currentStep)
+  are two independent sources of truth with no synchronization.
+
+  Original bug report: .tmp-docs/plan/bug-reports/002-project-state-display-mismatch.yaml
+
+solution_approach: |
+  Make backend the single source of truth:
+  1. Planning machine syncs currentStep to backend on every transition
+  2. Build page initializes planning machine from backend currentStep
+  3. localStorage used only for draft answers (UI state), not step position
+  4. Backend wins all conflicts
+
+constraints:
+  dependencies:
+    only_use: [existing stack - no new dependencies needed]
+  file_scope:
+    touch_only:
+      - app/api/projects.ts (new API endpoint)
+      - src/features/projects/store.ts (add updateCurrentStep)
+      - src/features/planning/machines/planningMachine.ts (add sync action)
+      - app/routes/project/$projectId.build.tsx (initialize from backend)
+      - src/features/planning/machines/PlanningMachineContext.tsx (conflict resolution)
+  validation_gates:
+    - npm run typecheck (zero errors)
+    - npm test (all passing)
+    - Manual test: complete step, refresh, verify consistency
+
+style_anchors:
+  - path: app/api/ai/interview.ts
+    lines: 1-50
+    pattern: vinxi/http defineEventHandler with validation and error handling
+  - path: src/features/projects/store.ts
+    lines: 33-46
+    pattern: Store update functions with validation
+  - path: src/features/planning/machines/planningMachine.ts
+    lines: 237-242
+    pattern: XState actions with assign
+
+drift_policy:
+  stop_immediately_if:
+    - New dependencies proposed
+    - Files touched outside scope (>5 files)
+    - Tests fail and model wants to modify tests
+    - Type errors cannot be resolved in scope
+  revert_and_document: true
+  incident_documentation: docs/drift-incidents/
+  actions_on_drift:
+    - Stop immediately and return error
+    - Revert workspace to pre-task state
+    - Document incident in docs/drift-incidents/ with details
+    - Update rules in CLAUDE.md to prevent recurrence
+
+# ============================================================================
+# MILESTONE 1: Backend API for Step Updates
+# ============================================================================
+
+milestones:
+  - id: m1
+    name: Backend API for Step Updates
+    description: Add API endpoint to update Project.currentStep
+    estimated_hours: 2
+
+    tasks:
+      - id: t-001
+        name: "[TDD RED] Write tests for updateCurrentStep"
+        estimate_minutes: 30
+
+        files:
+          create: [src/features/projects/store.test.ts]
+
+        instructions: |
+          ## TDD: RED PHASE
+          Write FAILING tests first. DO NOT implement yet.
+
+          ## CRITICAL CONSTRAINTS
+          - Create: src/features/projects/store.test.ts
+          - Tests MUST fail (function doesn't exist yet)
+          - Cover: valid update, invalid projectId, invalid stepNumber, timestamp update
+
+          ## Implementation
+          ```typescript
+          import { describe, it, expect, beforeEach } from 'vitest';
+          import {
+            updateCurrentStep,
+            getProject,
+            _resetStore
+          } from './store';
+
+          describe('updateCurrentStep', () => {
+            beforeEach(() => {
+              // CRITICAL: Reset store for test isolation
+              _resetStore();
+            });
+
+            it('should update currentStep for valid input', () => {
+              // Test will fail - function doesn't exist yet
+              const updated = updateCurrentStep('seed-0001', 3);
+              expect(updated.currentStep).toBe(3);
+              expect(updated.id).toBe('seed-0001');
+            });
+
+            it('should update lastTouchedAt timestamp', () => {
+              const before = new Date().toISOString();
+              const updated = updateCurrentStep('seed-0001', 2);
+              expect(updated.lastTouchedAt).toBeGreaterThanOrEqual(before);
+            });
+
+            it('should throw error for non-existent project', () => {
+              expect(() => updateCurrentStep('fake-id', 2))
+                .toThrow('Project not found: fake-id');
+            });
+
+            it('should throw error for stepNumber < 1', () => {
+              expect(() => updateCurrentStep('seed-0001', 0))
+                .toThrow('Invalid step: 0');
+            });
+
+            it('should throw error for stepNumber > 10', () => {
+              expect(() => updateCurrentStep('seed-0001', 11))
+                .toThrow('Invalid step: 11');
+            });
+          });
+          ```
+
+          ## Validation
+          - npm test src/features/projects/store.test.ts
+          - EXPECTED: Tests FAIL (function doesn't exist)
+
+        validation:
+          commands: [npm test src/features/projects/store.test.ts]
+          expected_output: "Tests FAIL - updateCurrentStep is not a function"
+          failure_handling: "If tests pass, something is wrong. Tests must fail first."
+
+      - id: t-002
+        name: "[TDD GREEN] Implement updateCurrentStep to pass tests"
+        estimate_minutes: 30
+
+        files:
+          modify_only: [src/features/projects/store.ts]
+
+        style_anchors:
+          - path: src/features/projects/store.ts
+            lines: 33-46
+            pattern: updateProjectStatus function structure
+
+        instructions: |
+          ## TDD: GREEN PHASE
+          Write MINIMAL code to make tests pass.
+
+          ## CRITICAL CONSTRAINTS
+          - ONLY modify: src/features/projects/store.ts
+          - Follow pattern from updateProjectStatus (lines 33-46)
+          - Write ONLY enough code to pass tests (no extra features)
+
+          ## Implementation
+          Add function after updateProjectStatus:
+          ```typescript
+          export function updateCurrentStep(
+            id: string,
+            stepNumber: number,
+          ): Project {
+            const project = store.get(id);
+            if (!project) throw new Error(`Project not found: ${id}`);
+            if (stepNumber < 1 || stepNumber > 10) {
+              throw new Error(`Invalid step: ${stepNumber}`);
+            }
+
+            const updated = {
+              ...project,
+              currentStep: stepNumber,
+              lastTouchedAt: new Date().toISOString(),
+            };
+            store.set(id, updated);
+            return updated;
+          }
+          ```
+
+          ## Validation
+          - npm test src/features/projects/store.test.ts
+          - EXPECTED: All tests PASS
+
+        validation:
+          commands: [npm test src/features/projects/store.test.ts, npm run typecheck]
+          expected_output: "All tests passing, 0 type errors"
+          failure_handling: "STOP. Revise implementation to pass tests. DO NOT modify tests."
+
+      - id: t-003
+        name: "[TDD RED] Write tests for API endpoint"
+        estimate_minutes: 45
+
+        files:
+          create: [app/api/projects.test.ts]
+
+        instructions: |
+          ## TDD: RED PHASE
+          Write FAILING tests for PUT endpoint. DO NOT implement endpoint yet.
+
+          ## CRITICAL CONSTRAINTS
+          - Create: app/api/projects.test.ts
+          - Tests MUST fail (endpoint doesn't exist yet)
+          - Mock projects store
+
+          ## Implementation
+          ```typescript
+          import { describe, it, expect, beforeEach, vi } from 'vitest';
+          import { updateCurrentStep } from '../../src/features/projects/store';
+
+          // Mock the PUT handler (doesn't exist yet)
+          const PUT = async (request: Request) => {
+            throw new Error('Not implemented');
+          };
+
+          describe('PUT /api/projects - Update Step', () => {
+            beforeEach(() => {
+              vi.clearAllMocks();
+            });
+
+            it('should update currentStep for valid input', async () => {
+              const request = new Request('http://localhost', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  projectId: 'seed-0001',
+                  stepNumber: 3
+                }),
+              });
+
+              const response = await PUT(request);
+              expect(response.status).toBe(200);
+
+              const project = await response.json();
+              expect(project.currentStep).toBe(3);
+            });
+
+            it('should return 400 for missing projectId', async () => {
+              const request = new Request('http://localhost', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stepNumber: 3 }),
+              });
+
+              const response = await PUT(request);
+              expect(response.status).toBe(400);
+            });
+
+            it('should return 500 for invalid stepNumber', async () => {
+              const request = new Request('http://localhost', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  projectId: 'seed-0001',
+                  stepNumber: 11
+                }),
+              });
+
+              const response = await PUT(request);
+              expect(response.status).toBe(500);
+            });
+
+            it('should return 500 for non-existent project', async () => {
+              const request = new Request('http://localhost', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  projectId: 'fake-id',
+                  stepNumber: 3
+                }),
+              });
+
+              const response = await PUT(request);
+              expect(response.status).toBe(500);
+            });
+          });
+          ```
+
+          ## Validation
+          - npm test app/api/projects.test.ts
+          - EXPECTED: Tests FAIL (Not implemented)
+
+        validation:
+          commands: [npm test app/api/projects.test.ts]
+          expected_output: "Tests FAIL - Not implemented"
+          failure_handling: "Tests must fail first."
+
+      - id: t-004
+        name: "[TDD GREEN] Implement API endpoint to pass tests"
+        estimate_minutes: 45
+
+        files:
+          modify_only: [app/api/projects.ts]
+
+        style_anchors:
+          - path: app/api/ai/interview.ts
+            lines: 1-50
+            pattern: vinxi/http defineEventHandler with validation and error handling
+
+        instructions: |
+          ## TDD: GREEN PHASE
+          Implement PUT endpoint to make tests pass.
+
+          ## CRITICAL CONSTRAINTS
+          - ONLY modify: app/api/projects.ts
+          - Follow existing endpoint patterns in this file
+          - Write ONLY enough to pass tests
+
+          ## Implementation
+          Add export for PUT handler:
+          ```typescript
+          export async function PUT(request: Request) {
+            try {
+              const { projectId, stepNumber } = await request.json();
+
+              if (!projectId || typeof stepNumber !== 'number') {
+                return new Response(
+                  JSON.stringify({ error: 'Invalid input' }),
+                  { status: 400 }
+                );
+              }
+
+              const updated = updateCurrentStep(projectId, stepNumber);
+              return new Response(JSON.stringify(updated), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+              });
+
+            } catch (error) {
+              console.error('[API] Update step failed:', error);
+              return new Response(
+                JSON.stringify({ error: error.message }),
+                { status: 500, headers: { 'Content-Type': 'application/json' } }
+              );
+            }
+          }
+          ```
+
+          ## Validation
+          - npm test app/api/projects.test.ts
+          - EXPECTED: All tests PASS
+
+        validation:
+          commands: [npm test app/api/projects.test.ts, npm run typecheck]
+          expected_output: "All tests passing, 0 type errors"
+          failure_handling: "STOP. Revise implementation. DO NOT modify tests."
+
+# ============================================================================
+# MILESTONE 2: Planning Machine Sync
+# ============================================================================
+
+  - id: m2
+    name: Planning Machine Syncs to Backend
+    description: Planning machine calls API to update backend on step transitions
+    estimated_hours: 3
+    depends_on: [m1]
+
+    tasks:
+      - id: t-005
+        name: "[TDD RED] Write tests for planning machine sync"
+        estimate_minutes: 60
+
+        files:
+          modify_only: [src/features/planning/machines/planningMachine.test.ts]
+
+        instructions: |
+          ## TDD: RED PHASE
+          Write FAILING tests for sync behavior. DO NOT implement sync yet.
+
+          ## CRITICAL CONSTRAINTS
+          - ONLY modify: src/features/planning/machines/planningMachine.test.ts
+          - Mock fetch API
+          - Tests MUST fail (sync doesn't exist yet)
+
+          ## Implementation
+          Add tests to existing test file:
+          ```typescript
+          describe('Backend sync on step transitions', () => {
+            let mockFetch: any;
+
+            beforeEach(() => {
+              // CRITICAL: Mock fetch for test isolation
+              mockFetch = vi.fn(() =>
+                Promise.resolve({
+                  ok: true,
+                  json: () => Promise.resolve({}),
+                })
+              );
+              global.fetch = mockFetch;
+            });
+
+            it('should sync to backend when completing step 1', async () => {
+              const actor = createActor(planningMachine, {
+                input: { projectId: 'test-123', entryPath: 'scratch' }
+              });
+              actor.start();
+
+              // Trigger step completion
+              actor.send({ type: 'COMPLETE' });
+
+              await waitFor(() => {
+                expect(mockFetch).toHaveBeenCalledWith(
+                  '/api/projects',
+                  expect.objectContaining({
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      projectId: 'test-123',
+                      stepNumber: 2
+                    }),
+                  })
+                );
+              });
+            });
+
+            it('should continue if sync fails', async () => {
+              mockFetch.mockRejectedValue(new Error('Network error'));
+
+              const actor = createActor(planningMachine, {
+                input: { projectId: 'test-123', entryPath: 'scratch' }
+              });
+              actor.start();
+
+              // Should not throw
+              expect(() => {
+                actor.send({ type: 'COMPLETE' });
+              }).not.toThrow();
+
+              // Machine should progress despite error
+              await waitFor(() => {
+                expect(actor.getSnapshot().context.currentStepNumber).toBe(2);
+              });
+            });
+          });
+          ```
+
+          ## Validation
+          - npm test src/features/planning/machines/planningMachine.test.ts
+          - EXPECTED: Tests FAIL (sync not implemented)
+
+        validation:
+          commands: [npm test src/features/planning/machines/planningMachine.test.ts]
+          expected_output: "Tests FAIL - fetch not called"
+          failure_handling: "Tests must fail first."
+
+      - id: t-006
+        name: "[TDD GREEN] Implement planning machine sync to pass tests"
+        estimate_minutes: 90
+
+        files:
+          modify_only: [src/features/planning/machines/planningMachine.ts]
+
+        style_anchors:
+          - path: src/features/planning/machines/planningMachine.ts
+            lines: 237-242
+            pattern: XState actions with assign
+
+        instructions: |
+          ## TDD: GREEN PHASE
+          Implement sync to make tests pass. Write MINIMAL code.
+
+          ## CRITICAL CONSTRAINTS
+          - ONLY modify: src/features/planning/machines/planningMachine.ts
+          - Follow existing action patterns
+          - Handle errors gracefully (log, don't throw)
+
+          ## Implementation
+          1. Add helper function before machine definition:
+          ```typescript
+          async function syncStepToBackend(
+            projectId: string,
+            stepNumber: number
+          ): Promise<void> {
+            try {
+              const response = await fetch('/api/projects', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId, stepNumber }),
+              });
+
+              if (!response.ok) {
+                throw new Error(`Sync failed: ${response.status}`);
+              }
+
+              console.log(`[Planning Machine] Synced step ${stepNumber} to backend`);
+            } catch (error) {
+              console.error('[Planning Machine] Failed to sync step:', error);
+              // Don't throw - allow UI to continue
+            }
+          }
+          ```
+
+          2. Add to step transition actions (example for step 1 → 2):
+          ```typescript
+          actions: [
+            assign({ currentStepNumber: 2, updatedAt: () => new Date().toISOString() }),
+            ({ context }) => syncStepToBackend(context.projectId, 2),
+          ],
+          ```
+
+          3. Update ALL step transitions (9 transitions total)
+
+          ## Validation
+          - npm test src/features/planning/machines/planningMachine.test.ts
+          - EXPECTED: All tests PASS
+
+        validation:
+          commands: [
+            npm test src/features/planning/machines/planningMachine.test.ts,
+            npm run typecheck
+          ]
+          expected_output: "All tests passing, 0 type errors"
+          failure_handling: "STOP. Revise implementation. DO NOT modify tests."
+
+# ============================================================================
+# MILESTONE 3: Build Page Initializes from Backend
+# ============================================================================
+
+  - id: m3
+    name: Build Page Initializes from Backend
+    description: Load currentStep from backend, ignore localStorage conflicts
+    estimated_hours: 2
+    depends_on: [m2]
+
+    tasks:
+      - id: t-007
+        name: "[TDD RED] Write tests for backend initialization"
+        estimate_minutes: 60
+
+        files:
+          modify_only: [app/routes/project/-$projectId.build.test.tsx]
+
+        instructions: |
+          ## TDD: RED PHASE
+          Write FAILING tests for build page initialization. DO NOT implement yet.
+
+          ## CRITICAL CONSTRAINTS
+          - ONLY modify: -$projectId.build.test.tsx
+          - Tests MUST fail (initialization logic doesn't exist yet)
+
+          ## Implementation
+          Add tests to existing file:
+          ```typescript
+          describe('Backend initialization', () => {
+            beforeEach(() => {
+              // CRITICAL: Mock fetch and clear localStorage for test isolation
+              global.fetch = vi.fn();
+              localStorage.clear();
+            });
+
+            it('should load currentStep from backend on mount', async () => {
+              // Mock backend response
+              (global.fetch as any).mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({
+                  id: 'seed-0001',
+                  currentStep: 3,
+                  entryPath: 'scratch',
+                }),
+              });
+
+              const { Route } = await import('./project/$projectId.build');
+              const BuildComponent = (Route as any).options.component;
+
+              render(<BuildComponent />);
+
+              await waitFor(() => {
+                expect(global.fetch).toHaveBeenCalledWith(
+                  expect.stringContaining('/api/projects/seed-0001')
+                );
+              });
+
+              // Should initialize machine at step 3
+              await waitFor(() => {
+                expect(screen.queryByText(/step 3/i)).toBeInTheDocument();
+              });
+            });
+
+            it('should resolve conflicts (backend wins)', async () => {
+              // localStorage has step 1, backend has step 3
+              localStorage.setItem('planning-machine-seed-0001', JSON.stringify({
+                value: 'step1',
+                context: { currentStepNumber: 1 }
+              }));
+
+              (global.fetch as any).mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({
+                  id: 'seed-0001',
+                  currentStep: 3,
+                  entryPath: 'scratch',
+                }),
+              });
+
+              const { Route } = await import('./project/$projectId.build');
+              const BuildComponent = (Route as any).options.component;
+
+              render(<BuildComponent />);
+
+              // Should use backend step (3), not localStorage (1)
+              await waitFor(() => {
+                expect(screen.queryByText(/step 3/i)).toBeInTheDocument();
+                expect(screen.queryByText(/step 1/i)).not.toBeInTheDocument();
+              });
+            });
+          });
+          ```
+
+          ## Validation
+          - npm test app/routes/project/-$projectId.build.test.tsx
+          - EXPECTED: Tests FAIL (initialization not implemented)
+
+        validation:
+          commands: [npm test app/routes/project/-$projectId.build.test.tsx]
+          expected_output: "Tests FAIL - backend initialization not implemented"
+          failure_handling: "Tests must fail first."
+
+      - id: t-008
+        name: "[TDD GREEN] Implement backend initialization to pass tests"
+        estimate_minutes: 90
+
+        files:
+          modify_only:
+            - app/routes/project/$projectId.build.tsx
+            - src/features/planning/machines/PlanningMachineContext.tsx
+
+        instructions: |
+          ## TDD: GREEN PHASE
+          Implement backend initialization to make tests pass.
+
+          ## CRITICAL CONSTRAINTS
+          - ONLY modify: $projectId.build.tsx, PlanningMachineContext.tsx
+          - Backend is source of truth
+          - Write MINIMAL code to pass tests
+
+          ## Implementation
+
+          1. In $projectId.build.tsx:
+          ```typescript
+          function BuildComponent() {
+            const { projectId } = Route.useParams();
+            const [project, setProject] = useState<Project | null>(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+              fetch(`/api/projects/${projectId}`)
+                .then(res => res.json())
+                .then(data => {
+                  setProject(data);
+                  setLoading(false);
+                })
+                .catch(err => {
+                  console.error('Failed to load project:', err);
+                  setLoading(false);
+                });
+            }, [projectId]);
+
+            if (loading) return <div>Loading...</div>;
+            if (!project) return <div>Project not found</div>;
+
+            return (
+              <PlanningMachineProvider
+                input={{ projectId, entryPath: project.entryPath }}
+                initialStep={project.currentStep}
+                storageKey={`planning-machine-${projectId}`}
+              >
+                <InspectorLogger />
+                <Navigation />
+                <StepContainer />
+              </PlanningMachineProvider>
+            );
+          }
+          ```
+
+          2. In PlanningMachineContext.tsx, add initialStep:
+          ```typescript
+          type PlanningMachineProviderProps = {
+            children: ReactNode;
+            input: PlanningInput;
+            initialStep: number; // NEW
+            storageKey?: string;
+          };
+
+          export function PlanningMachineProvider({
+            children,
+            input,
+            initialStep,
+            storageKey = 'planning-machine-state',
+          }: PlanningMachineProviderProps) {
+            const [actor] = React.useState(() => {
+              const persistedState = loadState(storageKey);
+
+              if (persistedState && persistedState.context.projectId === input.projectId) {
+                const localStep = persistedState.context.currentStepNumber;
+
+                if (localStep !== initialStep) {
+                  console.warn(
+                    `[Planning Machine] Conflict: backend=${initialStep}, local=${localStep}. Using backend.`
+                  );
+                }
+
+                persistedState.context.currentStepNumber = initialStep;
+              }
+
+              return createActor(planningMachine, {
+                input,
+                snapshot: persistedState,
+              });
+            });
+
+            // ... rest unchanged
+          }
+          ```
+
+          ## Validation
+          - npm test app/routes/project/-$projectId.build.test.tsx
+          - EXPECTED: All tests PASS
+
+        validation:
+          commands: [
+            npm test app/routes/project/-$projectId.build.test.tsx,
+            npm run typecheck
+          ]
+          expected_output: "All tests passing, 0 type errors"
+          failure_handling: "STOP. Revise implementation. DO NOT modify tests."
+
+# ============================================================================
+# MILESTONE 4: End-to-End Verification
+# ============================================================================
+
+  - id: m4
+    name: End-to-End Verification
+    description: Manual testing and bug verification
+    estimated_hours: 1
+    depends_on: [m3]
+
+    tasks:
+      - id: t-009
+        name: Manual end-to-end verification
+        estimate_minutes: 30
+
+        instructions: |
+          ## Manual Test Plan - VERIFY BUG #002 IS FIXED
+
+          Reference: .tmp-docs/plan/bug-reports/002-project-state-display-mismatch.yaml
+
+          1. **Dashboard shows correct step**
+             - Navigate to /dashboard
+             - Note step shown for billing-platform (seed-0002)
+
+          2. **Build page matches dashboard** ← FIXES BUG #002
+             - Click billing-platform card
+             - Verify build page shows SAME step as dashboard
+             - **Expected:** No more Step 2 vs Step 1 mismatch
+             - **Bug #002 should be FIXED**
+
+          3. **Step completion syncs**
+             - Complete current step
+             - Check network tab: verify PUT /api/projects called
+             - Return to dashboard
+             - Verify dashboard shows new step
+
+          4. **Refresh persists state**
+             - Refresh build page (F5)
+             - Verify still at same step (not reverted)
+
+          5. **Cross-tab consistency**
+             - Open project in two tabs
+             - Complete step in tab 1
+             - Switch to tab 2, refresh
+             - Verify tab 2 shows updated step
+
+          ## Acceptance Criteria for Bug #002 Fix
+          - [ ] Dashboard and build page ALWAYS show same step
+          - [ ] Step completion updates backend immediately
+          - [ ] Refresh doesn't lose progress
+          - [ ] No console errors
+          - [ ] Network tab shows PUT /api/projects on step completion
+
+          Document results in execution log.
+
+      - id: t-010
+        name: Close bug report #002
+        estimate_minutes: 15
+
+        files:
+          modify_only: [.tmp-docs/plan/bug-reports/002-project-state-display-mismatch.yaml]
+
+        instructions: |
+          ## CRITICAL: Close Bug Report
+
+          Update bug report at:
+          .tmp-docs/plan/bug-reports/002-project-state-display-mismatch.yaml
+
+          Changes:
+          ```yaml
+          status: "fixed"
+          fixed_in: "fix-project-state-sync-001"
+          verified_fixed: true
+
+          resolution: |
+            Made backend Project.currentStep the single source of truth.
+            Planning machine now syncs to backend on every step transition via
+            PUT /api/projects endpoint. Build page initializes from backend,
+            backend wins all conflicts with localStorage.
+
+            Changes:
+            - Added updateCurrentStep() to projects store
+            - Added PUT /api/projects API endpoint
+            - Planning machine syncs on every step transition
+            - Build page loads currentStep from backend
+            - Backend wins localStorage conflicts
+          ```
+
+          ## Validation
+          Verify bug report is marked as closed.
+
+# ============================================================================
+# SUCCESS METRICS
+# ============================================================================
+
+success_metrics:
+  must_have:
+    - Dashboard and build page show identical step for all projects
+    - Step completion updates backend (visible in network tab)
+    - Page refresh preserves step (no regression to Step 1)
+    - All tests passing (npm test)
+    - Zero type errors (npm run typecheck)
+
+  nice_to_have:
+    - Console logs show sync success
+    - Error handling for network failures
+    - Performance unchanged (<100ms API calls)
+
+rollback_plan: |
+  If issues found after deployment:
+  1. Revert changes to planning machine sync
+  2. Build page will fall back to localStorage (old behavior)
+  3. No data loss (backend still has correct state)
+  4. Fix issues, redeploy
+
+post_deployment:
+  monitoring:
+    - Check error logs for sync failures
+    - Monitor PUT /api/projects endpoint latency
+    - User reports of step mismatches
+
+  followup_tasks:
+    - Consider adding optimistic updates to hide latency
+    - Add retry logic for failed syncs
+    - Migrate to database when scale requires (future)
+
+notes: |
+  ## Key Decisions
+  - Backend is single source of truth (not localStorage)
+  - localStorage used only for draft answers (autosave UX)
+  - Sync is async, errors logged but don't block UI
+  - Backend wins all conflicts (simpler than merge logic)
+
+  ## Future Improvements
+  - Add database when needed (drop-in replacement for in-memory store)
+  - Add optimistic updates for perceived performance
+  - Add retry with exponential backoff for sync failures
+  - Consider WebSocket for real-time multi-tab sync

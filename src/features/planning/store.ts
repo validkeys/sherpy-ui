@@ -63,25 +63,21 @@ function buildSteps(entryPath: EntryPath): PlanningStep[] {
     const stepNumber = Number(num);
     const legacyStep = STEPS[stepNumber - 1];
 
+    // For Step 1, pre-populate first answer based on entryPath
+    const prefilledAnswer = stepNumber === 1 && entryPath ? {
+      question: legacyStep?.question ?? "",
+      value: entryPath === "scratch"
+        ? "Starting from scratch"
+        : "I have a requirements document",
+      submittedAt: new Date().toISOString()
+    } : undefined;
+
     return {
       stepNumber,
       name: config.name,
-      // doc-first skips Gap Analysis (step 1 starts as complete/pre-seeded)
-      status:
-        entryPath === "doc-first" && stepNumber === 1
-          ? ("complete" as const)
-          : stepNumber === (entryPath === "doc-first" ? 2 : 1)
-            ? ("now" as const)
-            : ("pending" as const),
+      status: stepNumber === 1 ? ("now" as const) : ("pending" as const),
       question: legacyStep?.question ?? "",
-      answer:
-        entryPath === "doc-first" && stepNumber === 1
-          ? {
-              question: legacyStep?.question ?? "",
-              value: "doc-first",
-              submittedAt: new Date().toISOString()
-            }
-          : undefined,
+      answers: prefilledAnswer ? [prefilledAnswer] : undefined,
     };
   });
 }

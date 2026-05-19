@@ -1,27 +1,49 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { InterviewThread } from "@/features/planning/components/InterviewThread";
-import { ProjectIntake } from "@/features/planning/components/ProjectIntake";
-import { useStepState } from "@/features/planning/hooks";
+import { useEffect } from "react";
+import { PlanningMachineProvider, usePlanningMachine } from "@/features/planning/machines/PlanningMachineContext";
+import { Navigation } from "@/features/planning/components/Navigation";
+import { StepContainer } from "@/features/planning/components/StepContainer";
+import { DebugPanel } from "@/features/planning/components/DebugPanel";
 
 export const Route = createFileRoute("/project/$projectId/build")({
   component: BuildComponent,
 });
 
+function InspectorLogger() {
+  const actor = usePlanningMachine();
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      const subscription = actor.subscribe((snapshot) => {
+        console.log("[XState Planning Machine]", {
+          value: snapshot.value,
+          context: {
+            currentStepNumber: snapshot.context.currentStepNumber,
+            projectId: snapshot.context.projectId,
+            entryPath: snapshot.context.entryPath,
+          },
+        });
+      });
+
+      return () => subscription.unsubscribe();
+    }
+  }, [actor]);
+
+  return null;
+}
+
 function BuildComponent() {
   const { projectId } = Route.useParams();
-  const { data: stepState, isLoading } = useStepState(projectId);
-
-  if (isLoading || !stepState) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-fg-4 text-sm font-mono">
-        Loading…
-      </div>
-    );
-  }
 
   return (
-    <ProjectIntake stepState={stepState} projectId={projectId}>
-      <InterviewThread stepState={stepState} projectId={projectId} />
-    </ProjectIntake>
+    <PlanningMachineProvider
+      input={{ projectId, entryPath: "new-project" }}
+      storageKey={`planning-machine-${projectId}`}
+    >
+      <InspectorLogger />
+      <Navigation />
+      <StepContainer />
+      <DebugPanel />
+    </PlanningMachineProvider>
   );
 }

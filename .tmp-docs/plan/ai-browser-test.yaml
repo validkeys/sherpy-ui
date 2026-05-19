@@ -1,0 +1,541 @@
+---
+# AI Browser Test - Sherpy Manual Workflow
+# ENTRYPOINT: When asked to execute this test, follow these exact steps in sequence
+
+name: "Sherpy Manual Workflow Test"
+version: "2.1"
+objective: "Execute full manual QA test of Sherpy planning workflow using AI browser automation"
+updated: "2026-05-13"
+
+# =============================================================================
+# ⚠️ CRITICAL: AGENT-BROWSER LIMITATION WITH REACT FORMS (BUG-014 ROOT CAUSE)
+# =============================================================================
+#
+# ISSUE DISCOVERED 2026-05-13:
+# agent-browser commands (fill, keyboard type, keyboard inserttext) DO NOT:
+#   1. Set actual DOM input.value / textarea.value properties
+#   2. Trigger React onChange events
+#   3. Update React component state
+#
+# IMPACT: Forms appear filled visually but React state remains empty, causing
+# form submissions to fail with empty data.
+#
+# SOLUTION: Use programmatic event dispatching for React forms:
+#
+#   agent-browser eval --stdin <<'EOF'
+#   const input = document.getElementById('existingRequirements');
+#   const textarea = document.getElementById('projectDescription');
+#
+#   // Set values
+#   input.value = 'No, starting from scratch';
+#   textarea.value = 'Healthcare portal description';
+#
+#   // Trigger React onChange events
+#   const inputEvent = new Event('input', { bubbles: true });
+#   const changeEvent = new Event('change', { bubbles: true });
+#
+#   input.dispatchEvent(inputEvent);
+#   input.dispatchEvent(changeEvent);
+#   textarea.dispatchEvent(inputEvent);
+#   textarea.dispatchEvent(changeEvent);
+#   EOF
+#
+# VERIFICATION: The application code is CORRECT. Integration tests pass (5/5).
+# Manual browser testing works. The issue was ONLY with agent-browser methodology.
+#
+# See: .tmp-docs/plan/bug-014-root-cause-analysis.md
+# =============================================================================
+
+# =============================================================================
+# PHASE 2 TESTING FRAMEWORK (2026-05-14)
+# =============================================================================
+#
+# NEW AUTOMATED TESTING TOOLS AVAILABLE:
+#
+# 1. PlanningStateBuilder - Fluent API for test data creation
+#    Location: tests/fixtures/builders/PlanningStateBuilder.ts
+#    Usage: Create test projects at any workflow step programmatically
+#    Example:
+#      const projectId = await new PlanningStateBuilder()
+#        .withBusinessRequirements({ ... })
+#        .withTechnicalRequirements({ ... })
+#        .atStep(5)
+#        .save();
+#
+# 2. Snapshot System - 26 validated regression snapshots
+#    Location: tests/fixtures/snapshots/
+#    Commands:
+#      npm run snapshots:generate    # Generate 20 standard snapshots
+#      npm run snapshots:validate    # Validate all snapshots
+#      npm run snapshots:stats       # Show coverage statistics
+#    Coverage: All 10 workflow steps + 6 edge cases
+#
+# 3. Debug Panel Snapshot Capture - Manual snapshot capture button
+#    Location: Development mode only (http://localhost:5180)
+#    Usage: Click "Capture Snapshot" button in Debug Panel
+#    Saves: JSON snapshot to tests/fixtures/snapshots/ directory
+#    Security: Dev-only endpoint (403 in production)
+#
+# 4. Comprehensive Testing Guide
+#    Location: tests/fixtures/GUIDE.md (998 lines, 28 examples)
+#    Covers: Builder API, snapshot system, test helpers, best practices
+#
+# 5. E2E Workflow Tests
+#    Location: tests/e2e/planning-workflow-builder.spec.ts
+#    Coverage: Steps 1, 2, 5, 10
+#    Uses: Playwright for browser automation
+#
+# RECOMMENDATION: Use automated testing tools (PlanningStateBuilder + snapshots)
+# for regression testing. Reserve AI browser testing for:
+#   - Visual/UX verification
+#   - Complex user interaction flows
+#   - Edge cases not covered by snapshots
+#   - Manual exploratory testing
+#
+# See: .tmp-docs/phase-2-completion-summary.md for full Phase 2 details
+# See: tests/fixtures/GUIDE.md for testing framework documentation
+# =============================================================================
+
+# =============================================================================
+# WHAT TO DO WHEN USER SAYS "Run the AI browser test"
+# =============================================================================
+
+# STEP 1: CHECK PREREQUISITES
+# ----------------------------
+# Before doing ANYTHING else, verify these are ready:
+
+prerequisites:
+  dev_server:
+    port: 5180
+    url: "http://localhost:5180"
+
+    actions:
+      1_check_if_running:
+        action: "Check if any process is already using port 5180"
+        command: "lsof -ti:5180 or equivalent"
+
+      2_stop_existing_server:
+        condition: "If port 5180 is in use"
+        action: "Stop the existing process"
+        command: "kill $(lsof -ti:5180) or ask user to stop it"
+
+      3_start_dev_server:
+        action: "Start the development server"
+        command: "pnpm dev"
+        run_in_background: true
+        expected_output: "Look for 'Local: http://localhost:5180' in output"
+        wait_time: "5-10 seconds for server to fully start"
+
+      4_verify_server:
+        action: "Visit URL and confirm app loads (dashboard visible)"
+        verification: "Page loads without errors, shows dashboard or login screen"
+
+  browser:
+    requirement: "Use agent-browser skill for ALL testing"
+    action: "Invoke agent-browser skill to launch automated browser"
+    note: "ALL test execution must be conducted through agent-browser automation, not manual interaction"
+    approach: "Agent-browser will navigate, click, fill forms, take screenshots automatically"
+
+  time_commitment: "20-30 minutes uninterrupted"
+
+  clean_state:
+    approach: "Use incognito/private browsing mode in agent-browser"
+    fallback: "Clear localStorage before starting"
+    why: "Ensures fresh test without cached state from previous runs"
+
+    critical_note: |
+      IMPORTANT: Corrupted localStorage can cause false-positive bugs (see BUG-008).
+      The XState machine persists state to localStorage with key pattern:
+      'planning-machine-{projectId}'
+
+      Before starting each test run, clear localStorage via browser console:
+        localStorage.clear()
+
+      Or clear specific project state:
+        localStorage.removeItem('planning-machine-{projectId}')
+
+      Symptoms of corrupted state:
+        - Empty formData despite filling form fields
+        - isFormValid: false with valid input
+        - Query errors for project data
+        - Form stuck in disabled state
+
+      The defensive fixes from BUG-007 auto-recover from corruption, but starting
+      with clean state prevents confusion during testing.
+
+# STEP 2: INITIALIZE TEST RUN
+# ----------------------------
+# Set up tracking and documentation for this test run
+
+initialize:
+  actions:
+    1_review_known_issues:
+      file: ".tmp-docs/plan/learnings.md"
+      action: "Read entire file to understand current known blockers"
+      look_for: "Any BLOCKING issues that prevent testing"
+      if_blockers_exist: "Ask user if blockers are resolved before proceeding"
+
+    2_determine_run_number:
+      directory: ".tmp-docs/plan/runs/"
+      action: "List directory contents to find highest run number"
+      calculation: "next_run = highest_existing_run + 1"
+      format: "3-digit zero-padded (e.g., 001, 002, 003)"
+
+    3_create_run_directory:
+      path: ".tmp-docs/plan/runs/{next_run}/"
+      action: "Create new directory for this test run"
+      example: ".tmp-docs/plan/runs/002/"
+
+    4_copy_tracking_template:
+      source: ".tmp-docs/plan/tracking-template.yaml"
+      destination: ".tmp-docs/plan/runs/{next_run}/tracking.yaml"
+      action: "Copy template to new run directory"
+
+    5_initialize_tracking_file:
+      file: ".tmp-docs/plan/runs/{next_run}/tracking.yaml"
+      updates:
+        - "Set run_number: '{next_run}'"
+        - "Set date: '{current_date}' (YYYY-MM-DD format)"
+        - "Set tester: 'Claude Code' or 'Claude AI Browser Agent'"
+        - "Set status: 'in_progress'"
+        - "Leave all other fields as template defaults"
+
+    6_note_start_time:
+      action: "Record current timestamp for duration calculation at end"
+
+# STEP 3: EXECUTE TEST STEPS
+# ---------------------------
+# Main test execution loop - follow guide.md exactly
+
+execute:
+  primary_guide:
+    file: ".tmp-docs/plan/guide.md"
+    description: "Complete step-by-step testing instructions"
+    note: "This is the SOURCE OF TRUTH for what to do during testing"
+
+  per_step_protocol:
+    before_step:
+      1_read_learnings:
+        file: ".tmp-docs/plan/learnings.md"
+        action: "Scroll to section for current step ID (e.g., '## step-03')"
+        look_for: "Known issues, timing tips, contextual checks"
+        why: "Avoid repeating mistakes from previous runs"
+
+      2_read_guide_section:
+        file: ".tmp-docs/plan/guide.md"
+        action: "Find section for current step (e.g., 'Step 3: Gap Analysis - Artifact Generation')"
+        focus: "Expected Result, Verification checklist, Screenshots needed"
+
+    during_step:
+      1_execute_actions:
+        rule: "Follow guide.md actions EXACTLY as written"
+        no: "Do not improvise, skip, or assume steps"
+
+      2_observe_results:
+        watch_for:
+          - "Loading states (spinners, disabled buttons)"
+          - "Server logs (terminal output)"
+          - "Browser console (DevTools errors)"
+          - "Timing (compare actual vs expected duration)"
+          - "Visual changes (page transitions, new content)"
+
+      3_compare_to_expected:
+        guide_field: "Expected Result"
+        action: "Compare what you observed vs what guide.md says should happen"
+        deviations: "Note ANY differences, even minor ones"
+
+      4_check_verification:
+        guide_field: "Verification"
+        action: "Go through checklist items one by one"
+        format: "Mark each item [x] pass or [ ] fail in your notes"
+
+    after_step:
+      1_update_tracking:
+        file: ".tmp-docs/plan/runs/{run_number}/tracking.yaml"
+        find_step: "Find step ID in 'steps:' array (e.g., 'id: step-03')"
+        update_fields:
+          - "status: 'passed' | 'failed' | 'blocked'"
+          - "duration: '{actual_time_taken}'"
+          - "screenshot: '{filename}' (if taken)"
+          - "notes: '{brief_observation}' (if noteworthy)"
+          - "blocking_bug: '{bug_id}' (if blocking bug filed)"
+        rule: "Update tracking IMMEDIATELY after step completes"
+
+      2_take_screenshots:
+        when:
+          - "Verification checklist item fails"
+          - "Unexpected behavior occurs"
+          - "Error message displayed"
+          - "Visual differs from expected"
+          - "Guide.md requests specific screenshot"
+        naming: "test-run-{run}-{seq}-{description}.png"
+        example: "test-run-2-05-step2-question1.png"
+        location: ".tmp-docs/screenshots/"
+        action: "Use agent-browser screenshot tool or ask user to take screenshot"
+
+      3_file_bugs:
+        when: "ANY issue encountered (blocking OR non-blocking)"
+        process:
+          1_determine_bug_number:
+            directory: ".tmp-docs/plan/bug-reports/"
+            action: "List directory, find highest bug number, add 1"
+            format: "3-digit zero-padded (e.g., 001, 002)"
+
+          2_create_slug:
+            rule: "Short kebab-case description of bug"
+            examples:
+              - "gap-analysis-hangs"
+              - "question-not-contextual"
+              - "navigation-broken"
+
+          3_copy_template:
+            source: ".tmp-docs/plan/bug-report-template.yaml"
+            destination: ".tmp-docs/plan/bug-reports/{bug_number}-{slug}.yaml"
+
+          4_fill_bug_report:
+            required_fields:
+              - "bug_id: '{bug_number}'"
+              - "slug: '{slug}'"
+              - "title: 'Brief title'"
+              - "date_reported: '{current_date}'"
+              - "severity: critical | high | moderate | low"
+              - "blocking: true | false"
+              - "affected_step: '{step_id}'"
+              - "summary: 'What went wrong'"
+              - "expected_behavior: 'What should happen'"
+              - "actual_behavior: 'What actually happened'"
+              - "steps_to_reproduce: [list of steps]"
+              - "test_run: '{run_number}'"
+            optional_fields:
+              - "screenshot: '{path}'"
+              - "server_logs: 'Paste relevant logs'"
+              - "console_errors: 'Paste JS errors'"
+
+          5_link_bug_to_tracking:
+            file: ".tmp-docs/plan/runs/{run_number}/tracking.yaml"
+            action: "Add bug ID to 'bugs_filed:' array"
+            if_blocking: "Also set step's 'blocking_bug: {bug_id}'"
+
+      4_capture_learnings:
+        when: "Step reveals something noteworthy that isn't obvious from code"
+        examples:
+          - "Timing issue (took much longer than expected)"
+          - "UX quirk (button enabled when it shouldn't be)"
+          - "Validation detail (field accepts unexpected input)"
+          - "Context issue (AI question not using project specifics)"
+        process:
+          file: ".tmp-docs/plan/learnings.md"
+          action: "Append to section for step ID"
+          format: |
+            **Brief Title**
+
+            Description of what you learned.
+
+            **Action:** What to do differently next time.
+
+# STEP 4: HANDLE BLOCKING BUGS
+# -----------------------------
+# What to do if you cannot continue testing
+
+blocking_bug_protocol:
+  definition: "Bug that prevents workflow from continuing to next step"
+
+  examples:
+    - "Step 1 form submits but doesn't transition to Step 2"
+    - "Question doesn't load in Step 2"
+    - "Artifact generation fails and blocks advance"
+
+  when_encountered:
+    1_file_bug_report:
+      action: "Follow bug filing process above"
+      set_blocking: "true"
+      set_severity: "critical or high"
+
+    2_update_tracking:
+      file: ".tmp-docs/plan/runs/{run_number}/tracking.yaml"
+      step_status: "blocked"
+      step_blocking_bug: "{bug_id}"
+      overall_status: "blocked"
+      blocking_bug: "{bug_id}"
+
+    3_take_screenshot:
+      required: true
+      capture: "Current state showing where test is stuck"
+
+    4_cease_execution:
+      rule: "DO NOT attempt to continue testing"
+      rule: "DO NOT try workarounds or debugging"
+      rule: "DO NOT skip to later steps"
+      action: "STOP immediately and report to user"
+
+    5_update_learnings:
+      file: ".tmp-docs/plan/learnings.md"
+      action: "Document the blocking issue under affected step"
+      mark: "Add '**Known Issue:**' tag and reference bug ID"
+
+# STEP 5: COMPLETE TEST RUN
+# --------------------------
+# Finalization steps after all steps completed OR if blocked
+
+completion:
+  update_tracking_file:
+    file: ".tmp-docs/plan/runs/{run_number}/tracking.yaml"
+    final_updates:
+      - "final_status: 'passed' | 'failed' | 'blocked'"
+      - "total_duration: '{end_time - start_time}' (human readable)"
+      - "success_criteria: Check each boolean and set true/false based on results"
+
+    success_criteria_evaluation:
+      all_steps_completed: "Did all 14 steps complete?"
+      all_artifacts_generated: "Were all 10 artifacts created?"
+      artifacts_contain_content: "Are all artifacts non-empty and relevant?"
+      backward_navigation_works: "Could you navigate backward through steps?"
+      forward_navigation_works: "Could you navigate forward through steps?"
+      state_persists_refresh: "Did page refresh preserve state?"
+      state_persists_navigate: "Did navigate away/return preserve state?"
+      no_console_errors: "Were there zero browser console errors?"
+      no_server_errors: "Were there zero server log errors?"
+      contextual_questions_verified: "Did Step 2/3 questions reference project specifics?"
+      total_time_within_range: "Was total time between 25-35 minutes?"
+
+  update_guide_history:
+    file: ".tmp-docs/plan/guide.md"
+    section: "## 📋 Test History"
+    action: "Add new entry at top using Test Summary Template from guide.md"
+    include:
+      - "Test run number and date"
+      - "Tester name"
+      - "Overall status (passed/failed/blocked)"
+      - "Steps completed (e.g., 'Completed through Step 5' or 'All 10 steps')"
+      - "Issues found (list bug IDs)"
+      - "Key observations"
+      - "Action items for next run"
+
+  report_to_user:
+    format: "Concise summary of test run results"
+    include:
+      - "Overall status (PASSED/FAILED/BLOCKED)"
+      - "Steps completed (e.g., '14/14' or 'Blocked at Step 3')"
+      - "Bugs filed (count and IDs)"
+      - "Total duration"
+      - "Key findings (1-3 bullet points)"
+      - "Blocker details (if applicable)"
+      - "Next steps recommendation"
+
+# =============================================================================
+# CRITICAL RULES (Read These Before Starting)
+# =============================================================================
+
+critical_rules:
+  1_stop_on_blocker:
+    rule: "If you encounter a blocking bug, STOP IMMEDIATELY"
+    do_not: "Try workarounds, debug, or skip to later steps"
+    do: "File bug, update tracking, report to user"
+
+  2_update_tracking_always:
+    rule: "Update tracking.yaml after EVERY step, no exceptions"
+    why: "Creates real-time audit trail of test progress"
+
+  3_check_learnings_first:
+    rule: "Read learnings.md section for step BEFORE executing it"
+    why: "Avoid repeating mistakes from previous runs"
+
+  4_follow_guide_exactly:
+    rule: "Execute guide.md steps exactly as written"
+    do_not: "Improvise, skip steps, or make assumptions"
+
+  5_screenshot_liberally:
+    rule: "Take screenshots for ANY unexpected behavior"
+    better: "Too many screenshots than too few"
+
+  6_file_bugs_immediately:
+    rule: "File bug report as soon as issue is encountered"
+    do_not: "Batch bugs at end of test"
+
+  7_no_debugging:
+    role: "You are a DETECTIVE, not a DEBUGGER"
+    job: "Detect, document, report"
+    not_job: "Fix, investigate root causes, propose solutions"
+
+# =============================================================================
+# FILE REFERENCE (Quick Lookup)
+# =============================================================================
+
+files:
+  ai_browser_test_yaml:
+    path: ".tmp-docs/plan/ai-browser-test.yaml"
+    this_file: true
+    purpose: "Entrypoint with execution instructions"
+    read: "When starting test"
+
+  guide_md:
+    path: ".tmp-docs/plan/guide.md"
+    purpose: "Detailed step-by-step test procedures (SOURCE OF TRUTH)"
+    read: "Throughout test (every step)"
+
+  learnings_md:
+    path: ".tmp-docs/plan/learnings.md"
+    purpose: "Accumulated wisdom from all previous test runs"
+    read: "Before each step"
+    write: "After step if noteworthy insight discovered"
+
+  tracking_template_yaml:
+    path: ".tmp-docs/plan/tracking-template.yaml"
+    purpose: "Template for per-run tracking file"
+    read: "During initialization"
+    copy_to: ".tmp-docs/plan/runs/{run_number}/tracking.yaml"
+
+  tracking_yaml:
+    path: ".tmp-docs/plan/runs/{run_number}/tracking.yaml"
+    purpose: "Real-time progress tracking for current test run"
+    read: "When resuming interrupted test"
+    write: "After EVERY step"
+
+  bug_report_template_yaml:
+    path: ".tmp-docs/plan/bug-report-template.yaml"
+    purpose: "Template for bug reports"
+    read: "When filing bug"
+    copy_to: ".tmp-docs/plan/bug-reports/{bug_number}-{slug}.yaml"
+
+  index_md:
+    path: ".tmp-docs/plan/INDEX.md"
+    purpose: "System overview and quick reference"
+    read: "Optional, for system understanding"
+
+  testing_system_md:
+    path: ".tmp-docs/plan/TESTING-SYSTEM.md"
+    purpose: "System philosophy and architecture"
+    read: "Optional, for system understanding"
+
+# =============================================================================
+# EXPECTED OUTCOME
+# =============================================================================
+
+expected_outcome:
+  tracking_file: "Complete tracking.yaml with all steps marked (passed/failed/blocked)"
+  bug_reports: "Bug report filed for every issue encountered"
+  screenshots: "Screenshots captured for all failures and unexpected behavior"
+  learnings: "New insights appended to learnings.md"
+  guide_history: "Test History section in guide.md updated with run summary"
+  user_report: "Concise summary of test results delivered to user"
+
+# =============================================================================
+# VERSION HISTORY
+# =============================================================================
+
+version_history:
+  "2.0":
+    date: "2026-05-12"
+    changes:
+      - "Complete rewrite for clarity"
+      - "Added explicit step-by-step initialization process"
+      - "Added per-step protocol (before/during/after)"
+      - "Added blocking bug protocol"
+      - "Added completion checklist"
+      - "Added critical rules section"
+      - "Restructured as actionable instructions vs reference doc"
+
+  "1.0":
+    date: "2026-05-12"
+    changes:
+      - "Initial version (brief reference format)"

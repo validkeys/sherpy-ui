@@ -24,6 +24,29 @@ describe("initProjectSteps", () => {
     expect(state.currentStep).toBe(1);
   });
 
+  it("pre-fills Step 1 answer for 'scratch' path", () => {
+    const state = initProjectSteps("p1", "scratch");
+    const step1 = state.steps[0];
+
+    expect(step1.answers).toHaveLength(1);
+    expect(step1.answers?.[0].value).toBe("Starting from scratch");
+    expect(step1.answers?.[0].question).toBeTruthy();
+    expect(step1.answers?.[0].submittedAt).toBeTruthy();
+    expect(step1.status).toBe("now");
+    expect(state.currentStep).toBe(1);
+  });
+
+  it("pre-fills Step 1 answer for 'doc-first' path", () => {
+    const state = initProjectSteps("p1", "doc-first");
+    const step1 = state.steps[0];
+
+    expect(step1.answers).toHaveLength(1);
+    expect(step1.answers?.[0].value).toBe("I have a requirements document");
+    expect(step1.answers?.[0].question).toBeTruthy();
+    expect(step1.status).toBe("now");
+    expect(state.currentStep).toBe(1);
+  });
+
   it("remaining steps are 'pending' for scratch path", () => {
     const state = initProjectSteps("p1", "scratch");
     for (const step of state.steps.slice(1)) {
@@ -31,12 +54,12 @@ describe("initProjectSteps", () => {
     }
   });
 
-  it("doc-first: step 1 is pre-seeded as complete, step 2 is 'now'", () => {
-    const state = initProjectSteps("p1", "doc-first");
-    expect(state.steps[0].status).toBe("complete");
-    expect(state.steps[0].answer).toBeDefined();
-    expect(state.steps[1].status).toBe("now");
-    expect(state.currentStep).toBe(2);
+  it("does not pre-fill answers for other steps", () => {
+    const state = initProjectSteps("p1", "scratch");
+    const step2 = state.steps[1];
+
+    expect(step2.answers).toBeUndefined();
+    expect(step2.status).toBe("pending");
   });
 
   it("stores state accessible via hasStepState", () => {
@@ -69,10 +92,11 @@ describe("submitAnswer", () => {
 
   it("supports multi-turn Q&A (multiple answers to same step)", () => {
     initProjectSteps("p1", "scratch");
+    // Step 1 now starts with 1 pre-filled answer
     const first = submitAnswer("p1", 1, "Question 1", "Answer 1");
-    expect(first.steps[0].answers?.length).toBe(1);
+    expect(first.steps[0].answers?.length).toBe(2); // Pre-filled + new answer
     const second = submitAnswer("p1", 1, "Question 2", "Answer 2");
-    expect(second.steps[0].answers?.length).toBe(2);
+    expect(second.steps[0].answers?.length).toBe(3); // Pre-filled + 2 new answers
     expect(second.currentStep).toBe(1); // Still on step 1
   });
 

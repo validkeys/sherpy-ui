@@ -1,0 +1,957 @@
+version: "1.0.0"
+project: Sherpy Mini-App - Planning Workflow
+generated: "2026-05-12"
+purpose: Manual acceptance testing for complete 10-step planning workflow
+
+instructions:
+  overview: |
+    This test plan covers the complete planning workflow from project creation
+    through all 10 planning steps. Each test case includes detailed acceptance
+    criteria and expected behavior.
+
+  execution_order: |
+    Tests must be executed in order (TC-001 through TC-012) as each test
+    depends on the previous test completing successfully.
+
+  bug_reporting: |
+    When a test fails:
+    1. Update the status field to "FAILED"
+    2. Document the failure in the notes field
+    3. Create a GitHub issue with:
+       - Title: "BUG: [Test Case ID] - Brief description"
+       - Labels: bug, acceptance-testing
+       - Body template:
+         ## Test Case
+         **ID:** [Test Case ID]
+         **Step:** [Step name]
+
+         ## Expected Behavior
+         [Copy from acceptance criteria]
+
+         ## Actual Behavior
+         [Describe what happened]
+
+         ## Steps to Reproduce
+         1. [List steps]
+
+         ## Environment
+         - URL: http://localhost:5180
+         - Browser: [Chrome/Firefox/Safari]
+         - Date: [Date tested]
+
+         ## Screenshots
+         [Attach relevant screenshots]
+
+         ## Additional Context
+         [Any other relevant information]
+    4. Link the GitHub issue URL in the github_issue field
+
+  status_values:
+    - "NOT_STARTED": Test not yet executed
+    - "IN_PROGRESS": Test currently being executed
+    - "PASSED": All acceptance criteria met
+    - "FAILED": One or more acceptance criteria not met
+    - "BLOCKED": Cannot execute due to dependency failure
+    - "SKIPPED": Intentionally not executed
+
+environment:
+  url: http://localhost:5180
+  server: Vite dev server
+  required_services:
+    - AWS Bedrock (Claude Sonnet)
+    - In-memory project storage
+    - In-memory artifact storage
+
+test_cases:
+  - id: TC-001
+    name: Dashboard Load and Navigation
+    category: Pre-workflow
+    priority: Critical
+    estimated_duration: 2 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - Dev server running on port 5180
+      - No prior test data required
+
+    test_steps:
+      - step: 1
+        action: Navigate to http://localhost:5180
+        expected: Dashboard page loads successfully
+      - step: 2
+        action: Verify page elements are visible
+        expected: All UI components render correctly
+
+    acceptance_criteria:
+      page_load:
+        - criterion: Page loads within 2 seconds
+          validation: Visual confirmation
+        - criterion: No console errors in browser DevTools
+          validation: Check browser console (F12)
+        - criterion: Page title is visible
+          validation: Title "Sherpy" or app name displayed
+
+      ui_components:
+        - criterion: "New project" button is visible
+          validation: Button present in UI
+        - criterion: Project list is visible (may be empty or have projects)
+          validation: List container rendered
+        - criterion: "Active" and "Past" tabs are visible
+          validation: Tab buttons present
+        - criterion: Left navigation rail is visible
+          validation: Sidebar with navigation present
+
+      functionality:
+        - criterion: Can switch between Active/Past tabs
+          validation: Click each tab, verify tab selection changes
+        - criterion: Existing projects (if any) display name, code, step, and date
+          validation: Check project card content
+
+    notes: ""
+    github_issue: ""
+
+  - id: TC-002
+    name: Project Creation - Modal Flow
+    category: Pre-workflow
+    priority: Critical
+    estimated_duration: 3 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-001 passed
+      - Dashboard is loaded
+
+    test_steps:
+      - step: 1
+        action: Click "New project" button
+        expected: Modal dialog appears with two options
+      - step: 2
+        action: Verify modal content
+        expected: "Start from scratch" and "Start with a doc" options visible
+      - step: 3
+        action: Click "Start from scratch"
+        expected: Project name form appears
+      - step: 4
+        action: Enter project name "Acceptance Test Project"
+        expected: Text appears in input field
+      - step: 5
+        action: Click "Create project" button
+        expected: Navigate to /project/{projectId}/build
+
+    acceptance_criteria:
+      modal_appearance:
+        - criterion: Modal appears within 500ms of clicking "New project"
+          validation: Visual confirmation of modal overlay
+        - criterion: Modal has title or header
+          validation: Check for modal title text
+        - criterion: Modal backdrop dims the background
+          validation: Background is darkened/overlayed
+        - criterion: Modal has "Cancel" or close button
+          validation: X button or Cancel button visible
+
+      option_selection:
+        - criterion: "Start from scratch" option is clickable
+          validation: Button/card responds to click
+        - criterion: "Start with a doc" option is visible but not used
+          validation: Second option present in UI
+        - criterion: Options have descriptive text explaining each path
+          validation: Read description under each option
+
+      project_name_form:
+        - criterion: Form appears after selecting "Start from scratch"
+          validation: Input field for project name visible
+        - criterion: Input field accepts text input
+          validation: Type text, verify it appears
+        - criterion: "Create project" button is disabled when field is empty
+          validation: Click button, verify no action
+        - criterion: "Create project" button enables when name is entered
+          validation: Button becomes clickable after typing
+        - criterion: Form has "Back" button to return to option selection
+          validation: Back button visible
+
+      navigation:
+        - criterion: After creation, URL changes to /project/{projectId}/build
+          validation: Check browser address bar
+        - criterion: Project ID is a valid short code (e.g., "5Zq8I0tC")
+          validation: Verify ID format in URL
+        - criterion: Page navigation completes within 2 seconds
+          validation: New page loads promptly
+
+    notes: ""
+    github_issue: ""
+
+  - id: TC-003
+    name: Step 1 - Gap Analysis Form (Initial State)
+    category: Step 1
+    priority: Critical
+    estimated_duration: 2 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-002 passed
+      - Navigated to /project/{projectId}/build
+
+    test_steps:
+      - step: 1
+        action: Wait for page to fully load
+        expected: Gap Analysis form appears immediately
+      - step: 2
+        action: Verify all UI components are present
+        expected: All components from acceptance criteria visible
+
+    acceptance_criteria:
+      page_layout:
+        - criterion: Page loads without showing empty/blank content area
+          validation: Form appears immediately after navigation (BUG-001 fix verification)
+        - criterion: Stage navigation sidebar is visible on left
+          validation: Sidebar with 10 stages present
+        - criterion: Main content area shows Gap Analysis form
+          validation: Form is centered in main area
+        - criterion: Navigation controls (BACK/NEXT) are visible
+          validation: BACK and NEXT buttons present (BUG-002 fix verification)
+
+      stage_sidebar:
+        - criterion: All 10 stages are listed with correct names
+          validation: |
+            1. Gap Analysis Worksheet
+            2. Business Requirements Interview
+            3. Technical Requirements Interview
+            4. Style Anchors Collection
+            5. Implementation Planner
+            6. Definition of Done
+            7. Architecture Decision Records
+            8. Delivery Timeline
+            9. QA Test Plan
+            10. Generate Summaries
+        - criterion: Stage 1 shows "now" status indicator
+          validation: Stage 1 is highlighted/active
+        - criterion: Stages 2-10 show "pending" status
+          validation: Other stages are dimmed/inactive
+
+      form_content:
+        - criterion: Heading "Gap Analysis" is displayed
+          validation: H2 or prominent heading visible
+        - criterion: First field has label "Do you have existing requirements?"
+          validation: Label text matches exactly
+        - criterion: First field is a text input
+          validation: Can click and type in field
+        - criterion: Second field has label "What are you building?"
+          validation: Label text matches exactly
+        - criterion: Second field is a textarea (multi-line)
+          validation: Field expands for longer text
+        - criterion: Submit button is present
+          validation: Button labeled "Submit"
+        - criterion: Submit button is disabled (grayed out)
+          validation: Button cannot be clicked when empty
+
+      navigation_controls:
+        - criterion: BACK button is visible
+          validation: Button labeled "Back" present
+        - criterion: BACK button is disabled (Step 1 = first step)
+          validation: Button is grayed out/unclickable
+        - criterion: NEXT button is visible
+          validation: Button labeled "Next" present
+        - criterion: NEXT button is disabled (step not complete)
+          validation: Button is grayed out/unclickable
+        - criterion: Progress indicator shows "Step 1 of 10"
+          validation: Text displays current step number
+
+      no_errors:
+        - criterion: No console errors in browser DevTools
+          validation: Check console (F12)
+        - criterion: No "Unknown step" warnings in console
+          validation: Check for XState warnings
+
+    notes: ""
+    github_issue: ""
+
+  - id: TC-004
+    name: Step 1 - Gap Analysis Form (Fill and Submit)
+    category: Step 1
+    priority: Critical
+    estimated_duration: 3 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-003 passed
+      - Gap Analysis form is loaded and empty
+
+    test_steps:
+      - step: 1
+        action: Click in first field "Do you have existing requirements?"
+        expected: Field focuses, cursor appears
+      - step: 2
+        action: Type "No, starting from scratch"
+        expected: Text appears in field
+      - step: 3
+        action: Click in second field "What are you building?"
+        expected: Field focuses, cursor appears
+      - step: 4
+        action: Type multi-line description (100+ chars)
+        expected: Textarea expands, text is visible
+      - step: 5
+        action: Verify Submit button state
+        expected: Button is now enabled (not grayed out)
+      - step: 6
+        action: Click Submit button
+        expected: Form submits, button shows "Submitting..." state
+
+    test_input:
+      field_1: "No, starting from scratch"
+      field_2: |
+        A comprehensive healthcare patient portal with the following features:
+        - Online appointment scheduling with calendar integration
+        - Secure access to medical records and test results
+        - Direct messaging with healthcare providers
+        - Prescription refill requests and medication tracking
+        - Billing and insurance information management
+
+    acceptance_criteria:
+      form_interaction:
+        - criterion: Both fields accept text input
+          validation: Type in each field, text appears
+        - criterion: Textarea expands vertically as needed
+          validation: Multi-line text visible without scrolling within field
+        - criterion: Can edit and delete text in both fields
+          validation: Use backspace, verify text deletion
+
+      validation:
+        - criterion: Submit button remains disabled if either field is empty
+          validation: Clear one field, button becomes disabled
+        - criterion: Submit button enables when both fields have text
+          validation: Fill both fields, button becomes enabled
+        - criterion: Button shows visual state change (color/appearance) when enabled
+          validation: Enabled button looks different from disabled
+
+      submission:
+        - criterion: Clicking Submit triggers submission
+          validation: Button text changes or loading indicator appears
+        - criterion: Button shows "Submitting..." or loading state during submission
+          validation: Visual feedback that submission is in progress
+        - criterion: Fields become disabled (uneditable) during submission
+          validation: Cannot type in fields during submission
+        - criterion: Form does not allow double-submission
+          validation: Clicking submit again has no effect
+
+    notes: ""
+    github_issue: ""
+
+  - id: TC-005
+    name: Step 1 - Artifact Generation and Step Transition
+    category: Step 1
+    priority: Critical
+    estimated_duration: 5 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-004 passed
+      - Form has been submitted
+
+    test_steps:
+      - step: 1
+        action: Wait for artifact generation (up to 20 seconds)
+        expected: Page transitions to Step 2
+      - step: 2
+        action: Verify Step 2 content is loaded
+        expected: Business Requirements interview appears
+      - step: 3
+        action: Click "Review" mode toggle (optional)
+        expected: Can view generated artifact from Step 1
+
+    acceptance_criteria:
+      artifact_generation:
+        - criterion: Artifact generation completes within 20 seconds
+          validation: Time from submit to step transition
+        - criterion: No timeout or error messages appear
+          validation: No error dialogs or messages
+        - criterion: Loading indicator or progress message is shown (optional)
+          validation: User knows something is happening
+
+      step_transition:
+        - criterion: Page automatically advances to Step 2
+          validation: Heading changes to "Business Requirements"
+        - criterion: URL remains /project/{projectId}/build (no navigation)
+          validation: Browser address bar unchanged
+        - criterion: Stage sidebar updates to show Step 2 active
+          validation: Stage 2 highlighted as "now"
+        - criterion: Stage 1 shows as complete (optional, may remain "now")
+          validation: Check Stage 1 status indicator
+
+      artifact_verification:
+        - criterion: Click "Review" mode toggle
+          validation: Switch to Review mode
+        - criterion: Artifact list shows "Gap Analysis" or "Step 1" artifact
+          validation: Artifact appears in DocBrowser
+        - criterion: Artifact is in YAML or Markdown format
+          validation: View artifact content, check format
+        - criterion: Artifact contains the submitted form data
+          validation: Search artifact for entered text
+        - criterion: Artifact has generated content (not empty)
+          validation: Artifact size > 500 bytes
+        - criterion: Can switch back to "Build" mode
+          validation: Toggle back to Build, see Step 2 interview
+
+      navigation_state:
+        - criterion: BACK button is now enabled
+          validation: Can click BACK button
+        - criterion: NEXT button remains disabled (Step 2 not complete)
+          validation: NEXT button is grayed out
+        - criterion: Progress indicator shows "Step 2 of 10"
+          validation: Step counter updated
+
+    notes: |
+      Artifact generation uses AWS Bedrock Claude AI and may take 5-20 seconds.
+      If generation takes longer than 20 seconds, check server logs for errors.
+    github_issue: ""
+
+  - id: TC-006
+    name: Step 2 - Business Requirements Interview (Initial State)
+    category: Step 2
+    priority: Critical
+    estimated_duration: 2 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-005 passed
+      - Step 2 interview has loaded
+
+    test_steps:
+      - step: 1
+        action: Verify interview UI components
+        expected: Question, options, and submit button visible
+      - step: 2
+        action: Verify question content is AI-generated
+        expected: Question is relevant and well-formed
+
+    acceptance_criteria:
+      page_layout:
+        - criterion: Heading "Business Requirements" is displayed
+          validation: Main heading visible
+        - criterion: Subheading "Current Question" is displayed
+          validation: Section heading for question
+        - criterion: Question text is displayed
+          validation: AI-generated question visible
+        - criterion: Question is relevant to healthcare patient portal
+          validation: Question relates to project described in Step 1
+
+      answer_options:
+        - criterion: Multiple choice options are displayed (typically 3-4)
+          validation: Option buttons visible
+        - criterion: Each option is a clickable button
+          validation: Buttons respond to hover
+        - criterion: Options are relevant to the question
+          validation: Read options, verify they make sense
+        - criterion: Freeform text input field is also available
+          validation: Textbox with placeholder "Type your answer..."
+
+      submission_controls:
+        - criterion: "Submit Answer" button is present
+          validation: Button labeled "Submit Answer"
+        - criterion: "Submit Answer" button is disabled initially
+          validation: Button is grayed out before selection
+        - criterion: No loading or error messages
+          validation: Clean UI state
+
+      interview_state:
+        - criterion: No "Previous Answers" section (first question)
+          validation: Only current question visible
+        - criterion: Question loaded within 5 seconds of Step 2 entry
+          validation: Time from step transition to question display
+
+    notes: ""
+    github_issue: ""
+
+  - id: TC-007
+    name: Step 2 - Business Requirements Interview (Answer Questions)
+    category: Step 2
+    priority: Critical
+    estimated_duration: 10 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-006 passed
+      - First question is displayed
+
+    test_steps:
+      - step: 1
+        action: Click one of the multiple-choice options
+        expected: Option is selected, textbox fills with option text
+      - step: 2
+        action: Verify Submit Answer button enables
+        expected: Button becomes clickable
+      - step: 3
+        action: Click "Submit Answer"
+        expected: Answer is submitted, next question loads
+      - step: 4
+        action: Repeat for questions 2-10
+        expected: Each question loads after previous answer submitted
+      - step: 5
+        action: Verify "Previous Answers" section appears
+        expected: List of prior Q&A visible
+      - step: 6
+        action: After 10th answer, wait for artifact generation
+        expected: Step transitions to Step 3
+
+    acceptance_criteria:
+      option_selection:
+        - criterion: Clicking an option button fills the textbox
+          validation: Textbox shows selected option text
+        - criterion: Can select different option to change answer
+          validation: Click another option, textbox updates
+        - criterion: Can clear selection and type freeform answer
+          validation: Clear textbox, type custom text
+        - criterion: Submit button enables after selection or typing
+          validation: Button becomes enabled
+
+      freeform_input:
+        - criterion: Can type answer directly without selecting option
+          validation: Type in textbox, verify text appears
+        - criterion: Textbox accepts 500+ character answers
+          validation: Type long answer, verify no truncation
+        - criterion: Submit button enables when textbox has text
+          validation: Type text, button becomes enabled
+
+      answer_submission:
+        - criterion: Clicking Submit Answer submits the answer
+          validation: UI changes indicating submission
+        - criterion: Loading indicator or "Loading next question..." appears
+          validation: Feedback during question generation
+        - criterion: Next question loads within 5 seconds
+          validation: Time from submit to next question
+        - criterion: Previous answer is cleared from textbox
+          validation: Textbox is empty for new question
+        - criterion: Submit button is disabled again
+          validation: Button resets to disabled state
+
+      previous_answers:
+        - criterion: "Previous Answers" section appears after first answer
+          validation: Section heading visible
+        - criterion: Each submitted Q&A pair is displayed
+          validation: Question and answer text shown
+        - criterion: Answers are displayed in chronological order
+          validation: Most recent at bottom or top (consistent)
+        - criterion: All 10 Q&A pairs are visible by the 10th question
+          validation: Scroll through list, count entries
+
+      interview_progression:
+        - criterion: Questions are varied and build on previous answers
+          validation: Each question is different and relevant
+        - criterion: Questions are relevant to healthcare patient portal
+          validation: Context maintained throughout interview
+        - criterion: Interview shows progress (e.g., "Question 5 of 10")
+          validation: Optional progress indicator (if implemented)
+
+      completion:
+        - criterion: After 10th answer submission, interview completes
+          validation: No 11th question appears
+        - criterion: Loading indicator shows "Generating artifact..."
+          validation: Message or spinner during artifact generation
+        - criterion: Artifact generation completes within 25 seconds
+          validation: Time from 10th answer to Step 3 transition
+        - criterion: Page automatically transitions to Step 3
+          validation: Heading changes to "Technical Requirements"
+
+    known_issues:
+      - issue: BUG-004
+        description: Interview may not stop after 10 questions (continues indefinitely)
+        workaround: If more than 10 questions appear, mark test as FAILED and file bug
+
+    notes: |
+      This test requires answering 10 questions. Mix of selecting options and
+      typing freeform answers recommended for comprehensive testing.
+    github_issue: ""
+
+  - id: TC-008
+    name: Step 3 - Technical Requirements Interview
+    category: Step 3
+    priority: High
+    estimated_duration: 10 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-007 passed
+      - Step 3 interview has loaded
+
+    test_steps:
+      - step: 1
+        action: Verify Step 3 interview UI is similar to Step 2
+        expected: Same layout with technical-focused questions
+      - step: 2
+        action: Answer 10 technical requirements questions
+        expected: Each question relates to technical aspects
+      - step: 3
+        action: After 10th answer, wait for artifact generation
+        expected: Step transitions to Step 4
+
+    acceptance_criteria:
+      interview_behavior:
+        - criterion: Interview functions identically to Step 2
+          validation: Same UI, same interaction pattern
+        - criterion: Questions focus on technical requirements
+          validation: Questions about architecture, tech stack, performance, etc.
+        - criterion: Interview completes after 10 answers
+          validation: No 11th question appears
+        - criterion: Artifact generation completes within 25 seconds
+          validation: Time from 10th answer to Step 4 transition
+        - criterion: Page transitions to Step 4 automatically
+          validation: Heading changes to "Style Anchors"
+
+      artifact_verification:
+        - criterion: Can switch to Review mode and view Step 3 artifact
+          validation: Toggle to Review, see Technical Requirements artifact
+        - criterion: Artifact contains technical requirements content
+          validation: Artifact has technical details, not business details
+
+    notes: |
+      Step 3 should behave identically to Step 2 but with technical questions.
+      If BUG-004 affects Step 2, it will likely affect Step 3 as well.
+    github_issue: ""
+
+  - id: TC-009
+    name: Step 4 - Style Anchors (Automated)
+    category: Step 4
+    priority: High
+    estimated_duration: 2 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-008 passed
+      - Step 4 has loaded
+
+    test_steps:
+      - step: 1
+        action: Observe Step 4 behavior upon entry
+        expected: Automated artifact generation starts immediately
+      - step: 2
+        action: Wait for artifact generation to complete
+        expected: Step 4 completes and transitions to Step 5
+
+    acceptance_criteria:
+      automated_behavior:
+        - criterion: No user input required (no form or interview)
+          validation: Page shows generating/loading state only
+        - criterion: Loading or progress message displayed
+          validation: "Generating Style Anchors..." or similar
+        - criterion: Artifact generation starts automatically
+          validation: No user action needed to trigger
+        - criterion: Artifact generation completes within 30 seconds
+          validation: Time from entry to transition
+        - criterion: Page transitions to Step 5 automatically
+          validation: Heading changes to "Implementation Planner"
+
+      artifact_verification:
+        - criterion: Can switch to Review mode and view Step 4 artifact
+          validation: Toggle to Review, see Style Anchors artifact
+        - criterion: Artifact contains code examples or patterns
+          validation: Artifact has style anchor content
+
+      navigation:
+        - criterion: BACK button remains enabled during generation
+          validation: Can go back if needed
+        - criterion: NEXT button remains disabled during generation
+          validation: Cannot skip ahead during generation
+
+    notes: |
+      Step 4 is fully automated. No user interaction needed.
+      This tests the automated step workflow pattern.
+    github_issue: ""
+
+  - id: TC-010
+    name: Step 5 - Implementation Planner (Form)
+    category: Step 5
+    priority: High
+    estimated_duration: 3 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-009 passed
+      - Step 5 has loaded
+
+    test_steps:
+      - step: 1
+        action: Verify Step 5 form is similar to Step 1
+        expected: Form with 2 fields
+      - step: 2
+        action: Fill field 1 "What is the deployment strategy?"
+        expected: Dropdown or text field
+      - step: 3
+        action: Fill field 2 "What is the tech stack?"
+        expected: Text field
+      - step: 4
+        action: Click Submit
+        expected: Artifact generation and transition to Step 6
+
+    acceptance_criteria:
+      form_layout:
+        - criterion: Heading "Implementation Planner" displayed
+          validation: Main heading visible
+        - criterion: Two form fields present
+          validation: Fields labeled clearly
+        - criterion: First field "What is the deployment strategy?"
+          validation: Field accepts input
+        - criterion: Second field "What is the tech stack?"
+          validation: Field accepts input
+        - criterion: Submit button present and initially disabled
+          validation: Button state correct
+
+      form_behavior:
+        - criterion: Submit button enables when both fields filled
+          validation: Fill both, button becomes enabled
+        - criterion: Form submission triggers artifact generation
+          validation: Click submit, generation starts
+        - criterion: Artifact generation completes within 20 seconds
+          validation: Time from submit to transition
+        - criterion: Page transitions to Step 6 automatically
+          validation: Heading changes to "Definition of Done"
+
+      artifact_verification:
+        - criterion: Implementation planning artifact generated
+          validation: View in Review mode
+
+    notes: ""
+    github_issue: ""
+
+  - id: TC-011
+    name: Steps 6-10 - Automated Workflow
+    category: Steps 6-10
+    priority: High
+    estimated_duration: 5 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-010 passed
+      - Step 6 has loaded
+
+    test_steps:
+      - step: 1
+        action: Observe Step 6 (Definition of Done) - automated
+        expected: Auto-generates and advances to Step 7
+      - step: 2
+        action: Observe Step 7 (Architecture Decisions) - artifact-only
+        expected: Shows existing artifacts, can view
+      - step: 3
+        action: Click NEXT to advance to Step 8
+        expected: Manually advance (no auto-transition)
+      - step: 4
+        action: Observe Step 8 (Delivery Timeline) - automated
+        expected: Auto-generates and advances to Step 9
+      - step: 5
+        action: Observe Step 9 (QA Test Plan) - automated
+        expected: Auto-generates and advances to Step 10
+      - step: 6
+        action: Observe Step 10 (Generate Summaries) - automated
+        expected: Auto-generates and workflow completes
+
+    acceptance_criteria:
+      step_6_definition_of_done:
+        - criterion: Loads automatically after Step 5
+          validation: No manual action required
+        - criterion: Shows generating message
+          validation: "Generating Definition of Done..."
+        - criterion: Completes within 30 seconds
+          validation: Time from entry to transition
+        - criterion: Transitions to Step 7 automatically
+          validation: Next step loads
+
+      step_7_architecture_decisions:
+        - criterion: Shows "Architecture Decisions" heading
+          validation: Heading visible
+        - criterion: Type is "artifact-only" - no generation
+          validation: Shows review/view mode only
+        - criterion: Can view existing architectural decisions
+          validation: Content from prior steps displayed
+        - criterion: NEXT button is enabled
+          validation: Can manually advance
+        - criterion: Clicking NEXT advances to Step 8
+          validation: Manual transition works
+
+      step_8_delivery_timeline:
+        - criterion: Automated artifact generation
+          validation: Generates automatically
+        - criterion: Completes within 30 seconds
+          validation: Time from entry to transition
+        - criterion: Transitions to Step 9 automatically
+          validation: Next step loads
+
+      step_9_qa_test_plan:
+        - criterion: Automated artifact generation
+          validation: Generates automatically
+        - criterion: Completes within 30 seconds
+          validation: Time from entry to transition
+        - criterion: Transitions to Step 10 automatically
+          validation: Next step loads
+
+      step_10_generate_summaries:
+        - criterion: Automated artifact generation
+          validation: Generates automatically
+        - criterion: Completes within 30 seconds
+          validation: Time from entry to transition
+        - criterion: Workflow completion indicated
+          validation: Message or state showing completion
+        - criterion: All 10 steps marked complete
+          validation: Stage sidebar shows all steps done
+        - criterion: NEXT button is disabled (no Step 11)
+          validation: Cannot advance further
+
+      final_state:
+        - criterion: Can navigate backward through all steps
+          validation: Click BACK repeatedly, visit each step
+        - criterion: Can switch to Review mode
+          validation: Toggle to Review
+        - criterion: All 10 artifacts are visible in Review mode
+          validation: DocBrowser lists all artifacts
+        - criterion: Each artifact can be viewed
+          validation: Click each, content displays
+        - criterion: Can download each artifact
+          validation: Download button works
+        - criterion: Can copy each artifact to clipboard
+          validation: Copy button works
+
+    notes: |
+      Steps 6, 8, 9, 10 are automated (auto-advance).
+      Step 7 is artifact-only (manual NEXT required).
+      Total time for Steps 6-10: approximately 2-3 minutes.
+    github_issue: ""
+
+  - id: TC-012
+    name: Navigation and State Persistence
+    category: Cross-cutting
+    priority: High
+    estimated_duration: 5 minutes
+    status: NOT_STARTED
+
+    prerequisites:
+      - TC-011 passed
+      - Workflow is complete (all 10 steps done)
+
+    test_steps:
+      - step: 1
+        action: Test BACK button navigation
+        expected: Can navigate backward through all steps
+      - step: 2
+        action: Test NEXT button navigation
+        expected: Can navigate forward through completed steps
+      - step: 3
+        action: Refresh browser page (F5)
+        expected: State is restored, current step preserved
+      - step: 4
+        action: Navigate away and return via dashboard
+        expected: Project state is preserved
+      - step: 5
+        action: Test Review mode for each step
+        expected: Can view all artifacts
+
+    acceptance_criteria:
+      backward_navigation:
+        - criterion: BACK button works from any step
+          validation: Click BACK from Steps 2-10
+        - criterion: Navigation is instant (no loading)
+          validation: Previous step appears immediately
+        - criterion: Form data is preserved when navigating back
+          validation: Step 1 and 5 forms show original data
+        - criterion: Interview answers are preserved
+          validation: Step 2 and 3 show previous answers
+        - criterion: Can navigate all the way back to Step 1
+          validation: BACK works 9 times to reach Step 1
+
+      forward_navigation:
+        - criterion: NEXT button enabled for completed steps
+          validation: Can click NEXT on Steps 1-9
+        - criterion: NEXT button disabled for incomplete steps
+          validation: Cannot skip ahead
+        - criterion: Navigation is instant for completed steps
+          validation: No re-generation occurs
+        - criterion: Can navigate all the way to Step 10
+          validation: NEXT works 9 times from Step 1
+
+      state_persistence:
+        - criterion: Refresh page (F5) preserves current step
+          validation: Same step loads after refresh
+        - criterion: All completed steps remain completed
+          validation: Stage sidebar shows correct states
+        - criterion: Form data persists across refresh
+          validation: Step 1 and 5 data still present
+        - criterion: Artifacts remain accessible after refresh
+          validation: Review mode shows all artifacts
+
+      project_reopening:
+        - criterion: Navigate to dashboard (click project name)
+          validation: Dashboard loads
+        - criterion: Click project card to reopen
+          validation: Returns to /project/{projectId}/build
+        - criterion: Project resumes at last completed step
+          validation: Step 10 (or last active step) loads
+        - criterion: All data and artifacts preserved
+          validation: Nothing lost after reopening
+
+      review_mode:
+        - criterion: Can toggle to Review mode from any step
+          validation: Click "Review" button
+        - criterion: DocBrowser shows all 10 artifacts
+          validation: List displays all artifact names
+        - criterion: Clicking artifact displays its content
+          validation: Each artifact viewable
+        - criterion: Syntax highlighting applied to YAML artifacts
+          validation: YAML has color coding
+        - criterion: Download button works for each artifact
+          validation: File downloads correctly
+        - criterion: Copy to clipboard works for each artifact
+          validation: Content copied to clipboard
+        - criterion: Can toggle back to Build mode
+          validation: Click "Build" button returns to step view
+
+    notes: |
+      This test verifies state management and persistence across the entire workflow.
+      Critical for user experience and data integrity.
+    github_issue: ""
+
+summary:
+  total_test_cases: 12
+  critical_priority: 8
+  high_priority: 4
+  estimated_total_duration: 60 minutes
+
+  test_execution_log:
+    - date: ""
+      tester: ""
+      environment: ""
+      results:
+        passed: 0
+        failed: 0
+        blocked: 0
+        skipped: 0
+      notes: ""
+
+  known_bugs:
+    - id: BUG-001
+      description: Empty screen after project creation
+      status: FIXED
+      test_cases_affected: [TC-003]
+
+    - id: BUG-002
+      description: Navigation component not rendered
+      status: FIXED
+      test_cases_affected: [TC-003, TC-005]
+
+    - id: BUG-003
+      description: Artifact generation input mismatch
+      status: FIXED
+      test_cases_affected: [TC-005, TC-007, TC-008]
+
+    - id: BUG-004
+      description: Step 2 interview doesn't stop after 10 questions
+      status: OPEN
+      test_cases_affected: [TC-007, TC-008]
+      github_issue: ""
+
+    - id: BUG-005
+      description: Navigation component SSR error (localStorage.getItem)
+      status: OPEN
+      test_cases_affected: [TC-003]
+      github_issue: ""
+
+  success_criteria:
+    minimum_pass_rate: 100%
+    critical_tests_must_pass: true
+    blocking_bugs: []
+    ready_for_production: false

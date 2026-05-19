@@ -10,13 +10,75 @@ export function buildInterviewPrompt(
   stepName: string,
   stepNumber: number,
   previousAnswers: string[],
+  projectOverview?: string,
 ): Message[] {
+  console.log('[buildInterviewPrompt] Called with:', {
+    stepName,
+    stepNumber,
+    hasProjectOverview: !!projectOverview,
+    projectOverviewLength: projectOverview?.length || 0,
+    projectOverviewPreview: projectOverview?.substring(0, 50),
+  });
+
   // Get skill content for this step
   const skillContent = getSkillContent(stepNumber);
 
   // If we have skill content, use it
   if (skillContent) {
-    let systemContext = skillContent;
+    let systemContext = "";
+
+    // Add project context FIRST if available (for Step 2+)
+    if (projectOverview) {
+      console.log('[buildInterviewPrompt] Adding project context to prompt');
+      systemContext += `## 🎯 PROJECT CONTEXT - CRITICAL INSTRUCTIONS
+
+The user is building: "${projectOverview}"
+
+**MANDATORY REQUIREMENTS:**
+
+1. **REWRITE EVERY QUESTION** to explicitly reference this specific project
+   - ❌ BAD: "What is the primary problem your project aims to solve?"
+   - ✅ GOOD: "What problem does your HTML button page solve for users?"
+
+2. **CUSTOMIZE ALL OPTIONS** to match the project type
+   - For web pages: mention buttons, layout, styling, user interactions
+   - For APIs: mention endpoints, authentication, data models, security
+   - For mobile apps: mention screens, notifications, data persistence, platform features
+
+3. **USE PROJECT-SPECIFIC LANGUAGE**
+   - If they said "HTML page with buttons" → ask about "the buttons on your page"
+   - If they said "REST API" → ask about "your API endpoints"
+   - If they said "iOS app" → ask about "your app screens"
+
+4. **SKIP IRRELEVANT QUESTIONS** entirely
+   - Don't ask about API design for a static HTML page
+   - Don't ask about mobile screens for a backend API
+   - Don't ask about database schemas for a pure frontend project
+
+**VERIFICATION CHECK:**
+Before asking each question, verify: "Does this question reference '${projectOverview}'?"
+If NO, rewrite it until it does.
+
+**EXAMPLES OF PROPER CONTEXTUALIZATION:**
+
+Example 1 - HTML Page Project:
+❌ Generic: "What is the primary problem your project aims to solve?"
+✅ Contextual: "What problem does your HTML button page solve for users? Will the buttons trigger actions, navigate to sections, or submit data?"
+
+Example 2 - API Project:
+❌ Generic: "Who are your primary target users?"
+✅ Contextual: "Who will be calling your authentication API? Will it be frontend apps, mobile clients, or other backend services?"
+
+Example 3 - Mobile App:
+❌ Generic: "What are the main technical constraints?"
+✅ Contextual: "What technical constraints affect your iOS habit tracking app? Consider notification permissions, background refresh, or local data storage limits."
+
+---
+
+`;
+    }
+
+    systemContext += skillContent;
 
     if (previousAnswers.length > 0) {
       systemContext += "\n\n## Progress So Far\n\nPrevious answers in this interview:\n";
@@ -26,18 +88,70 @@ export function buildInterviewPrompt(
       systemContext += "\n";
     }
 
-    systemContext += "\n\nNow ask the next appropriate question based on the progress above.";
+    systemContext += `
+
+## CRITICAL OUTPUT FORMATTING RULES
+
+When presenting multiple-choice questions:
+
+1. **DO NOT** echo or list the options in plain text before the **Options:** section
+2. **DO NOT** write introductory text like "Here are your options:" or "You can choose from:"
+3. **ALWAYS** use the exact format from the skill content with **Options:** header
+4. **ALWAYS** include the option number, title, and description exactly as specified
+5. **NEVER** paraphrase or summarize the options before presenting them
+
+Correct format example:
+\`\`\`
+What is your choice?
+
+**Options:**
+1. Option A (Recommended) - Full description here
+2. Option B - Full description here
+\`\`\`
+
+Incorrect format (DO NOT DO THIS):
+\`\`\`
+Let me present your options:
+1. Option A - Short version
+2. Option B - Short version
+
+**Options:**
+1. Option A (Recommended) - Full description here
+2. Option B - Full description here
+\`\`\`
+`;
+
+    // Add final instruction with project context if available
+    if (projectOverview) {
+      systemContext += `\n\n## FINAL INSTRUCTION - READ THIS LAST
+
+You have been provided with the project description: "${projectOverview}"
+
+When you ask the next question, you MUST rewrite it to specifically mention what the user is building. Do not ask generic questions. Make every question about THEIR specific project.
+
+For example:
+- NOT: "What is the primary problem your project aims to solve?"
+- YES: "What problem will your HTML button page solve for users?"
+
+Now ask the first question, customized for "${projectOverview}".`;
+    } else {
+      systemContext += `\n\nNow ask the next appropriate question based on the progress above.`;
+    }
 
     return [
       { role: "user", content: systemContext },
       {
         role: "assistant",
-        content: "Understood. I will conduct this structured interview following the categories and questions defined.",
+        content: projectOverview
+          ? `Understood. I will conduct this interview about "${projectOverview}" and will customize every question to reference this specific project.`
+          : "Understood. I will conduct this structured interview following the categories and questions defined.",
       },
       {
         role: "user",
         content: previousAnswers.length === 0
-          ? "Begin the interview by asking the first question."
+          ? (projectOverview
+              ? `Begin the interview by asking the first question about "${projectOverview}". Remember to rewrite the question to reference this specific project.`
+              : "Begin the interview by asking the first question.")
           : "Ask the next question in the sequence.",
       },
     ];
