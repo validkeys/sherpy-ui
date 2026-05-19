@@ -76,12 +76,22 @@ export function updateProjectStatus(
   id: string,
   status: Project["status"],
 ): Project {
-  const project = store.get(id);
+  const project = getProject(id);
   if (!project) throw new Error(`Project not found: ${id}`);
+
+  const lastTouchedAt = new Date().toISOString();
+
+  const stmt = db.prepare(`
+    UPDATE projects
+    SET status = ?, last_touched_at = ?
+    WHERE id = ?
+  `);
+  stmt.run(status, lastTouchedAt, id);
+
   const updated = {
     ...project,
     status,
-    lastTouchedAt: new Date().toISOString(),
+    lastTouchedAt,
   };
   store.set(id, updated);
   return updated;
