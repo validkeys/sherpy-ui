@@ -31,3 +31,5 @@ qa-screenshots
 _ref/
 .env
 coverage/
+.tmp-docs/
+.playwright-mcp/

@@ -28,6 +28,7 @@ image:
 env:
   NODE_OPTIONS: "--max-old-space-size=4096"
   SHERPY_UI_PORT: 5180
+  PLAYWRIGHT_MCP_EXECUTABLE_PATH: "/usr/bin/chromium"
   # MY_API_KEY: "from-your-dotenv"
 
 # --- Environment from host ----------------------------------------------------
@@ -161,6 +162,8 @@ firewall:
     - "vault.dotenv.org"
     - "ui.shadcn.com"
     - "fonts.googleapis.com"
+    - "cdn.playwright.dev"
+    - "playwright.download.prss.microsoft.com"
     # - "cdn.example.com"
 
 # --- Claude Code settings -----------------------------------------------------

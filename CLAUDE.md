@@ -6,65 +6,87 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 ---
 
-## ⚠️ CRITICAL: agent-browser Testing Limitation (Discovered 2026-05-13)
+## ✅ AUTOMATED TESTING: Use Playwright MCP (Updated 2026-05-15)
 
-**When testing React forms with `agent-browser`, standard fill commands DO NOT work properly.**
+**For testing React forms, use Playwright MCP tools (NOT agent-browser).**
 
-### The Problem
+### The Problem with agent-browser
 
-Commands like `agent-browser fill`, `keyboard type`, and `keyboard inserttext`:
-- ❌ Do NOT set DOM `input.value` / `textarea.value` properties reliably
-- ❌ Do NOT trigger React `onChange` events properly
-- ❌ Do NOT update React component state
-- ✅ DO create visual appearance of filled fields (misleading!)
+After comprehensive testing (Test Run #011), agent-browser was proven **fundamentally incompatible** with React form testing:
+- ❌ 5 different approaches tested - ALL FAILED to update React state
+- ❌ Cannot trigger React's synthetic event system
+- ❌ Visual fill succeeds but state remains empty
+- ❌ Causes false-positive test failures
 
-**Result:** Forms appear filled but React state remains empty, causing false-positive test failures.
+**Approaches tested and failed:**
+1. Standard `fill` commands
+2. React Fiber `memoizedProps.onChange()`
+3. IIFE wrappers
+4. Native `Event()` + `dispatchEvent()`
+5. `InputEvent()` with blur events
 
-### The Solution (React Fiber Workaround) ✅ VERIFIED IN TEST RUN #009
+### ✅ WORKING SOLUTION: Playwright MCP
 
-**For filling controlled inputs/textareas:**
-```bash
-agent-browser eval --stdin <<'EOF'
-const element = document.getElementById('fieldId');
-const key = Object.keys(element).find(k => k.startsWith('__react'));
-const fiber = element[key];
+Use Playwright MCP tools which properly simulate user interactions:
 
-// Set value and trigger React onChange
-element.value = 'your value here';
-const event = { target: element, currentTarget: element };
-fiber.memoizedProps.onChange(event);
-EOF
+```javascript
+// Navigate
+mcp__playwright__browser_navigate({ url: "http://localhost:5180" })
+
+// Fill form (properly triggers React onChange)
+mcp__playwright__browser_fill_form({
+  fields: [
+    {
+      target: "#fieldId",
+      name: "Field Name",
+      type: "textbox",
+      value: "Your value here"
+    }
+  ]
+})
+
+// Click button
+mcp__playwright__browser_click({ 
+  target: "button:has-text('Submit')",
+  element: "Submit button"
+})
+
+// Screenshot
+mcp__playwright__browser_take_screenshot({ 
+  type: "png",
+  filename: ".tmp-docs/screenshots/result.png"
+})
 ```
 
-**For submitting forms:**
-```bash
-agent-browser eval --stdin <<'EOF'
-const form = document.querySelector('form');
-const key = Object.keys(form).find(k => k.startsWith('__react'));
-const event = { 
-  preventDefault: () => {}, 
-  target: form, 
-  currentTarget: form 
-};
-form[key].memoizedProps.onSubmit(event);
-EOF
-```
+### Why Playwright Works
 
-**Note:** Simple text inputs may work with `agent-browser fill` command, but textareas and multi-line inputs require the React fiber workaround.
+- ✅ Playwright properly simulates real user interactions
+- ✅ Triggers React's synthetic event system correctly
+- ✅ Updates component state and XState context
+- ✅ Playwright MCP available via Claude Code
 
 ### Verification
 
 - ✅ Application code is CORRECT
 - ✅ Integration tests with `@testing-library/user-event` PASS (5/5)
 - ✅ Manual browser testing works perfectly
-- ✅ React fiber workaround validated in Test Run #009
-- ✅ Issue was ONLY with agent-browser testing methodology
+- ✅ Playwright MCP properly updates React state (Test Run #011)
+- ❌ agent-browser FAILS for React forms (5 approaches tested, all failed)
 
 **See:** 
-- `.tmp-docs/plan/bug-014-root-cause-analysis.md` for complete analysis
-- `.tmp-docs/plan/runs/009/summary.md` for React fiber workaround validation
+- `.tmp-docs/plan/agent-browser-form-filling-guide.md` - Complete research (5 approaches documented)
+- `.tmp-docs/plan/agent-browser-quick-reference.md` - Quick reference
+- `.tmp-docs/plan/runs/011/summary.md` - Test Run #011 findings
+- `.tmp-docs/plan/learnings.md` section "step-02" - Playwright MCP examples
+- `src/features/planning/__tests__/bug-014-form-data-capture.test.tsx` - Reproduction tests (4/4 passing)
 
 **Debug Tool:** The `DebugPanel` component in development mode shows real-time XState state and DOM values, making it easy to verify form data capture.
+
+**Testing Status:**
+- ✅ 4/4 reproduction tests pass (proves root cause)
+- ✅ 5/5 integration tests pass (proves app code correct)
+- ✅ Manual browser testing works perfectly
+- ❌ Standard agent-browser commands documented as not working
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "capturedAt": "2026-05-14T19:16:00.432Z",
+  "capturedAt": "2026-05-15T15:52:31.965Z",
   "stepNumber": 2,
   "label": "Test With Spaces & Special!@#$%Chars",
   "xstateSnapshot": {
@@ -9,8 +9,8 @@
     "context": {
       "projectId": "test-project",
       "entryPath": "new-project",
-      "startedAt": "2026-05-14T19:16:00.432Z",
-      "updatedAt": "2026-05-14T19:16:00.432Z",
+      "startedAt": "2026-05-15T15:52:31.965Z",
+      "updatedAt": "2026-05-15T15:52:31.965Z",
       "step1Responses": {
         "existingRequirements": "No",
         "projectDescription": "Healthcare patient portal with appointment scheduling and secure messaging"
@@ -27,7 +27,7 @@
         "1": {
           "type": "markdown",
           "content": "# Gap Analysis Worksheet\n\n## Project Overview\nHealthcare patient portal with appointment scheduling and secure messaging\n\n## Existing Requirements\n**Do you have existing requirements?** No\n\n## Gap Analysis\nBased on the information provided, this is a new project that requires comprehensive planning.\n\n**Next Steps:**\n- Conduct business requirements interview\n- Define technical requirements\n- Establish project scope and constraints\n",
-          "generatedAt": "2026-05-14T19:16:00.432Z"
+          "generatedAt": "2026-05-15T15:52:31.965Z"
         }
       },
       "completedSteps": [1],
