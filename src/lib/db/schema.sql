@@ -5,7 +5,7 @@
 
 -- Table: projects
 -- Core project metadata and tracking
-CREATE TABLE projects (
+CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,              -- nanoid(8)
   code TEXT NOT NULL UNIQUE,        -- SHR-0042
   name TEXT NOT NULL,               -- "mini-calculator"
@@ -20,12 +20,12 @@ CREATE TABLE projects (
   CHECK(current_step >= 1 AND current_step <= 10)
 );
 
-CREATE INDEX idx_projects_status ON projects(status);
-CREATE INDEX idx_projects_last_touched ON projects(last_touched_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+CREATE INDEX IF NOT EXISTS idx_projects_last_touched ON projects(last_touched_at DESC);
 
 -- Table: planning_state
 -- Complete XState machine state snapshot per project
-CREATE TABLE planning_state (
+CREATE TABLE IF NOT EXISTS planning_state (
   project_id TEXT PRIMARY KEY,
   xstate_snapshot TEXT NOT NULL,    -- JSON serialized XState snapshot
   created_at TEXT NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE planning_state (
 
 -- Table: interview_answers
 -- Individual Q&A records for auditability and querying
-CREATE TABLE interview_answers (
+CREATE TABLE IF NOT EXISTS interview_answers (
   id TEXT PRIMARY KEY,              -- nanoid()
   project_id TEXT NOT NULL,
   step_number INTEGER NOT NULL,     -- 2 or 3
@@ -48,11 +48,11 @@ CREATE TABLE interview_answers (
   CHECK(step_number IN (2, 3))
 );
 
-CREATE INDEX idx_answers_project_step ON interview_answers(project_id, step_number);
+CREATE INDEX IF NOT EXISTS idx_answers_project_step ON interview_answers(project_id, step_number);
 
 -- Table: form_responses
 -- Form submissions (step 1, 5, 7)
-CREATE TABLE form_responses (
+CREATE TABLE IF NOT EXISTS form_responses (
   id TEXT PRIMARY KEY,              -- nanoid()
   project_id TEXT NOT NULL,
   step_number INTEGER NOT NULL,     -- 1, 5, or 7
@@ -65,11 +65,11 @@ CREATE TABLE form_responses (
   UNIQUE(project_id, step_number, field_name)
 );
 
-CREATE INDEX idx_form_responses_project_step ON form_responses(project_id, step_number);
+CREATE INDEX IF NOT EXISTS idx_form_responses_project_step ON form_responses(project_id, step_number);
 
 -- Table: artifacts
 -- Generated documents (Gap Analysis, Business Requirements, etc.)
-CREATE TABLE artifacts (
+CREATE TABLE IF NOT EXISTS artifacts (
   id TEXT PRIMARY KEY,              -- nanoid()
   project_id TEXT NOT NULL,
   step_number INTEGER NOT NULL,     -- 1-10
@@ -83,4 +83,4 @@ CREATE TABLE artifacts (
   UNIQUE(project_id, step_number)
 );
 
-CREATE INDEX idx_artifacts_project ON artifacts(project_id);
+CREATE INDEX IF NOT EXISTS idx_artifacts_project ON artifacts(project_id);
