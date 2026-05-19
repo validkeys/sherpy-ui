@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
+import type { DBProject } from "@/lib/db/types";
 import type { CreateProjectInput, Project } from "./types";
 
 const store = new Map<string, Project>();
@@ -22,9 +23,21 @@ function getNewTimestamp(previousTimestamp?: string): string {
 }
 
 export function listProjects(): Project[] {
-  return Array.from(store.values()).sort((a, b) =>
-    b.lastTouchedAt.localeCompare(a.lastTouchedAt),
+  const stmt = db.prepare(
+    `SELECT * FROM projects ORDER BY last_touched_at DESC`,
   );
+  const rows = stmt.all() as DBProject[];
+
+  return rows.map((row) => ({
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    status: row.status,
+    entryPath: row.entry_path,
+    currentStep: row.current_step as Project["currentStep"],
+    createdAt: row.created_at,
+    lastTouchedAt: row.last_touched_at,
+  }));
 }
 
 export function createProject(input: CreateProjectInput): Project {

@@ -32,6 +32,44 @@ describe("listProjects", () => {
     expect(list[0].id).toBe(b.id);
     expect(list[1].id).toBe(a.id);
   });
+
+  it("reads projects from database", () => {
+    const p1 = createProject({ name: "DB Alpha", entryPath: "scratch" });
+    const p2 = createProject({ name: "DB Beta", entryPath: "doc-first" });
+
+    const list = listProjects();
+
+    expect(list).toHaveLength(2);
+    expect(list.find((p) => p.id === p1.id)).toMatchObject({
+      id: p1.id,
+      code: p1.code,
+      name: "DB Alpha",
+      status: "active",
+      entryPath: "scratch",
+      currentStep: 1,
+    });
+    expect(list.find((p) => p.id === p2.id)).toMatchObject({
+      id: p2.id,
+      code: p2.code,
+      name: "DB Beta",
+      status: "active",
+      entryPath: "doc-first",
+      currentStep: 1,
+    });
+  });
+
+  it("returns projects with camelCase field names", () => {
+    createProject({ name: "CamelCase Test", entryPath: "scratch" });
+
+    const list = listProjects();
+
+    expect(list[0]).toHaveProperty("entryPath");
+    expect(list[0]).toHaveProperty("currentStep");
+    expect(list[0]).toHaveProperty("lastTouchedAt");
+    expect(list[0]).toHaveProperty("createdAt");
+    expect(list[0]).not.toHaveProperty("entry_path");
+    expect(list[0]).not.toHaveProperty("current_step");
+  });
 });
 
 describe("createProject", () => {
