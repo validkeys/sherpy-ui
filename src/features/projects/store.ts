@@ -98,13 +98,23 @@ export function updateProjectStatus(
 }
 
 export function updateCurrentStep(id: string, step: number): Project {
-  const project = store.get(id);
+  const project = getProject(id);
   if (!project) throw new Error(`Project not found: ${id}`);
   if (step <= 0) throw new Error(`Invalid step number: ${step}`);
+
+  const lastTouchedAt = getNewTimestamp(project.lastTouchedAt);
+
+  const stmt = db.prepare(`
+    UPDATE projects
+    SET current_step = ?, last_touched_at = ?
+    WHERE id = ?
+  `);
+  stmt.run(step, lastTouchedAt, id);
+
   const updated = {
     ...project,
     currentStep: step as Project["currentStep"],
-    lastTouchedAt: getNewTimestamp(project.lastTouchedAt),
+    lastTouchedAt,
   };
   store.set(id, updated);
   return updated;
