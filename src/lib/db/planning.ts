@@ -114,3 +114,11 @@ export function hasPlanningState(projectId: string): boolean {
   const row = stmt.get(projectId);
   return row ? row.count > 0 : false;
 }
+
+/**
+ * Clear all planning state (for testing only)
+ * @internal
+ */
+export function _clearPlanningState(): void {
+  db.prepare("DELETE FROM planning_state").run();
+}

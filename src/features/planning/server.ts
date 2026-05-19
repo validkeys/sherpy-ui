@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { generateArtifact } from "../ai/server";
 import { getProject, initStore } from "../projects/store";
+import { isInterviewStep } from "./step-config";
 import {
   completeStep,
   getStepState,
@@ -11,7 +12,6 @@ import {
   submitAnswerAndComplete,
   updateStepOptions,
 } from "./store";
-import { isInterviewStep } from "./step-config";
 import type { StepOption } from "./types";
 
 export const $getStepState = createServerFn({ method: "GET" })
@@ -104,15 +104,28 @@ export const $completeStep = createServerFn({ method: "POST" })
         throw new Error(`Backend sync failed: ${response.status}`);
       }
     } catch (error) {
-      console.error("[syncStepToBackend] Error syncing step to backend:", error);
+      console.error(
+        "[syncStepToBackend] Error syncing step to backend:",
+        error,
+      );
     }
 
     // Generate artifact after step completion for interview steps
-    const step = updatedState.steps.find((s) => s.stepNumber === data.stepNumber);
-    if (step?.answers && step.answers.length > 0 && isInterviewStep(data.stepNumber)) {
+    const step = updatedState.steps.find(
+      (s) => s.stepNumber === data.stepNumber,
+    );
+    if (
+      step?.answers &&
+      step.answers.length > 0 &&
+      isInterviewStep(data.stepNumber)
+    ) {
       try {
         const answers = step.answers.map((a) => a.value);
-        const artifact = await generateArtifact(data.projectId, data.stepNumber, answers);
+        const artifact = await generateArtifact(
+          data.projectId,
+          data.stepNumber,
+          answers,
+        );
         // Update the step with the artifact content
         setStepArtifact(data.projectId, data.stepNumber, artifact.content);
       } catch (error) {
@@ -163,7 +176,10 @@ export const $submitAnswerAndComplete = createServerFn({ method: "POST" })
         throw new Error(`Backend sync failed: ${response.status}`);
       }
     } catch (error) {
-      console.error("[syncStepToBackend] Error syncing step to backend:", error);
+      console.error(
+        "[syncStepToBackend] Error syncing step to backend:",
+        error,
+      );
     }
 
     return updatedState;
@@ -178,8 +194,7 @@ export const $updateStepOptions = createServerFn({ method: "POST" })
       throw new Error("projectId required");
     if (typeof d.stepNumber !== "number")
       throw new Error("stepNumber must be a number");
-    if (!Array.isArray(d.options))
-      throw new Error("options must be an array");
+    if (!Array.isArray(d.options)) throw new Error("options must be an array");
     return {
       projectId: d.projectId,
       stepNumber: d.stepNumber,
@@ -189,4 +204,101 @@ export const $updateStepOptions = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await initStore();
     return updateStepOptions(data.projectId, data.stepNumber, data.options);
+  });
+
+// ─────────────────────────────────────────────────────────────
+// PLANNING STATE PERSISTENCE (SQLite)
+// ─────────────────────────────────────────────────────────────
+
+import {
+  deletePlanningState,
+  hasPlanningState,
+  loadPlanningState,
+  savePlanningState,
+} from "../../lib/db/planning";
+
+/**
+ * Save planning machine state to database
+ * Stores XState snapshot for persistence and recovery
+ */
+export const $savePlanningState = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    if (typeof d.snapshot !== "object" || d.snapshot === null)
+      throw new Error("snapshot required");
+
+    // Validate snapshot structure
+    const snapshot = d.snapshot as Record<string, unknown>;
+    if (!snapshot.status || !snapshot.value || !snapshot.context) {
+      throw new Error(
+        "invalid snapshot: missing required fields (status, value, context)",
+      );
+    }
+
+    return {
+      projectId: d.projectId,
+      snapshot: snapshot as any, // Type cast for serialized snapshot
+    };
+  })
+  .handler(async ({ data }) => {
+    // The snapshot is a serialized XState snapshot (from toJSON())
+    // The DB layer accepts any as it stores JSON TEXT
+    savePlanningState(data.projectId, data.snapshot as any);
+    return { success: true };
+  });
+
+/**
+ * Load planning machine state from database
+ * Returns snapshot if found and valid, null otherwise
+ */
+export const $loadPlanningState = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    return { projectId: d.projectId };
+  })
+  .handler(async ({ data }) => {
+    // Returns any to allow for serialized snapshot that will be
+    // reconstructed by XState's createActor with snapshot option
+    return loadPlanningState(data.projectId) as any;
+  });
+
+/**
+ * Delete planning state from database
+ */
+export const $deletePlanningState = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    return { projectId: d.projectId };
+  })
+  .handler(async ({ data }) => {
+    deletePlanningState(data.projectId);
+    return { success: true };
+  });
+
+/**
+ * Check if planning state exists in database
+ */
+export const $hasPlanningState = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    return { projectId: d.projectId };
+  })
+  .handler(async ({ data }) => {
+    return hasPlanningState(data.projectId);
   });
