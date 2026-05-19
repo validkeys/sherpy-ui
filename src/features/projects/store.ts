@@ -101,7 +101,25 @@ export function updateCurrentStep(id: string, step: number): Project {
 }
 
 export function getProject(id: string): Project | undefined {
-  return store.get(id);
+  // During migration: check Map first (for updates not yet in DB), then DB
+  const mapProject = store.get(id);
+  if (mapProject) return mapProject;
+
+  const stmt = db.prepare(`SELECT * FROM projects WHERE id = ?`);
+  const row = stmt.get(id) as DBProject | undefined;
+
+  if (!row) return undefined;
+
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    status: row.status,
+    entryPath: row.entry_path,
+    currentStep: row.current_step as Project["currentStep"],
+    createdAt: row.created_at,
+    lastTouchedAt: row.last_touched_at,
+  };
 }
 
 export function _resetStore(): void {
