@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import type { DBProject } from "@/lib/db/types";
 import type { CreateProjectInput, Project } from "./types";
 
-const store = new Map<string, Project>();
 const counterRef = { value: 42 };
 let lastTimestamp = "";
 
@@ -68,7 +67,6 @@ export function createProject(input: CreateProjectInput): Project {
     project.lastTouchedAt,
   );
 
-  store.set(project.id, project);
   return project;
 }
 
@@ -88,13 +86,11 @@ export function updateProjectStatus(
   `);
   stmt.run(status, lastTouchedAt, id);
 
-  const updated = {
+  return {
     ...project,
     status,
     lastTouchedAt,
   };
-  store.set(id, updated);
-  return updated;
 }
 
 export function updateCurrentStep(id: string, step: number): Project {
@@ -111,20 +107,14 @@ export function updateCurrentStep(id: string, step: number): Project {
   `);
   stmt.run(step, lastTouchedAt, id);
 
-  const updated = {
+  return {
     ...project,
     currentStep: step as Project["currentStep"],
     lastTouchedAt,
   };
-  store.set(id, updated);
-  return updated;
 }
 
 export function getProject(id: string): Project | undefined {
-  // During migration: check Map first (for updates not yet in DB), then DB
-  const mapProject = store.get(id);
-  if (mapProject) return mapProject;
-
   const stmt = db.prepare(`SELECT * FROM projects WHERE id = ?`);
   const row = stmt.get(id) as DBProject | undefined;
 
@@ -143,14 +133,10 @@ export function getProject(id: string): Project | undefined {
 }
 
 export function _resetStore(): void {
-  store.clear();
   counterRef.value = 42;
   db.prepare("DELETE FROM projects").run();
 }
 
-// TODO(M2): replace with persistent store — this Map is process-local.
-// Vercel spawns multiple function instances; each has its own Map.
-// Writes on one instance are invisible to others.
 let _storeInitialized = false;
 
 export async function initStore(): Promise<void> {
@@ -158,6 +144,6 @@ export async function initStore(): Promise<void> {
   _storeInitialized = true;
   if (process.env.SEED_DATA !== "false") {
     const { seedStore } = await import("./seed");
-    seedStore(store, counterRef);
+    seedStore(counterRef);
   }
 }
