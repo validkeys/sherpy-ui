@@ -1,0 +1,62 @@
+---
+# Bug Report Template
+# Copy this template when filing new bugs
+
+bug_id: null # Format: "001", "002", etc.
+slug: null # Short kebab-case descriptor
+title: null
+date_reported: null
+reporter: "Claude AI Browser Agent"
+
+# Classification
+severity: null # critical | high | moderate | low
+blocking: false # Does this prevent workflow completion?
+affected_step: null # Step ID from tracking.yaml (e.g., "step-03")
+
+# Description
+summary: null
+# Brief 1-2 sentence description
+
+expected_behavior: null
+# What should happen
+
+actual_behavior: null
+# What actually happened
+
+# Reproduction
+steps_to_reproduce:
+  - null
+  # Exact steps to trigger the bug
+
+reproduction_rate: null # always | often | sometimes | rare
+
+# Evidence
+screenshot: null # Path to screenshot in .tmp-docs/screenshots/
+server_logs: null # Relevant server log output
+console_errors: null # Browser console errors
+network_errors: null # Failed API calls, status codes
+
+# Context
+test_run: null # Test run number (e.g., "001")
+project_id: null # Project ID if applicable
+url: null # Full URL where bug occurred
+browser: null # Chrome, Firefox, etc.
+
+# Impact
+workflow_impact: null
+# How does this affect the testing workflow?
+
+workaround: null
+# Any workaround available? (null if none)
+
+# Status
+status: "open" # open | investigating | fixed | wontfix | duplicate
+fixed_in: null # Commit hash or PR number when fixed
+verified_fixed: false # Set to true after re-test confirms fix
+
+# Related
+related_bugs: []
+# IDs of related or duplicate bugs
+
+notes: null
+# Additional observations or context

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Run #012 - State Loader</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            margin-top: 0;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            background: #dbeafe;
+            border-left: 4px solid #2563eb;
+        }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .details {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .success {
+            background: #d1fae5;
+            border-left-color: #10b981;
+            color: #065f46;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Run #012 - State Loader</h1>
+
+        <div class="status" id="status">
+            <strong>Ready to load test state</strong>
+            <p>This will inject a pre-configured project state at <strong>Step 3 (Technical Requirements Interview)</strong></p>
+            <ul>
+                <li>Project ID: <code>test-run-012</code></li>
+                <li>Completed Steps: Gap Analysis (Step 1) + Business Requirements Interview (Step 2)</li>
+                <li>Artifacts: 2 generated (Gap Analysis + Business Requirements)</li>
+                <li>Ready to start: Technical Requirements Interview</li>
+            </ul>
+        </div>
+
+        <button onclick="loadState()">Load Test State & Navigate to Project</button>
+
+        <div class="details">
+            <p><strong>What this does:</strong></p>
+            <ol>
+                <li>Injects XState machine snapshot into localStorage</li>
+                <li>Navigates to <code>/project/test-run-012/build</code></li>
+                <li>Application will load at Step 3 (Technical Requirements Interview)</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function loadState() {
+            const snapshot = {"status":"active","value":"step3","context":{"projectId":"test-run-012","entryPath":"new-project","startedAt":"2026-05-15T12:41:20.310Z","updatedAt":"2026-05-15T12:41:20.310Z","step1Responses":{"existingRequirements":"No","projectDescription":"Healthcare patient portal with appointment scheduling and secure messaging"},"step2Answers":[{"question":"What is the primary business goal for this project?","value":"Improve patient engagement and reduce administrative burden on healthcare staff","timestamp":"2026-05-14T10:00:00.000Z"},{"question":"Who are the primary users of this system?","value":"Patients seeking appointments and secure communication with their healthcare providers","timestamp":"2026-05-14T10:05:00.000Z"},{"question":"What are the key success metrics?","value":"50% reduction in phone calls for appointment scheduling, 80% patient adoption within 6 months","timestamp":"2026-05-14T10:10:00.000Z"}],"step2CurrentQuestion":null,"step2CurrentOptions":null,"step3Answers":[],"step3CurrentQuestion":null,"step3CurrentOptions":null,"step5Responses":{},"step7Edits":null,"artifacts":{"1":{"type":"markdown","content":"# Gap Analysis Worksheet\n\n## Project Overview\nHealthcare patient portal with appointment scheduling and secure messaging\n\n## Existing Requirements\n**Do you have existing requirements?** No\n\n## Gap Analysis\nBased on the information provided, this is a new project that requires comprehensive planning.\n\n**Next Steps:**\n- Conduct business requirements interview\n- Define technical requirements\n- Establish project scope and constraints\n","generatedAt":"2026-05-15T12:41:20.311Z"},"2":{"type":"yaml","content":"# Business Requirements\n\n## Metadata\ngenerated_at: \"2026-05-15T12:41:20.311Z\"\ntotal_questions: 3\n\n## Interview Responses\nresponses:\n  - question: \"What is the primary business goal for this project?\"\n    answer: \"Improve patient engagement and reduce administrative burden on healthcare staff\"\n    timestamp: \"2026-05-14T10:00:00.000Z\"\n  - question: \"Who are the primary users of this system?\"\n    answer: \"Patients seeking appointments and secure communication with their healthcare providers\"\n    timestamp: \"2026-05-14T10:05:00.000Z\"\n  - question: \"What are the key success metrics?\"\n    answer: \"50% reduction in phone calls for appointment scheduling, 80% patient adoption within 6 months\"\n    timestamp: \"2026-05-14T10:10:00.000Z\"\n\n## Summary\nBusiness requirements captured through 3 interview questions covering project goals, user needs, and success criteria.\n","generatedAt":"2026-05-15T12:41:20.311Z"}},"completedSteps":[1,2],"currentStepNumber":3,"error":null},"children":{},"historyValue":{},"tags":[]};
+
+            const storageKey = 'planning-machine-test-run-012';
+            localStorage.setItem(storageKey, JSON.stringify(snapshot));
+
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status success';
+            statusEl.innerHTML = '<strong>✅ State loaded successfully!</strong><p>Redirecting to project in 2 seconds...</p>';
+
+            setTimeout(() => {
+                window.location.href = 'http://localhost:5180/project/test-run-012/build';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

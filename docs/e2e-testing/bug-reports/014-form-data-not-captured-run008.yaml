@@ -1,0 +1,106 @@
+---
+# Bug Report - Run #008
+
+bug_id: "014"
+slug: "form-data-not-captured-run008"
+title: "BUG-012 REGRESSION CONFIRMED - Form data not captured on Step 1 submit (Run #008)"
+date_reported: "2026-05-13"
+reporter: "Claude AI Browser Agent"
+
+# Classification
+severity: "critical"
+blocking: true
+affected_step: "step-03"
+
+# Description
+summary: |
+  CONFIRMED REGRESSION: Form data is NOT captured when Submit button is clicked in Step 1 Gap Analysis form.
+  This is the FOURTH occurrence of this exact bug (BUG-007, BUG-011, BUG-012, now BUG-014).
+
+expected_behavior: |
+  When user fills both textareas and clicks Submit:
+  1. Textarea values should be read and stored in step1Responses object
+  2. SUBMIT_FORM event should be sent to XState actor with form data
+  3. State should transition from 'collecting' to 'generating'
+  4. API call to /api/ai/interview should be made
+  5. After artifact generation, auto-transition to Step 2
+
+actual_behavior: |
+  When Submit button is clicked:
+  1. Submit button disables correctly ✓
+  2. Textareas clear (appear to clear) ✓
+  3. BUT: step1Responses remains {} empty ✗
+  4. State stuck in 'step1_gapAnalysis: collecting' ✗
+  5. No API call made (no network activity) ✗
+  6. No transition after 72+ seconds ✗
+  7. User is completely stuck on Step 1
+
+# Reproduction
+steps_to_reproduce:
+  - "Navigate to http://localhost:5180"
+  - "Click 'New project' button"
+  - "Select 'Start from scratch'"
+  - "Enter project name and create"
+  - "Fill first textarea: 'No, starting from scratch'"
+  - "Fill second textarea with healthcare portal description"
+  - "Verify Submit button is enabled"
+  - "Click Submit button"
+  - "Wait 60+ seconds"
+  - "Observe: No transition, step1Responses still empty"
+
+reproduction_rate: "always"
+
+# Evidence
+screenshot: "screenshot-1778725389497.png"
+server_logs: "Not captured (browser test focused on client-side state)"
+console_errors: "None observed"
+network_errors: "No API call made to /api/ai/interview - zero network activity"
+
+# Context
+test_run: "008"
+project_id: "c9PMcLyk"
+url: "http://localhost:5180/project/c9PMcLyk/build"
+browser: "Chrome (agent-browser)"
+
+# Impact
+workflow_impact: |
+  BLOCKING - Prevents ALL workflow testing. Cannot test any steps beyond Step 1.
+  This bug has blocked every single AI browser test run since Run #001 (except possibly runs where it was temporarily fixed).
+
+workaround: null
+
+# Status
+status: "open"
+fixed_in: null
+verified_fixed: false
+
+# Related
+related_bugs:
+  - "007" # First occurrence (Run #002)
+  - "008" # Regression in Run #003
+  - "011" # Occurrence in Run #005
+  - "012" # Occurrence in Run #006
+
+notes: |
+  localStorage evidence from Run #008:
+  {
+    "step1Responses": {}, // EMPTY!
+    "currentStepNumber": 1,
+    "value": {"step1_gapAnalysis": "collecting"} // Stuck in collecting state
+  }
+
+  This bug has now been reported FOUR times across multiple test runs. Either:
+  1. The fixes are not being persisted/committed
+  2. The fixes are being reverted
+  3. The fixes don't address the root cause
+  4. There are multiple related bugs with similar symptoms
+
+  ROOT CAUSE HYPOTHESIS:
+  The FormStep.tsx submit handler is not reading textarea values before sending SUBMIT_FORM event.
+  Need to add logging to trace:
+  - Textarea onChange handlers updating React state
+  - Form state snapshot immediately before submit
+  - SUBMIT_FORM event payload
+  - XState context after event received
+
+  This is the HIGHEST PRIORITY blocker for workflow testing.
