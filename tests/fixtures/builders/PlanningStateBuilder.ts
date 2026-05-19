@@ -902,10 +902,8 @@ A modern web-based patient portal enabling appointment scheduling and secure mes
 
     const data = await response.json();
 
-    // Store in localStorage (if available, for browser tests)
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(data.storageKey, JSON.stringify(data.snapshot));
-    }
+    // Note: The /api/dev/seed endpoint handles localStorage persistence
+    // No need to set localStorage here as this runs in Node.js context
 
     return data.projectId;
   }

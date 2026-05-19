@@ -33,3 +33,4 @@ _ref/
 coverage/
 .tmp-docs/
 .playwright-mcp/
+test-results/

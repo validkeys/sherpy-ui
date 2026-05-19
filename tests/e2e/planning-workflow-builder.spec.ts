@@ -79,6 +79,39 @@ test.describe("Planning Workflow - Builder Examples", () => {
     await expect(interviewSection).toBeVisible();
   });
 
+  test("Step 3: Technical Requirements Interview", async ({ page }) => {
+    // Create project at Step 3 with previous steps completed
+    const projectId = await PlanningStateBuilder.atStep(3)
+      .completeStep(1)
+      .completeStep(2)
+      .persist();
+
+    // Navigate to project
+    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+
+    // Verify Step 3 UI
+    await expect(
+      page.locator('h2:has-text("Technical Requirements Interview")'),
+    ).toBeVisible();
+  });
+
+  test("Step 4: Style Anchors Collection", async ({ page }) => {
+    // Create project at Step 4 with previous steps completed
+    const projectId = await PlanningStateBuilder.atStep(4)
+      .completeStep(1)
+      .completeStep(2)
+      .completeStep(3)
+      .persist();
+
+    // Navigate to project
+    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+
+    // Verify Step 4 UI
+    await expect(
+      page.locator('h2:has-text("Style Anchors Collection")'),
+    ).toBeVisible();
+  });
+
   test("Step 5: Implementation Planner form", async ({ page }) => {
     // Create project at Step 5 with all previous steps completed
     const projectId = await PlanningStateBuilder.atStep(5)
@@ -113,6 +146,86 @@ test.describe("Planning Workflow - Builder Examples", () => {
     await expect(page.locator('h2:has-text("QA Test Plan")')).toBeVisible({
       timeout: 10000,
     });
+  });
+
+  test("Step 6: Implementation Plan Review", async ({ page }) => {
+    // Create project at Step 6 with previous steps completed
+    const projectId = await PlanningStateBuilder.atStep(6)
+      .completeStep(1)
+      .completeStep(2)
+      .completeStep(3)
+      .completeStep(4)
+      .completeStep(5)
+      .persist();
+
+    // Navigate to project
+    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+
+    // Verify Step 6 UI
+    await expect(
+      page.locator('h2:has-text("Implementation Plan Review")'),
+    ).toBeVisible();
+  });
+
+  test("Step 7: Architecture Decision Records", async ({ page }) => {
+    // Create project at Step 7 with previous steps completed
+    const projectId = await PlanningStateBuilder.atStep(7)
+      .completeStep(1)
+      .completeStep(2)
+      .completeStep(3)
+      .completeStep(4)
+      .completeStep(5)
+      .completeStep(6)
+      .persist();
+
+    // Navigate to project
+    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+
+    // Verify Step 7 UI
+    await expect(
+      page.locator('h2:has-text("Architecture Decision Records")'),
+    ).toBeVisible();
+  });
+
+  test("Step 8: Delivery Timeline", async ({ page }) => {
+    // Create project at Step 8 with previous steps completed
+    const projectId = await PlanningStateBuilder.atStep(8)
+      .completeStep(1)
+      .completeStep(2)
+      .completeStep(3)
+      .completeStep(4)
+      .completeStep(5)
+      .completeStep(6)
+      .completeStep(7)
+      .persist();
+
+    // Navigate to project
+    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+
+    // Verify Step 8 UI
+    await expect(
+      page.locator('h2:has-text("Delivery Timeline")'),
+    ).toBeVisible();
+  });
+
+  test("Step 9: QA Test Plan", async ({ page }) => {
+    // Create project at Step 9 with previous steps completed
+    const projectId = await PlanningStateBuilder.atStep(9)
+      .completeStep(1)
+      .completeStep(2)
+      .completeStep(3)
+      .completeStep(4)
+      .completeStep(5)
+      .completeStep(6)
+      .completeStep(7)
+      .completeStep(8)
+      .persist();
+
+    // Navigate to project
+    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+
+    // Verify Step 9 UI
+    await expect(page.locator('h2:has-text("QA Test Plan")')).toBeVisible();
   });
 
   test("Step 10: Executive Summary completion", async ({ page }) => {
@@ -231,46 +344,5 @@ test.describe("Planning Workflow - Builder Examples", () => {
     const content = page.locator("body");
     await expect(content).toContainText("HIPAA-compliant");
     await expect(content).toContainText("patient portal");
-  });
-
-  test("Testing each workflow step independently", async ({ page }) => {
-    // Step 1: Gap Analysis
-    const step1Id = await PlanningStateBuilder.atStep(1).persist();
-    await page.goto(`${BASE_URL}/project/${step1Id}/build`);
-    await expect(
-      page.locator('h2:has-text("Gap Analysis Worksheet")'),
-    ).toBeVisible();
-
-    // Step 2: Business Requirements
-    const step2Id = await PlanningStateBuilder.atStep(2)
-      .completeStep(1)
-      .persist();
-    await page.goto(`${BASE_URL}/project/${step2Id}/build`);
-    await expect(
-      page.locator('h2:has-text("Business Requirements Interview")'),
-    ).toBeVisible();
-
-    // Step 3: Technical Requirements
-    const step3Id = await PlanningStateBuilder.atStep(3)
-      .completeStep(1)
-      .completeStep(2)
-      .persist();
-    await page.goto(`${BASE_URL}/project/${step3Id}/build`);
-    await expect(
-      page.locator('h2:has-text("Technical Requirements Interview")'),
-    ).toBeVisible();
-
-    // Step 4: Style Anchors
-    const step4Id = await PlanningStateBuilder.atStep(4)
-      .completeStep(1)
-      .completeStep(2)
-      .completeStep(3)
-      .persist();
-    await page.goto(`${BASE_URL}/project/${step4Id}/build`);
-    await expect(
-      page.locator('h2:has-text("Style Anchors Collection")'),
-    ).toBeVisible();
-
-    // Additional steps can be tested similarly...
   });
 });
