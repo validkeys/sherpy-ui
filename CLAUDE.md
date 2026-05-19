@@ -13,12 +13,14 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 ### The Problem with agent-browser
 
 After comprehensive testing (Test Run #011), agent-browser was proven **fundamentally incompatible** with React form testing:
+
 - ❌ 5 different approaches tested - ALL FAILED to update React state
 - ❌ Cannot trigger React's synthetic event system
 - ❌ Visual fill succeeds but state remains empty
 - ❌ Causes false-positive test failures
 
 **Approaches tested and failed:**
+
 1. Standard `fill` commands
 2. React Fiber `memoizedProps.onChange()`
 3. IIFE wrappers
@@ -31,7 +33,7 @@ Use Playwright MCP tools which properly simulate user interactions:
 
 ```javascript
 // Navigate
-mcp__playwright__browser_navigate({ url: "http://localhost:5180" })
+mcp__playwright__browser_navigate({ url: "http://localhost:5180" });
 
 // Fill form (properly triggers React onChange)
 mcp__playwright__browser_fill_form({
@@ -40,22 +42,22 @@ mcp__playwright__browser_fill_form({
       target: "#fieldId",
       name: "Field Name",
       type: "textbox",
-      value: "Your value here"
-    }
-  ]
-})
+      value: "Your value here",
+    },
+  ],
+});
 
 // Click button
-mcp__playwright__browser_click({ 
+mcp__playwright__browser_click({
   target: "button:has-text('Submit')",
-  element: "Submit button"
-})
+  element: "Submit button",
+});
 
 // Screenshot
-mcp__playwright__browser_take_screenshot({ 
+mcp__playwright__browser_take_screenshot({
   type: "png",
-  filename: ".tmp-docs/screenshots/result.png"
-})
+  filename: ".tmp-docs/screenshots/result.png",
+});
 ```
 
 ### Why Playwright Works
@@ -73,7 +75,8 @@ mcp__playwright__browser_take_screenshot({
 - ✅ Playwright MCP properly updates React state (Test Run #011)
 - ❌ agent-browser FAILS for React forms (5 approaches tested, all failed)
 
-**See:** 
+**See:**
+
 - `.tmp-docs/docs/e2e-testing/agent-browser-form-filling-guide.md` - Complete research (5 approaches documented)
 - `.tmp-docs/docs/e2e-testing/agent-browser-quick-reference.md` - Quick reference
 - `.tmp-docs/docs/e2e-testing/runs/011/summary.md` - Test Run #011 findings
@@ -83,6 +86,7 @@ mcp__playwright__browser_take_screenshot({
 **Debug Tool:** The `DebugPanel` component in development mode shows real-time XState state and DOM values, making it easy to verify form data capture.
 
 **Testing Status:**
+
 - ✅ 4/4 reproduction tests pass (proves root cause)
 - ✅ 5/5 integration tests pass (proves app code correct)
 - ✅ Manual browser testing works perfectly
@@ -158,6 +162,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ## 5. Rules
 
 - All temporary markdown documents (summaries etc..) go in .tmp-docs/
-- All agent-browser screenshots go to .tmp-docs/screenshots
+- All screenshots go to .tmp-docs/screenshots
 - All implementation plans go in .tmp-docs/plans
 - All code-reviews go in .tmp-docs/code-reviews/00{n}-slug/review.yaml
+- When referencing e2e testing, we are referring to docs/e2e-testing
