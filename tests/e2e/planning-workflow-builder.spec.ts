@@ -8,17 +8,15 @@
 import { expect, test } from "@playwright/test";
 import { PlanningStateBuilder } from "../fixtures/builders/PlanningStateBuilder";
 import { SnapshotCollector } from "../fixtures/snapshots/SnapshotCollector";
+import { seedState } from "./helpers/seedState";
 
 // Base URL for test environment
 const BASE_URL = process.env.BASE_URL || "http://localhost:5180";
 
 test.describe("Planning Workflow - Builder Examples", () => {
   test("Step 1: Gap Analysis form loads correctly", async ({ page }) => {
-    // Create project at Step 1 using builder
-    const projectId = await PlanningStateBuilder.atStep(1).persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 1 and navigate to project
+    await seedState(page, PlanningStateBuilder.atStep(1));
 
     // Verify Step 1 UI is displayed
     await expect(
@@ -43,31 +41,30 @@ test.describe("Planning Workflow - Builder Examples", () => {
   test("Step 2: Business Requirements interview with custom data", async ({
     page,
   }) => {
-    // Create project at Step 2 with custom data
-    const projectId = await PlanningStateBuilder.atStep(2)
-      .withProjectId("custom-business-reqs")
-      .withGapAnalysis({
-        existingRequirements: "Yes",
-        projectDescription:
-          "E-commerce platform with inventory management and payment processing",
-      })
-      .withBusinessRequirements([
-        {
-          question: "What is the primary business goal?",
-          value: "Increase online sales revenue by 30%",
-          timestamp: new Date().toISOString(),
-        },
-        {
-          question: "Who are the target users?",
-          value:
-            "Online shoppers aged 25-45 interested in sustainable products",
-          timestamp: new Date().toISOString(),
-        },
-      ])
-      .persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 2 with custom data and navigate
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(2)
+        .withProjectId("custom-business-reqs")
+        .withGapAnalysis({
+          existingRequirements: "Yes",
+          projectDescription:
+            "E-commerce platform with inventory management and payment processing",
+        })
+        .withBusinessRequirements([
+          {
+            question: "What is the primary business goal?",
+            value: "Increase online sales revenue by 30%",
+            timestamp: new Date().toISOString(),
+          },
+          {
+            question: "Who are the target users?",
+            value:
+              "Online shoppers aged 25-45 interested in sustainable products",
+            timestamp: new Date().toISOString(),
+          },
+        ]),
+    );
 
     // Verify Step 2 UI
     await expect(
@@ -80,14 +77,11 @@ test.describe("Planning Workflow - Builder Examples", () => {
   });
 
   test("Step 3: Technical Requirements Interview", async ({ page }) => {
-    // Create project at Step 3 with previous steps completed
-    const projectId = await PlanningStateBuilder.atStep(3)
-      .completeStep(1)
-      .completeStep(2)
-      .persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 3 with previous steps completed
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(3).completeStep(1).completeStep(2),
+    );
 
     // Verify Step 3 UI
     await expect(
@@ -96,15 +90,14 @@ test.describe("Planning Workflow - Builder Examples", () => {
   });
 
   test("Step 4: Style Anchors Collection", async ({ page }) => {
-    // Create project at Step 4 with previous steps completed
-    const projectId = await PlanningStateBuilder.atStep(4)
-      .completeStep(1)
-      .completeStep(2)
-      .completeStep(3)
-      .persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 4 with previous steps completed
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(4)
+        .completeStep(1)
+        .completeStep(2)
+        .completeStep(3),
+    );
 
     // Verify Step 4 UI
     await expect(
@@ -113,16 +106,15 @@ test.describe("Planning Workflow - Builder Examples", () => {
   });
 
   test("Step 5: Implementation Planner form", async ({ page }) => {
-    // Create project at Step 5 with all previous steps completed
-    const projectId = await PlanningStateBuilder.atStep(5)
-      .completeStep(1)
-      .completeStep(2)
-      .completeStep(3)
-      .completeStep(4)
-      .persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 5 with all previous steps completed
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(5)
+        .completeStep(1)
+        .completeStep(2)
+        .completeStep(3)
+        .completeStep(4),
+    );
 
     // Verify Step 5 UI
     await expect(
@@ -149,17 +141,16 @@ test.describe("Planning Workflow - Builder Examples", () => {
   });
 
   test("Step 6: Implementation Plan Review", async ({ page }) => {
-    // Create project at Step 6 with previous steps completed
-    const projectId = await PlanningStateBuilder.atStep(6)
-      .completeStep(1)
-      .completeStep(2)
-      .completeStep(3)
-      .completeStep(4)
-      .completeStep(5)
-      .persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 6 with previous steps completed
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(6)
+        .completeStep(1)
+        .completeStep(2)
+        .completeStep(3)
+        .completeStep(4)
+        .completeStep(5),
+    );
 
     // Verify Step 6 UI
     await expect(
@@ -168,18 +159,17 @@ test.describe("Planning Workflow - Builder Examples", () => {
   });
 
   test("Step 7: Architecture Decision Records", async ({ page }) => {
-    // Create project at Step 7 with previous steps completed
-    const projectId = await PlanningStateBuilder.atStep(7)
-      .completeStep(1)
-      .completeStep(2)
-      .completeStep(3)
-      .completeStep(4)
-      .completeStep(5)
-      .completeStep(6)
-      .persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 7 with previous steps completed
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(7)
+        .completeStep(1)
+        .completeStep(2)
+        .completeStep(3)
+        .completeStep(4)
+        .completeStep(5)
+        .completeStep(6),
+    );
 
     // Verify Step 7 UI
     await expect(
@@ -188,19 +178,18 @@ test.describe("Planning Workflow - Builder Examples", () => {
   });
 
   test("Step 8: Delivery Timeline", async ({ page }) => {
-    // Create project at Step 8 with previous steps completed
-    const projectId = await PlanningStateBuilder.atStep(8)
-      .completeStep(1)
-      .completeStep(2)
-      .completeStep(3)
-      .completeStep(4)
-      .completeStep(5)
-      .completeStep(6)
-      .completeStep(7)
-      .persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 8 with previous steps completed
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(8)
+        .completeStep(1)
+        .completeStep(2)
+        .completeStep(3)
+        .completeStep(4)
+        .completeStep(5)
+        .completeStep(6)
+        .completeStep(7),
+    );
 
     // Verify Step 8 UI
     await expect(
@@ -209,41 +198,39 @@ test.describe("Planning Workflow - Builder Examples", () => {
   });
 
   test("Step 9: QA Test Plan", async ({ page }) => {
-    // Create project at Step 9 with previous steps completed
-    const projectId = await PlanningStateBuilder.atStep(9)
-      .completeStep(1)
-      .completeStep(2)
-      .completeStep(3)
-      .completeStep(4)
-      .completeStep(5)
-      .completeStep(6)
-      .completeStep(7)
-      .completeStep(8)
-      .persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 9 with previous steps completed
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(9)
+        .completeStep(1)
+        .completeStep(2)
+        .completeStep(3)
+        .completeStep(4)
+        .completeStep(5)
+        .completeStep(6)
+        .completeStep(7)
+        .completeStep(8),
+    );
 
     // Verify Step 9 UI
     await expect(page.locator('h2:has-text("QA Test Plan")')).toBeVisible();
   });
 
   test("Step 10: Executive Summary completion", async ({ page }) => {
-    // Create project at Step 10 (final step)
-    const projectId = await PlanningStateBuilder.atStep(10)
-      .completeStep(1)
-      .completeStep(2)
-      .completeStep(3)
-      .completeStep(4)
-      .completeStep(5)
-      .completeStep(6)
-      .completeStep(7)
-      .completeStep(8)
-      .completeStep(9)
-      .persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 10 (final step) with all previous steps completed
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(10)
+        .completeStep(1)
+        .completeStep(2)
+        .completeStep(3)
+        .completeStep(4)
+        .completeStep(5)
+        .completeStep(6)
+        .completeStep(7)
+        .completeStep(8)
+        .completeStep(9),
+    );
 
     // Verify Step 10 UI
     await expect(
@@ -271,14 +258,11 @@ test.describe("Planning Workflow - Builder Examples", () => {
   });
 
   test("Snapshot generation: Capture state at Step 3", async ({ page }) => {
-    // Create project at Step 3
-    const projectId = await PlanningStateBuilder.atStep(3)
-      .completeStep(1)
-      .completeStep(2)
-      .persist();
-
-    // Navigate and interact with UI
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state at Step 3
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(3).completeStep(1).completeStep(2),
+    );
 
     // Verify Step 3 loaded
     await expect(
@@ -303,37 +287,36 @@ test.describe("Planning Workflow - Builder Examples", () => {
   });
 
   test("Custom data example: Healthcare project", async ({ page }) => {
-    // Create project with healthcare domain data
-    const projectId = await PlanningStateBuilder.atStep(2)
-      .withProjectId("healthcare-portal-e2e")
-      .withGapAnalysis({
-        existingRequirements: "No",
-        projectDescription:
-          "HIPAA-compliant patient portal with appointment scheduling and secure messaging",
-      })
-      .withBusinessRequirements([
-        {
-          question: "What is the primary business goal?",
-          value:
-            "Improve patient engagement and reduce administrative burden by 50%",
-          timestamp: new Date().toISOString(),
-        },
-        {
-          question: "Who are the primary users?",
-          value: "Patients and healthcare providers in clinic network",
-          timestamp: new Date().toISOString(),
-        },
-        {
-          question: "What are the key success metrics?",
-          value:
-            "80% patient adoption within 6 months, 50% reduction in phone calls",
-          timestamp: new Date().toISOString(),
-        },
-      ])
-      .persist();
-
-    // Navigate to project
-    await page.goto(`${BASE_URL}/project/${projectId}/build`);
+    // Seed state with healthcare domain data
+    await seedState(
+      page,
+      PlanningStateBuilder.atStep(2)
+        .withProjectId("healthcare-portal-e2e")
+        .withGapAnalysis({
+          existingRequirements: "No",
+          projectDescription:
+            "HIPAA-compliant patient portal with appointment scheduling and secure messaging",
+        })
+        .withBusinessRequirements([
+          {
+            question: "What is the primary business goal?",
+            value:
+              "Improve patient engagement and reduce administrative burden by 50%",
+            timestamp: new Date().toISOString(),
+          },
+          {
+            question: "Who are the primary users?",
+            value: "Patients and healthcare providers in clinic network",
+            timestamp: new Date().toISOString(),
+          },
+          {
+            question: "What are the key success metrics?",
+            value:
+              "80% patient adoption within 6 months, 50% reduction in phone calls",
+            timestamp: new Date().toISOString(),
+          },
+        ]),
+    );
 
     // Verify custom data is loaded
     await expect(

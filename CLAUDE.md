@@ -74,10 +74,10 @@ mcp__playwright__browser_take_screenshot({
 - ❌ agent-browser FAILS for React forms (5 approaches tested, all failed)
 
 **See:** 
-- `.tmp-docs/plan/agent-browser-form-filling-guide.md` - Complete research (5 approaches documented)
-- `.tmp-docs/plan/agent-browser-quick-reference.md` - Quick reference
-- `.tmp-docs/plan/runs/011/summary.md` - Test Run #011 findings
-- `.tmp-docs/plan/learnings.md` section "step-02" - Playwright MCP examples
+- `.tmp-docs/docs/e2e-testing/agent-browser-form-filling-guide.md` - Complete research (5 approaches documented)
+- `.tmp-docs/docs/e2e-testing/agent-browser-quick-reference.md` - Quick reference
+- `.tmp-docs/docs/e2e-testing/runs/011/summary.md` - Test Run #011 findings
+- `.tmp-docs/docs/e2e-testing/learnings.md` section "step-02" - Playwright MCP examples
 - `src/features/planning/__tests__/bug-014-form-data-capture.test.tsx` - Reproduction tests (4/4 passing)
 
 **Debug Tool:** The `DebugPanel` component in development mode shows real-time XState state and DOM values, making it easy to verify form data capture.
