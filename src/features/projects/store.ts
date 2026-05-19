@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import { db } from "@/lib/db";
 import type { CreateProjectInput, Project } from "./types";
 
 const store = new Map<string, Project>();
@@ -38,6 +39,22 @@ export function createProject(input: CreateProjectInput): Project {
     lastTouchedAt: now,
     createdAt: now,
   };
+
+  const stmt = db.prepare(`
+    INSERT INTO projects (id, code, name, status, entry_path, current_step, created_at, last_touched_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(
+    project.id,
+    project.code,
+    project.name,
+    project.status,
+    project.entryPath,
+    project.currentStep,
+    project.createdAt,
+    project.lastTouchedAt,
+  );
+
   store.set(project.id, project);
   return project;
 }
@@ -77,6 +94,7 @@ export function getProject(id: string): Project | undefined {
 export function _resetStore(): void {
   store.clear();
   counterRef.value = 42;
+  db.prepare("DELETE FROM projects").run();
 }
 
 // TODO(M2): replace with persistent store — this Map is process-local.
