@@ -228,7 +228,10 @@ export const $updateStepOptions = createServerFn({ method: "POST" })
 // PLANNING STATE PERSISTENCE (SQLite)
 // ─────────────────────────────────────────────────────────────
 
-import { saveInterviewAnswer } from "../../lib/db/interview";
+import {
+  getInterviewAnswers,
+  saveInterviewAnswer,
+} from "../../lib/db/interview";
 import {
   deletePlanningState,
   hasPlanningState,
@@ -320,4 +323,32 @@ export const $hasPlanningState = createServerFn({ method: "GET" })
   })
   .handler(async ({ data }) => {
     return hasPlanningState(data.projectId);
+  });
+
+// ─────────────────────────────────────────────────────────────
+// INTERVIEW ANSWERS PERSISTENCE (SQLite)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Get all interview answers for a project and step
+ * Returns answers in chronological order
+ */
+export const $getInterviewAnswers = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    if (typeof d.stepNumber !== "number")
+      throw new Error("stepNumber must be a number");
+    if (d.stepNumber !== 2 && d.stepNumber !== 3)
+      throw new Error("stepNumber must be 2 or 3 (interview steps only)");
+    return {
+      projectId: d.projectId,
+      stepNumber: d.stepNumber as 2 | 3,
+    };
+  })
+  .handler(async ({ data }) => {
+    return getInterviewAnswers(data.projectId, data.stepNumber);
   });
