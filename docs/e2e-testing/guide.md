@@ -9,6 +9,85 @@
 
 ## 📋 Test History
 
+### Test Run #015 - 2026-05-20 (SQLite Integration Test - NEW BLOCKER)
+**Tester:** Claude AI Browser Agent  
+**Status:** ⛔ BLOCKED at Step 1 Artifact Generation  
+**Result:** BUG-017 filed - better-sqlite3 being bundled for browser execution  
+**Steps Completed:** Step 1 form submission, but artifact generation failed  
+**Duration:** ~5 minutes  
+**Issues Found:**
+- **BUG-017 (BLOCKING - CRITICAL):** better-sqlite3 (Node.js native module) being loaded in browser context despite using TanStack Start server functions
+- Artifact generation fails with two sequential errors: 1) "promisify is not a function" 2) "export named 'default' not found"
+- Vite configuration fix partially worked but did not resolve underlying architecture issue
+- TanStack Start server/client code boundary not working as expected
+
+**What Worked:**
+- ✅ BUG-016 fix verified - __dirname polyfill working correctly
+- ✅ Server starts without errors
+- ✅ Database file created (132K at ~/.local/share/sherpy/sherpy.db)
+- ✅ Project creation works
+- ✅ Form data capture works (Playwright MCP fills form correctly)
+- ✅ React state management works
+
+**Root Cause:**
+- Client-side XState machine dynamically imports server functions
+- Vite bundler resolves all imports including database code
+- better-sqlite3 ends up in client bundle despite being Node.js-only
+- This is an architecture issue with TanStack Start server function isolation
+
+**Next Steps:**
+- Investigate TanStack Start documentation for server-only code patterns
+- Consider .server.ts file extension pattern
+- May need to move to explicit API routes instead of server functions
+- **DO NOT MERGE PR #12 until BUG-017 is resolved**
+
+**Documentation:**
+- Full test report: `docs/e2e-testing/runs/015/summary.md`
+- Bug report: `docs/e2e-testing/bug-reports/017-better-sqlite3-bundled-in-client.yaml`
+- BUG-016 resolution: `docs/e2e-testing/bug-reports/BUG-016-RESOLUTION.md`
+
+---
+
+### Test Run #014 - 2026-05-20 (SQLite Integration Test - CRITICAL BLOCKER) ✅ RESOLVED
+**Tester:** Claude AI Browser Agent  
+**Status:** ⛔ BLOCKED at Dashboard Load (before Step 1)  
+**Result:** BUG-016 filed - SQLite database migration fails: `__dirname` not defined in ES module  
+**Resolution:** ✅ FIXED - Added ES module __dirname polyfill, verified working in Test Run #015  
+**Steps Completed:** 0/18  
+**Duration:** ~2 minutes  
+**Issues Found:**
+- **BUG-016 (RESOLVED):** SQLite integration from PR #12 uses `__dirname` in migrate.ts which is not available in ES modules, causing ReferenceError on server startup
+- Server endpoint returns 500 Internal Server Error for all database operations
+- Dashboard shows "Failed to load projects" - complete application failure
+- Cannot create projects, cannot load projects, cannot test any functionality
+
+**Key Observations:**
+- Application uses ES modules but migration code uses CommonJS `__dirname` variable
+- Error occurs at runMigrations (/workspace/src/lib/db/migrate.ts:6:27)
+- Server crash cascades to React hook errors in client
+- This is a fundamental ES module compatibility issue
+
+**Root Cause:**
+```typescript
+// migrate.ts line 6
+const migrationsDir = path.join(__dirname, 'migrations'); // ❌ __dirname undefined in ES modules
+```
+
+**Solution Required:**
+- Replace `__dirname` with ES module compatible approach (import.meta.url or Vite glob imports)
+- Verify all file path resolutions use ES module APIs
+- Add linting rules to prevent CommonJS usage in ES module context
+
+**Action Items:**
+- [x] BUG-016 filed with detailed reproduction and solution
+- [ ] Fix __dirname usage in migrate.ts
+- [ ] Verify ES module compatibility across all database code
+- [ ] Add tests for database initialization
+- [ ] Re-run full workflow test after fix
+- [ ] **DO NOT MERGE PR #12 until BUG-016 is resolved**
+
+---
+
 ### Test Run #6 - 2026-05-13 (AI Browser Test - REGRESSION CONFIRMED)
 **Tester:** Claude AI Browser Agent  
 **Status:** ⚠️ BLOCKED at Step 1 (Step 3: Submit Form)  

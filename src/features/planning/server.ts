@@ -66,6 +66,8 @@ export const $submitAnswer = createServerFn({ method: "POST" })
     // Persist interview answer to database (steps 2 and 3 only)
     if (data.stepNumber === 2 || data.stepNumber === 3) {
       try {
+        // Lazy import to prevent bundling in client (BUG-017)
+        const { saveInterviewAnswer } = await import("./server.db");
         saveInterviewAnswer(
           data.projectId,
           data.stepNumber,
@@ -227,17 +229,8 @@ export const $updateStepOptions = createServerFn({ method: "POST" })
 // ─────────────────────────────────────────────────────────────
 // PLANNING STATE PERSISTENCE (SQLite)
 // ─────────────────────────────────────────────────────────────
-
-import {
-  getInterviewAnswers,
-  saveInterviewAnswer,
-} from "../../lib/db/interview";
-import {
-  deletePlanningState,
-  hasPlanningState,
-  loadPlanningState,
-  savePlanningState,
-} from "../../lib/db/planning";
+// Note: Database imports moved into handler functions to prevent
+// better-sqlite3 from being bundled in client code (BUG-017)
 
 /**
  * Save planning machine state to database
@@ -267,6 +260,8 @@ export const $savePlanningState = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
+    // Lazy import to prevent bundling in client (BUG-017)
+    const { savePlanningState } = await import("./server.db");
     // The snapshot is a serialized XState snapshot (from toJSON())
     // The DB layer accepts any as it stores JSON TEXT
     savePlanningState(data.projectId, data.snapshot as any);
@@ -287,6 +282,8 @@ export const $loadPlanningState = createServerFn({ method: "GET" })
     return { projectId: d.projectId };
   })
   .handler(async ({ data }) => {
+    // Lazy import to prevent bundling in client (BUG-017)
+    const { loadPlanningState } = await import("./server.db");
     // Returns any to allow for serialized snapshot that will be
     // reconstructed by XState's createActor with snapshot option
     return loadPlanningState(data.projectId) as any;
@@ -305,6 +302,8 @@ export const $deletePlanningState = createServerFn({ method: "POST" })
     return { projectId: d.projectId };
   })
   .handler(async ({ data }) => {
+    // Lazy import to prevent bundling in client (BUG-017)
+    const { deletePlanningState } = await import("./server.db");
     deletePlanningState(data.projectId);
     return { success: true };
   });
@@ -322,6 +321,8 @@ export const $hasPlanningState = createServerFn({ method: "GET" })
     return { projectId: d.projectId };
   })
   .handler(async ({ data }) => {
+    // Lazy import to prevent bundling in client (BUG-017)
+    const { hasPlanningState } = await import("./server.db");
     return hasPlanningState(data.projectId);
   });
 
@@ -350,6 +351,8 @@ export const $getInterviewAnswers = createServerFn({ method: "GET" })
     };
   })
   .handler(async ({ data }) => {
+    // Lazy import to prevent bundling in client (BUG-017)
+    const { getInterviewAnswers } = await import("./server.db");
     return getInterviewAnswers(data.projectId, data.stepNumber);
   });
 
@@ -381,7 +384,7 @@ export const $saveFormResponses = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
-    const { saveFormResponse } = await import("../../lib/db/form");
+    const { saveFormResponse } = await import("./server.db");
 
     // Save each field as a separate row
     for (const [fieldName, fieldValue] of Object.entries(data.responses)) {
@@ -425,7 +428,7 @@ export const $getFormResponses = createServerFn({ method: "GET" })
     };
   })
   .handler(async ({ data }) => {
-    const { getFormResponses } = await import("../../lib/db/form");
+    const { getFormResponses } = await import("./server.db");
     return getFormResponses(data.projectId, data.stepNumber);
   });
 
@@ -449,7 +452,7 @@ export const $getArtifacts = createServerFn({ method: "GET" })
     };
   })
   .handler(async ({ data }) => {
-    const { getArtifacts } = await import("../../lib/db/artifact");
+    const { getArtifacts } = await import("./server.db");
     return getArtifacts(data.projectId);
   });
 
@@ -474,6 +477,6 @@ export const $getArtifact = createServerFn({ method: "GET" })
     };
   })
   .handler(async ({ data }) => {
-    const { getArtifact } = await import("../../lib/db/artifact");
+    const { getArtifact } = await import("./server.db");
     return getArtifact(data.projectId, data.stepNumber);
   });

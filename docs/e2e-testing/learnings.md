@@ -1,8 +1,60 @@
 # AI Browser Testing - Learnings
 
 **Purpose:** Capture insights from each test run to help future AI testers  
-**Updated:** 2026-05-12  
+**Updated:** 2026-05-20  
 **Format:** `## Step ID - Learning Title` → Description
+
+---
+
+## Known Issues from Test Run #015 (2026-05-20)
+
+### CRITICAL - Server/Client Code Isolation Failure (BUG-017)
+
+**Issue:** Artifact generation fails because better-sqlite3 (Node.js native module) is being loaded in browser context, despite using TanStack Start server functions.
+
+**Impact:** BLOCKS ALL WORKFLOW TESTING - Cannot generate artifacts, cannot progress past Step 1, cannot test SQLite persistence.
+
+**Error Sequence:**
+1. Before Vite fix: `TypeError: promisify is not a function at better-sqlite3.js:421:17`
+2. After Vite fix: `SyntaxError: The requested module 'better-sqlite3/lib/index.js' does not provide an export named 'default'`
+
+**Root Cause:** The client-side XState machine dynamically imports server functions (`await import("../server")`), and Vite's bundler tries to resolve all imports including database code, resulting in Node.js-only modules being included in the browser bundle.
+
+**Attempted Fix:** Added better-sqlite3 to Vite externals - partially worked (changed error) but did not resolve issue.
+
+**Actual Solution Needed:** 
+- Investigate TanStack Start server/client code splitting
+- Consider .server.ts file extension pattern
+- Move database imports inside server function handlers (lazy loading)
+- Or use explicit API routes instead of server functions
+
+**Action:** DO NOT proceed with artifact generation testing until BUG-017 is fixed. DO NOT MERGE PR #12.
+
+**Testing Note:** When BUG-017 is fixed, verify:
+1. Form submission triggers artifact generation
+2. Artifact saves to database
+3. Workflow progresses to Step 2
+4. No browser console errors related to Node.js modules
+
+**Related:** BUG-016 (RESOLVED - __dirname issue fixed in Test Run #015)
+
+---
+
+## Known Issues from Test Run #014 (2026-05-20)
+
+### CRITICAL - SQLite Integration ES Module Compatibility (BUG-016) ✅ RESOLVED
+
+**Status:** RESOLVED in Test Run #015 - __dirname polyfill working correctly
+
+**Issue:** PR #12 SQLite integration fails immediately on server startup due to `__dirname` usage in ES module context.
+
+**Solution Applied:** Added ES module compatible __dirname polyfill in migrate.ts:
+```typescript
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+```
+
+**Verification:** Server starts without errors, database created at `~/.local/share/sherpy/sherpy.db`, migrations run successfully.
 
 ---
 

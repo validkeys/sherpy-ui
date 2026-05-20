@@ -1,0 +1,156 @@
+bug_id: "BUG-017"
+title: "better-sqlite3 being bundled for browser causing artifact generation failure"
+severity: critical
+status: resolved
+resolved_date: "2026-05-20"
+discovered_in_test_run: "015"
+discovered_date: "2026-05-20"
+
+description: |
+  Artifact generation fails in the browser because better-sqlite3 (a Node.js native module)
+  is being included in the client bundle. When the XState machine tries to generate artifacts
+  by calling server functions, Vite attempts to bundle the database code for the browser,
+  resulting in "promisify is not a function" errors.
+
+reproduction_steps:
+  - step: "1"
+    action: "Fill in Step 1 (Gap Analysis) form"
+    expected: "Form data captured successfully"
+    actual: "Form data captured successfully ✅"
+
+  - step: "2"
+    action: "Submit form to generate artifact"
+    expected: "Artifact generated and saved to database"
+    actual: "Error: 'TypeError: promisify is not a function' from better-sqlite3.js"
+
+error_messages:
+  - error_1_before_vite_fix: "Module \"util\" has been externalized for browser compatibility. Cannot access \"util.promisify\" in client code"
+  - error_1_before_vite_fix: "Module \"fs\" has been externalized for browser compatibility. Cannot access \"fs.access\" in client code"
+  - error_1_before_vite_fix: "TypeError: promisify is not a function at better-sqlite3.js:421:17"
+  - error_2_after_vite_fix: "SyntaxError: The requested module '/node_modules/.pnpm/better-sqlite3@12.10.0/node_modules/better-sqlite3/lib/index.js?v=c3189370' does not provide an export named 'default'"
+
+root_cause: |
+  The client-side XState machine (planningMachine.ts) imports server functions dynamically:
+
+  ```typescript
+  const { $saveFormResponses } = await import("../server");
+  ```
+
+  The server.ts file then imports database functions:
+
+  ```typescript
+  const { saveFormResponse } = await import("../../lib/db/form");
+  ```
+
+  When Vite bundles this for the browser, it tries to include better-sqlite3, which is a
+  Node.js native module that cannot run in the browser. This causes runtime errors.
+
+impact:
+  - "Artifact generation completely broken"
+  - "Cannot progress past Step 1"
+  - "Blocks all e2e testing of SQLite integration"
+  - "PR #12 blocked - SQLite migration cannot be completed"
+
+affected_files:
+  - "src/features/planning/machines/planningMachine.ts:146"
+  - "src/features/planning/server.ts:384"
+  - "src/lib/db/form.ts"
+  - "vite.config.ts"
+
+related_issues:
+  - "BUG-016: __dirname undefined (RESOLVED)"
+
+attempted_fixes:
+  - fix: "Added better-sqlite3 to Vite externals config"
+    code: |
+      optimizeDeps: {
+        exclude: ['better-sqlite3']
+      },
+      ssr: {
+        external: ['better-sqlite3'],
+      }
+    result: "Partial success - changed error from 'promisify not a function' to 'export not found'"
+    analysis: "Module no longer bundled but still being loaded in browser context"
+
+proposed_solution: |
+  This is NOT a simple Vite configuration issue. The fundamental problem is that
+  database code is being imported in the browser. TanStack Start server functions
+  should prevent this but aren't working as expected.
+
+  Possible solutions (in order of preference):
+
+  1. **Use .server.ts file extension**
+     - Move database operations to files with .server.ts extension
+     - TanStack Start should not bundle these files for client
+     - Example: rename server.ts to server.server.ts
+
+  2. **Move database imports into server function body**
+     - Don't import at module level
+     - Import lazily inside the server function handler
+     - Example:
+       ```typescript
+       handler: async ({ data }) => {
+         // Import INSIDE handler, not at top of file
+         const { saveFormResponse } = await import("../../lib/db/form");
+         saveFormResponse(...);
+       }
+       ```
+
+  3. **Use separate API routes instead of server functions**
+     - Create explicit /api/artifacts endpoints
+     - Call via fetch() from client
+     - Ensures proper server/client boundary
+
+  4. **Investigate TanStack Start configuration**
+     - Review tanstackStart plugin configuration
+     - Check if srcDirectory setting is causing issues
+     - Consult TanStack Start documentation for database examples
+
+verification_steps:
+  - "Run Test Run #015 again"
+  - "Submit Step 1 form"
+  - "Verify artifact generation succeeds"
+  - "Check browser console for no better-sqlite3 errors"
+  - "Verify database artifact record created"
+
+test_evidence:
+  - ".tmp-docs/screenshots/test-run-015-step-01-filled-complete.png"
+  - ".tmp-docs/screenshots/test-run-015-step-02-interview.png"
+  - ".playwright-mcp/console-2026-05-20T18-04-22-567Z.log:86-95"
+
+notes: |
+  - Form data capture works perfectly (Step 1 responses shown in debug panel)
+  - The issue is specifically in the artifact generation phase
+  - This is a Vite bundling configuration issue, not an application logic issue
+  - TanStack Start should handle server/client boundaries, but appears to not be working
+
+priority: P0
+blocks_pr: "#12"
+
+resolution:
+  approach: "Lazy imports with database isolation layer"
+  description: |
+    Moved ALL database imports to lazy imports inside TanStack Start server function handlers.
+    Created server.db.ts isolation layer to centralize database imports.
+
+    Key changes:
+    1. src/features/planning/server.ts - All handlers use await import("./server.db")
+    2. src/features/ai/server.ts - Removed module-level import, added lazy imports
+    3. src/features/planning/server.db.ts - NEW file isolating database operations
+
+    This prevents Vite from evaluating database imports at module load time, keeping
+    better-sqlite3 server-side only.
+
+  verification:
+    - "Artifact generation succeeds"
+    - "XState transitions Step 1 → Step 2 successfully"
+    - "NO better-sqlite3 errors in browser console"
+    - "Screenshot: .tmp-docs/screenshots/bug-017-fixed-step-2-transition.png"
+    - "Console log shows: [generateArtifact] ✅ Success! Got artifact"
+
+  files_modified:
+    - "src/features/planning/server.ts"
+    - "src/features/planning/server.db.ts (NEW)"
+    - "src/features/ai/server.ts"
+
+  resolution_doc: "docs/e2e-testing/bug-reports/BUG-017-RESOLUTION.md"

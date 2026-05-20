@@ -2,7 +2,8 @@ import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { createServerFn } from "@tanstack/react-start";
 import { nanoid } from "nanoid";
 import { BEDROCK_MODEL_ID, bedrockClient } from "@/lib/bedrock";
-import { saveArtifact as saveArtifactToDb } from "@/lib/db/artifact";
+// NOTE: Do NOT import database functions at module level - causes BUG-017
+// Use lazy imports inside handlers instead
 import {
   createGenerationSpan,
   createTrace,
@@ -224,6 +225,10 @@ export async function generateArtifact(
 
   // Persist to database (fire-and-forget)
   try {
+    // Lazy import to prevent BUG-017 (better-sqlite3 in client bundle)
+    const { saveArtifact: saveArtifactToDb } = await import(
+      "@/lib/db/artifact"
+    );
     saveArtifactToDb(projectId, stepNumber as any, format, content);
   } catch (error) {
     console.error("[generateArtifact] Failed to persist to database:", error);
@@ -297,6 +302,10 @@ export const $refineArtifact = createServerFn({ method: "POST" })
     const stepNumber = getStepNumberFromArtifactKey(data.key);
     if (stepNumber) {
       try {
+        // Lazy import to prevent BUG-017 (better-sqlite3 in client bundle)
+        const { saveArtifact: saveArtifactToDb } = await import(
+          "@/lib/db/artifact"
+        );
         saveArtifactToDb(
           data.projectId,
           stepNumber as any,
