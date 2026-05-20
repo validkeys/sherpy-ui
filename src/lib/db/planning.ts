@@ -12,13 +12,24 @@ type PlanningSnapshot = SnapshotFrom<typeof planningMachine>;
 
 /**
  * Save or update planning state snapshot for a project
+ * Accepts either a Snapshot object (with .toJSON()) or a plain JSON object
  */
 export function savePlanningState(
   projectId: string,
-  snapshot: PlanningSnapshot,
+  snapshot: PlanningSnapshot | Record<string, unknown>,
 ): void {
   const now = new Date().toISOString();
-  const xstateSnapshot = JSON.stringify(snapshot.toJSON());
+
+  // Handle both Snapshot objects and plain JSON objects
+  const snapshotData =
+    typeof snapshot === "object" &&
+    snapshot !== null &&
+    "toJSON" in snapshot &&
+    typeof snapshot.toJSON === "function"
+      ? snapshot.toJSON()
+      : snapshot;
+
+  const xstateSnapshot = JSON.stringify(snapshotData);
 
   const stmt = db.prepare(`
     INSERT INTO planning_state (project_id, xstate_snapshot, created_at, updated_at)
