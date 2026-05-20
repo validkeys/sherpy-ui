@@ -428,3 +428,52 @@ export const $getFormResponses = createServerFn({ method: "GET" })
     const { getFormResponses } = await import("../../lib/db/form");
     return getFormResponses(data.projectId, data.stepNumber);
   });
+
+// ─────────────────────────────────────────────────────────────
+// ARTIFACTS PERSISTENCE (SQLite)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Get all artifacts for a project
+ * Returns artifacts in step order (ascending)
+ */
+export const $getArtifacts = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    return {
+      projectId: d.projectId,
+    };
+  })
+  .handler(async ({ data }) => {
+    const { getArtifacts } = await import("../../lib/db/artifact");
+    return getArtifacts(data.projectId);
+  });
+
+/**
+ * Get a specific artifact by project and step
+ * Returns artifact or null if not found
+ */
+export const $getArtifact = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    if (typeof d.stepNumber !== "number")
+      throw new Error("stepNumber must be a number");
+    if (d.stepNumber < 1 || d.stepNumber > 10)
+      throw new Error("stepNumber must be between 1 and 10");
+    return {
+      projectId: d.projectId,
+      stepNumber: d.stepNumber,
+    };
+  })
+  .handler(async ({ data }) => {
+    const { getArtifact } = await import("../../lib/db/artifact");
+    return getArtifact(data.projectId, data.stepNumber);
+  });
