@@ -15,8 +15,8 @@
  */
 
 import {
-  INTERVIEW_QUESTION_SCHEMA,
   ARTIFACT_RESPONSE_SCHEMA,
+  INTERVIEW_QUESTION_SCHEMA,
 } from "./response-schemas";
 
 export type StepType = "automated" | "interview";
@@ -99,6 +99,17 @@ export function getStepType(stepNumber: number): StepType | undefined {
 
 export function getStepArtifactKey(stepNumber: number): string {
   return STEP_CONFIG[stepNumber]?.artifactKey ?? "unknown";
+}
+
+export function getStepNumberFromArtifactKey(
+  artifactKey: string,
+): number | undefined {
+  for (const [stepNum, config] of Object.entries(STEP_CONFIG)) {
+    if (config.artifactKey === artifactKey) {
+      return Number(stepNum);
+    }
+  }
+  return undefined;
 }
 
 export function isInterviewStep(stepNumber: number): boolean {

@@ -2,6 +2,7 @@ import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { createServerFn } from "@tanstack/react-start";
 import { nanoid } from "nanoid";
 import { BEDROCK_MODEL_ID, bedrockClient } from "@/lib/bedrock";
+import { saveArtifact as saveArtifactToDb } from "@/lib/db/artifact";
 import {
   createGenerationSpan,
   createTrace,
@@ -11,15 +12,20 @@ import {
 } from "@/lib/langfuse-helpers";
 import { getArtifact, upsertArtifact } from "../artifacts/store";
 import type { Artifact } from "../artifacts/types";
-import { getStepArtifactKey, getStepName, getStepResponseSchema } from "../planning/step-config";
+import {
+  getStepArtifactKey,
+  getStepName,
+  getStepNumberFromArtifactKey,
+  getStepResponseSchema,
+} from "../planning/step-config";
 import { getStepState } from "../planning/store";
+import { isStructuredOutputEnabled } from "./feature-flags";
 import {
   buildArtifactPrompt,
   buildInterviewPrompt,
   buildRefinementPrompt,
 } from "./prompts";
 import { getArtifactName } from "./skills-content";
-import { isStructuredOutputEnabled } from "./feature-flags";
 
 interface GenerateQuestionOutput {
   question: string;
@@ -159,19 +165,15 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       data.previousAnswers,
       projectOverview,
     );
-    const question = await generateText(
-      messages,
-      data.stepNumber,
-      {
-        name: "interview-question",
-        sessionId: data.projectId,
-        metadata: {
-          stepNumber: data.stepNumber,
-          stepName,
-          previousAnswersCount: data.previousAnswers.length,
-        },
-      }
-    );
+    const question = await generateText(messages, data.stepNumber, {
+      name: "interview-question",
+      sessionId: data.projectId,
+      metadata: {
+        stepNumber: data.stepNumber,
+        stepName,
+        previousAnswersCount: data.previousAnswers.length,
+      },
+    });
 
     return { question };
   });
@@ -192,20 +194,16 @@ export async function generateArtifact(
   }
 
   const messages = buildArtifactPrompt(stepName, stepNumber, answers);
-  const content = await generateText(
-    messages,
-    stepNumber,
-    {
-      name: "generate-artifact",
-      sessionId: projectId,
-      metadata: {
-        stepNumber,
-        stepName,
-        artifactKey,
-        answersCount: answers.length,
-      },
-    }
-  );
+  const content = await generateText(messages, stepNumber, {
+    name: "generate-artifact",
+    sessionId: projectId,
+    metadata: {
+      stepNumber,
+      stepName,
+      artifactKey,
+      answersCount: answers.length,
+    },
+  });
 
   // Determine format from artifact filename
   const artifactName = getArtifactName(stepNumber);
@@ -223,6 +221,14 @@ export async function generateArtifact(
   };
 
   upsertArtifact(artifact);
+
+  // Persist to database (fire-and-forget)
+  try {
+    saveArtifactToDb(projectId, stepNumber as any, format, content);
+  } catch (error) {
+    console.error("[generateArtifact] Failed to persist to database:", error);
+  }
+
   return artifact;
 }
 
@@ -280,10 +286,27 @@ export const $refineArtifact = createServerFn({ method: "POST" })
         metadata: {
           artifactKey: data.key,
           artifactLabel: artifact.label,
-        instructionLength: data.instruction.length,
+          instructionLength: data.instruction.length,
+        },
       },
-    });
+    );
     const updated = { ...artifact, content: refinedContent };
     upsertArtifact(updated);
+
+    // Persist refined artifact to database (fire-and-forget)
+    const stepNumber = getStepNumberFromArtifactKey(data.key);
+    if (stepNumber) {
+      try {
+        saveArtifactToDb(
+          data.projectId,
+          stepNumber as any,
+          artifact.format,
+          refinedContent,
+        );
+      } catch (error) {
+        console.error("[refineArtifact] Failed to persist to database:", error);
+      }
+    }
+
     return updated;
   });
