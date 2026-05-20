@@ -63,6 +63,24 @@ export const $submitAnswer = createServerFn({ method: "POST" })
       data.answer,
     );
 
+    // Persist interview answer to database (steps 2 and 3 only)
+    if (data.stepNumber === 2 || data.stepNumber === 3) {
+      try {
+        saveInterviewAnswer(
+          data.projectId,
+          data.stepNumber,
+          data.question,
+          data.answer,
+        );
+      } catch (error) {
+        // Log but don't block - database persistence is fire-and-forget
+        console.error(
+          "[submitAnswer] Failed to persist interview answer:",
+          error,
+        );
+      }
+    }
+
     // Generate artifact after step completion
     // For now, we only have a single answer per step, so pass it as an array
     try {
@@ -210,6 +228,7 @@ export const $updateStepOptions = createServerFn({ method: "POST" })
 // PLANNING STATE PERSISTENCE (SQLite)
 // ─────────────────────────────────────────────────────────────
 
+import { saveInterviewAnswer } from "../../lib/db/interview";
 import {
   deletePlanningState,
   hasPlanningState,

@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { db } from "../../lib/db";
+import {
+  _clearInterviewAnswers,
+  getInterviewAnswers,
+} from "../../lib/db/interview";
 import {
   createProject,
   getProject,
-  updateCurrentStep,
   _resetStore as resetProjects,
+  updateCurrentStep,
 } from "../projects/store";
 import {
   getStepState,
@@ -45,6 +50,9 @@ function validateSubmitAnswer(data: unknown) {
 beforeEach(() => {
   resetPlanning();
   resetProjects();
+  // Clean up database state
+  _clearInterviewAnswers();
+  db.prepare("DELETE FROM projects").run();
 });
 
 describe("$getStepState validator", () => {
@@ -131,7 +139,11 @@ describe("$getStepState initialization from backend", () => {
 
     // Initialize planning state - should sync from backend
     const updatedProject = getProject(project.id);
-    initProjectSteps(project.id, project.entryPath, updatedProject!.currentStep);
+    initProjectSteps(
+      project.id,
+      project.entryPath,
+      updatedProject!.currentStep,
+    );
     const state = getStepState(project.id);
 
     expect(state.currentStep).toBe(3);
@@ -157,7 +169,11 @@ describe("$getStepState initialization from backend", () => {
     updateCurrentStep(project.id, 4);
 
     const updatedProject = getProject(project.id);
-    initProjectSteps(project.id, project.entryPath, updatedProject!.currentStep);
+    initProjectSteps(
+      project.id,
+      project.entryPath,
+      updatedProject!.currentStep,
+    );
     const state = getStepState(project.id);
 
     expect(state.currentStep).toBe(4);
@@ -172,7 +188,11 @@ describe("$getStepState initialization from backend", () => {
     updateCurrentStep(project.id, 3);
 
     const updatedProject = getProject(project.id);
-    initProjectSteps(project.id, project.entryPath, updatedProject!.currentStep);
+    initProjectSteps(
+      project.id,
+      project.entryPath,
+      updatedProject!.currentStep,
+    );
     const state = getStepState(project.id);
 
     // Step 1 should have pre-seeded answer
@@ -208,3 +228,8 @@ describe("$submitAnswer (store delegate)", () => {
     expect(second.currentStep).toBe(1); // Still on step 1
   });
 });
+
+// NOTE: Interview answer database persistence happens in the $submitAnswer server
+// function handler and cannot be tested here without TanStack Start Vite plugin.
+// The database persistence logic (saveInterviewAnswer) is tested in db/interview.test.ts.
+// End-to-end testing of the full flow (server fn → database) happens in integration tests.
