@@ -196,7 +196,7 @@ describe("$getStepState initialization from backend", () => {
     const state = getStepState(project.id);
 
     // Step 1 should have pre-seeded answer
-    expect(state.steps[0].answer?.value).toBe("doc-first");
+    expect(state.steps[0].answer?.value).toBe("I have a requirements document");
     expect(state.steps[0].status).toBe("complete");
   });
 });

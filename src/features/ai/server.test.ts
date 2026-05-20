@@ -63,11 +63,11 @@ describe("buildInterviewPrompt", () => {
       "Business Requirements Interview",
       2,
       [],
-      "Build a mobile app for task management"
+      "Build a mobile app for task management",
     );
 
     const allContent = messages.map((m) => m.content).join(" ");
-    expect(allContent).toContain("Project Overview");
+    expect(allContent).toContain("PROJECT CONTEXT");
     expect(allContent).toContain("Build a mobile app for task management");
   });
 });
@@ -255,7 +255,8 @@ target_audience: Product managers`;
       await generateText(messages, 1); // stepNumber = 1
 
       // Verify response_format was added to body
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
+      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
+        .calls[0];
       const command = callArgs[0] as InvokeModelCommand;
       const body = JSON.parse(command.input.body as string);
 
@@ -286,7 +287,8 @@ target_audience: Product managers`;
       await generateText(messages, 1);
 
       // Verify response_format was NOT added
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
+      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
+        .calls[0];
       const command = callArgs[0] as InvokeModelCommand;
       const body = JSON.parse(command.input.body as string);
 
@@ -317,7 +319,8 @@ target_audience: Product managers`;
       await generateText(messages, 4); // Step 4 has no schema
 
       // Verify response_format was NOT added (schema unavailable)
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
+      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
+        .calls[0];
       const command = callArgs[0] as InvokeModelCommand;
       const body = JSON.parse(command.input.body as string);
 

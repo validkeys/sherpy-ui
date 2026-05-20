@@ -43,8 +43,8 @@ describe("initProjectSteps", () => {
     expect(step1.answers).toHaveLength(1);
     expect(step1.answers?.[0].value).toBe("I have a requirements document");
     expect(step1.answers?.[0].question).toBeTruthy();
-    expect(step1.status).toBe("now");
-    expect(state.currentStep).toBe(1);
+    expect(step1.status).toBe("complete");
+    expect(state.currentStep).toBe(2);
   });
 
   it("remaining steps are 'pending' for scratch path", () => {

@@ -15,7 +15,7 @@ describe("database module", () => {
   it("has appropriate journal mode enabled", () => {
     const result = db.pragma("journal_mode", { simple: true });
     // In-memory databases use "memory" mode, file-based use "wal"
-    const dbPath = process.env.DATABASE_URL || ":memory:";
+    const dbPath = process.env.SHERPY_DB_PATH || ":memory:";
     if (dbPath === ":memory:") {
       expect(result).toBe("memory");
     } else {
