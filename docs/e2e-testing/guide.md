@@ -9,6 +9,61 @@
 
 ## 📋 Test History
 
+### Test Run #016 - 2026-05-20 (DEBUG SESSION - ROOT CAUSE FOUND)
+**Tester:** Claude AI Browser Agent  
+**Status:** ✅ SUCCESSFUL - Step 1 → Step 2 transition working  
+**Result:** BUG-017 (better-sqlite3) VERIFIED FIXED, Test methodology issue identified  
+**Steps Completed:** Step 1 complete, Step 2 loaded successfully  
+**Duration:** ~15 minutes
+
+**Key Findings:**
+- ✅ **BUG-017 RESOLVED** - Artifact generation succeeded with lazy imports solution
+- ✅ **Playwright MCP works correctly** - No regression of BUG-014
+- ✅ **Step 1 → Step 2 transition successful** - Workflow advancing properly
+- ✅ **Contextual questions working** - Step 2 question references "healthcare patient portal" from input
+- ⚠️ **Test methodology issue identified** - Opening Debug Panel mid-test causes React re-render and state reset
+
+**What Happened:**
+Initial test attempt appeared to fail (Submit button disabled) but root cause was:
+1. Used `browser_fill_form()` which fills multiple fields at once
+2. Opened Debug Panel to check state (caused React component re-render)
+3. Re-render changed actor ID (x:0 → x:4) and cleared form state
+4. This made it appear that Playwright MCP wasn't working
+
+**Correct Methodology:**
+When form fields were filled using `browser_type()` WITHOUT opening Debug Panel mid-test:
+- ✅ React onChange events triggered properly
+- ✅ Form state updated: `isFormValid: true`
+- ✅ Submit button enabled
+- ✅ Form submission succeeded
+- ✅ Artifact generated: `{id: wi_NB9hZ, key: gap-analysis}`
+- ✅ Workflow transitioned to Step 2 (Business Requirements Interview)
+- ✅ Step 1 Responses captured and visible in Step 2
+
+**Console Evidence:**
+```
+[FormStep] Field changed: {id: existingRequirements, value: No, starting from scratch}
+[FormStep] Updated formData: {existingRequirements: ...}
+[FormStep] Render state: {isFormValid: true}
+[FormStep] ===== SUBMIT CLICKED =====
+[generateArtifact] ✅ Success! Got artifact
+State changed: {step2_businessReqs: asking}
+```
+
+**Testing Protocol Update:**
+- DO NOT open Debug Panel during form filling
+- DO NOT interfere with test execution after filling forms
+- Allow React state updates to complete before checking state
+- Use `browser_type()` for filling fields (triggers proper events)
+
+**Verification:**
+- Screenshots show successful Step 2 load with contextual question
+- Step 1 responses visible in debug panel on Step 2
+- Current step number: 2
+- Completed steps: [1]
+
+---
+
 ### Test Run #015 - 2026-05-20 (SQLite Integration Test - NEW BLOCKER)
 **Tester:** Claude AI Browser Agent  
 **Status:** ⛔ BLOCKED at Step 1 Artifact Generation  
