@@ -1,0 +1,90 @@
+---
+# Bug Report: __dirname Undefined in ES Module Context - Database Migration Failure
+
+bug_id: "016"
+slug: "dirname-undefined-migration-failure"
+title: "SQLite database migration fails: __dirname is not defined in ES module context"
+date_reported: "2026-05-20"
+reporter: "Claude AI Browser Agent"
+
+# Classification
+severity: "critical"
+blocking: true
+affected_step: "step-01"
+
+# Description
+summary: "The SQLite database migration code in src/lib/db/migrate.ts uses __dirname which is not available in ES modules, causing the server to crash on startup and preventing any database operations."
+
+expected_behavior: "Dashboard should load successfully, display empty projects list (or existing projects), and allow creating new projects. Database migrations should run automatically on server startup."
+
+actual_behavior: "Dashboard loads but displays 'Failed to load projects' error. Server endpoint /_serverFn/... returns 500 Internal Server Error. Console shows ReferenceError: __dirname is not defined at runMigrations (migrate.ts:6:27). Application is completely non-functional."
+
+# Reproduction
+steps_to_reproduce:
+  - "Start dev server with pnpm dev"
+  - "Navigate to http://localhost:5180"
+  - "Observe dashboard loads but shows 'Failed to load projects' error"
+  - "Check browser console - shows Query data cannot be undefined for projects query"
+  - "Check server logs - shows ReferenceError: __dirname is not defined"
+
+reproduction_rate: "always"
+
+# Evidence
+screenshot: "test-run-014-01-dashboard-load-error.png"
+
+server_logs: |
+  ReferenceError: __dirname is not defined
+      at runMigrations (/workspace/src/lib/db/migrate.ts:6:27)
+      at eval (/workspace/src/lib/db/index.ts:32:1)
+      at async ESModulesEvaluator.runInlinedModule
+      at async ModuleRunner.directRequest
+      at async ModuleRunner.cachedRequest
+      at async eval (/workspace/src/features/projects/server.ts:2:1)
+
+console_errors: |
+  [ERROR] Query data cannot be undefined. Please make sure to return a value
+  other than undefined from your query function. Affected query key: ["projects"]
+
+  Also React hook errors due to app crash:
+  [ERROR] Invalid hook call. Hooks can only be called inside of the body of a
+  function component.
+  [ERROR] TypeError: Cannot read properties of null (reading 'useState')
+
+network_errors: "500 Internal Server Error on /_serverFn/eyJmaWxlIjoiL3NyYy9mZWF0dXJlcy9wcm9qZWN0cy9zZXJ2ZXIudHM_dHNzLXNlcnZlcmZuLXNwbGl0IiwiZXhwb3J0IjoiJGxpc3RQcm9qZWN0c19jcmVhdGVTZXJ2ZXJGbl9oYW5kbGVyIn0"
+
+# Context
+test_run: "014"
+project_id: null
+url: "http://localhost:5180/dashboard"
+browser: "Chromium (Playwright)"
+
+# Impact
+workflow_impact: "COMPLETE BLOCKER - Cannot test any functionality. Database layer is non-functional. Cannot create projects, cannot load projects, cannot proceed with any workflow testing. This bug makes the entire application unusable."
+
+workaround: null
+
+# Status
+status: "fixed"
+fixed_in: "src/lib/db/migrate.ts (2026-05-20)"
+verified_fixed: true
+
+# Related
+related_bugs: []
+
+notes: |
+  Root Cause: The PR #12 SQLite database integration uses __dirname in
+  src/lib/db/migrate.ts line 6 to resolve the migrations directory path.
+  However, __dirname is a CommonJS variable that is not available in ES modules.
+
+  Solution: Replace __dirname with import.meta.url or use a Vite-compatible
+  approach for resolving file paths. Example:
+
+  import { fileURLToPath } from 'url';
+  import { dirname } from 'path';
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+
+  Or use a Vite glob import for migrations:
+  const migrations = import.meta.glob('./migrations/*.sql', { eager: true, as: 'raw' });
+
+  This is a critical blocker introduced in PR #12 that must be fixed before
+  the SQLite integration can be merged or tested.

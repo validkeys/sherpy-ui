@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { db } from "@/lib/db";
 import {
   _resetStore,
   createProject,
@@ -31,6 +32,44 @@ describe("listProjects", () => {
     expect(list[0].id).toBe(b.id);
     expect(list[1].id).toBe(a.id);
   });
+
+  it("reads projects from database", () => {
+    const p1 = createProject({ name: "DB Alpha", entryPath: "scratch" });
+    const p2 = createProject({ name: "DB Beta", entryPath: "doc-first" });
+
+    const list = listProjects();
+
+    expect(list).toHaveLength(2);
+    expect(list.find((p) => p.id === p1.id)).toMatchObject({
+      id: p1.id,
+      code: p1.code,
+      name: "DB Alpha",
+      status: "active",
+      entryPath: "scratch",
+      currentStep: 1,
+    });
+    expect(list.find((p) => p.id === p2.id)).toMatchObject({
+      id: p2.id,
+      code: p2.code,
+      name: "DB Beta",
+      status: "active",
+      entryPath: "doc-first",
+      currentStep: 1,
+    });
+  });
+
+  it("returns projects with camelCase field names", () => {
+    createProject({ name: "CamelCase Test", entryPath: "scratch" });
+
+    const list = listProjects();
+
+    expect(list[0]).toHaveProperty("entryPath");
+    expect(list[0]).toHaveProperty("currentStep");
+    expect(list[0]).toHaveProperty("lastTouchedAt");
+    expect(list[0]).toHaveProperty("createdAt");
+    expect(list[0]).not.toHaveProperty("entry_path");
+    expect(list[0]).not.toHaveProperty("current_step");
+  });
 });
 
 describe("createProject", () => {
@@ -51,6 +90,44 @@ describe("createProject", () => {
     expect(p.status).toBe("active");
     expect(p.currentStep).toBe(1);
     expect(p.entryPath).toBe("doc-first");
+  });
+
+  it("inserts project into database", () => {
+    const p = createProject({ name: "DB Test", entryPath: "scratch" });
+
+    const stmt = db.prepare("SELECT * FROM projects WHERE id = ?");
+    const row = stmt.get(p.id) as any;
+
+    expect(row).toBeTruthy();
+    expect(row.id).toBe(p.id);
+    expect(row.code).toBe(p.code);
+    expect(row.name).toBe("DB Test");
+    expect(row.status).toBe("active");
+    expect(row.entry_path).toBe("scratch");
+    expect(row.current_step).toBe(1);
+  });
+
+  it("throws error when inserting duplicate project code", () => {
+    const p1 = createProject({ name: "First", entryPath: "scratch" });
+
+    // Manually insert duplicate code to test constraint
+    const stmt = db.prepare(`
+      INSERT INTO projects (id, code, name, status, entry_path, current_step, created_at, last_touched_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    expect(() => {
+      stmt.run(
+        "duplicate-id",
+        p1.code,
+        "Duplicate",
+        "active",
+        "scratch",
+        1,
+        new Date().toISOString(),
+        new Date().toISOString(),
+      );
+    }).toThrow();
   });
 });
 
@@ -81,7 +158,10 @@ describe("getProject", () => {
 
 describe("updateCurrentStep", () => {
   it("updates currentStep for valid project and step number", () => {
-    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+    const project = createProject({
+      name: "Test Project",
+      entryPath: "scratch",
+    });
     const originalTimestamp = project.lastTouchedAt;
 
     const updated = updateCurrentStep(project.id, 3);
@@ -99,7 +179,10 @@ describe("updateCurrentStep", () => {
   });
 
   it("throws error for invalid step number (negative)", () => {
-    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+    const project = createProject({
+      name: "Test Project",
+      entryPath: "scratch",
+    });
 
     expect(() => updateCurrentStep(project.id, -1)).toThrow(
       "Invalid step number: -1",
@@ -107,7 +190,10 @@ describe("updateCurrentStep", () => {
   });
 
   it("throws error for invalid step number (zero)", () => {
-    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+    const project = createProject({
+      name: "Test Project",
+      entryPath: "scratch",
+    });
 
     expect(() => updateCurrentStep(project.id, 0)).toThrow(
       "Invalid step number: 0",
@@ -115,7 +201,10 @@ describe("updateCurrentStep", () => {
   });
 
   it("updates lastTouchedAt timestamp", () => {
-    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+    const project = createProject({
+      name: "Test Project",
+      entryPath: "scratch",
+    });
     const originalTimestamp = project.lastTouchedAt;
 
     const updated = updateCurrentStep(project.id, 2);
@@ -127,7 +216,10 @@ describe("updateCurrentStep", () => {
   });
 
   it("persists update in store", () => {
-    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+    const project = createProject({
+      name: "Test Project",
+      entryPath: "scratch",
+    });
 
     updateCurrentStep(project.id, 5);
     const retrieved = getProject(project.id);

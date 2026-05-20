@@ -1,3 +1,4 @@
+import { db } from "@/lib/db";
 import type { Project } from "./types";
 
 const SEED_PROJECTS: Omit<Project, "id">[] = [
@@ -41,13 +42,24 @@ const SEED_PROJECTS: Omit<Project, "id">[] = [
   },
 ];
 
-export function seedStore(
-  store: Map<string, Project>,
-  counterRef: { value: number },
-): void {
+export function seedStore(counterRef: { value: number }): void {
+  const stmt = db.prepare(`
+    INSERT INTO projects (id, code, name, status, entry_path, current_step, created_at, last_touched_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
   for (const [index, seed] of SEED_PROJECTS.entries()) {
     const id = `seed-000${index + 1}`;
-    store.set(id, { id, ...seed });
+    stmt.run(
+      id,
+      seed.code,
+      seed.name,
+      seed.status,
+      seed.entryPath,
+      seed.currentStep,
+      seed.createdAt,
+      seed.lastTouchedAt,
+    );
   }
   // Advance counter past seed codes (SHR-0001 through SHR-0004)
   counterRef.value = Math.max(counterRef.value, 5);

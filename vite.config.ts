@@ -5,6 +5,12 @@ import type { Connect } from "vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  optimizeDeps: {
+    exclude: ["better-sqlite3"],
+  },
+  ssr: {
+    external: ["better-sqlite3"],
+  },
   plugins: [
     tailwindcss(),
     tanstackStart({

@@ -1,6 +1,11 @@
 import type { EntryPath } from "../projects/types";
-import type { PlanningStep, ProjectStepState, StepAnswer, StepOption } from "./types";
-import { STEP_CONFIG, getStepName } from "./step-config";
+import { getStepName, STEP_CONFIG } from "./step-config";
+import type {
+  PlanningStep,
+  ProjectStepState,
+  StepAnswer,
+  StepOption,
+} from "./types";
 
 const store = new Map<string, ProjectStepState>();
 
@@ -64,19 +69,24 @@ function buildSteps(entryPath: EntryPath): PlanningStep[] {
     const legacyStep = STEPS[stepNumber - 1];
 
     // For Step 1, pre-populate first answer based on entryPath
-    const prefilledAnswer = stepNumber === 1 && entryPath ? {
-      question: legacyStep?.question ?? "",
-      value: entryPath === "scratch"
-        ? "Starting from scratch"
-        : "I have a requirements document",
-      submittedAt: new Date().toISOString()
-    } : undefined;
+    const prefilledAnswer =
+      stepNumber === 1 && entryPath
+        ? {
+            question: legacyStep?.question ?? "",
+            value:
+              entryPath === "scratch"
+                ? "Starting from scratch"
+                : "I have a requirements document",
+            submittedAt: new Date().toISOString(),
+          }
+        : undefined;
 
     return {
       stepNumber,
       name: config.name,
       status: stepNumber === 1 ? ("now" as const) : ("pending" as const),
       question: legacyStep?.question ?? "",
+      answer: prefilledAnswer, // legacy field for backward compatibility
       answers: prefilledAnswer ? [prefilledAnswer] : undefined,
     };
   });
@@ -100,7 +110,7 @@ export function initProjectSteps(
   const updatedSteps = steps.map((step) => {
     // For doc-first, step 1 is always pre-seeded and complete
     if (entryPath === "doc-first" && step.stepNumber === 1) {
-      return step; // Keep pre-seeded answer and "complete" status
+      return { ...step, status: "complete" as const };
     }
 
     if (step.stepNumber < currentStep) {
@@ -112,7 +122,11 @@ export function initProjectSteps(
     }
   });
 
-  const state: ProjectStepState = { projectId, currentStep, steps: updatedSteps };
+  const state: ProjectStepState = {
+    projectId,
+    currentStep,
+    steps: updatedSteps,
+  };
   store.set(projectId, state);
   return state;
 }
@@ -153,7 +167,9 @@ export function submitAnswer(
     if (i === stepIndex) {
       const existingAnswers = s.answers ?? [];
       const newAnswers = [...existingAnswers, stepAnswer];
-      console.log(`[submitAnswer] Step ${stepNumber}: Adding answer. Total answers now: ${newAnswers.length}`);
+      console.log(
+        `[submitAnswer] Step ${stepNumber}: Adding answer. Total answers now: ${newAnswers.length}`,
+      );
       return {
         ...s,
         answer: stepAnswer, // Keep for backward compatibility
@@ -187,7 +203,9 @@ export function completeStep(
   if (stepIndex === -1)
     throw new Error(`Step ${stepNumber} not found for project: ${projectId}`);
 
-  console.log(`[completeStep] Completing step ${stepNumber} (index ${stepIndex})`);
+  console.log(
+    `[completeStep] Completing step ${stepNumber} (index ${stepIndex})`,
+  );
 
   const updatedSteps = state.steps.map((s, i) => {
     if (i === stepIndex) {
@@ -226,7 +244,12 @@ export function submitAnswerAndComplete(
   answer: string,
 ): ProjectStepState {
   // Submit the answer
-  const stateAfterAnswer = submitAnswer(projectId, stepNumber, question, answer);
+  const stateAfterAnswer = submitAnswer(
+    projectId,
+    stepNumber,
+    question,
+    answer,
+  );
   // Immediately complete the step
   return completeStep(projectId, stepNumber);
 }
