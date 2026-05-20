@@ -352,3 +352,79 @@ export const $getInterviewAnswers = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     return getInterviewAnswers(data.projectId, data.stepNumber);
   });
+
+/**
+ * Save form responses to database
+ * Used by steps 1, 5, and 7 for form field persistence
+ */
+export const $saveFormResponses = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    if (typeof d.stepNumber !== "number")
+      throw new Error("stepNumber must be a number");
+    if (d.stepNumber !== 1 && d.stepNumber !== 5 && d.stepNumber !== 7)
+      throw new Error("stepNumber must be 1, 5, or 7 (form steps only)");
+    if (
+      typeof d.responses !== "object" ||
+      d.responses === null ||
+      Array.isArray(d.responses)
+    )
+      throw new Error("responses must be an object");
+    return {
+      projectId: d.projectId,
+      stepNumber: d.stepNumber as 1 | 5 | 7,
+      responses: d.responses as Record<string, string>,
+    };
+  })
+  .handler(async ({ data }) => {
+    const { saveFormResponse } = await import("../../lib/db/form");
+
+    // Save each field as a separate row
+    for (const [fieldName, fieldValue] of Object.entries(data.responses)) {
+      try {
+        saveFormResponse(
+          data.projectId,
+          data.stepNumber,
+          fieldName,
+          fieldValue,
+        );
+      } catch (error) {
+        // Log but continue with other fields
+        console.error(
+          `[saveFormResponses] Failed to save field ${fieldName}:`,
+          error,
+        );
+      }
+    }
+
+    return { success: true };
+  });
+
+/**
+ * Get form responses from database
+ * Used to restore form state across sessions
+ */
+export const $getFormResponses = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    if (typeof d.stepNumber !== "number")
+      throw new Error("stepNumber must be a number");
+    if (d.stepNumber !== 1 && d.stepNumber !== 5 && d.stepNumber !== 7)
+      throw new Error("stepNumber must be 1, 5, or 7 (form steps only)");
+    return {
+      projectId: d.projectId,
+      stepNumber: d.stepNumber as 1 | 5 | 7,
+    };
+  })
+  .handler(async ({ data }) => {
+    const { getFormResponses } = await import("../../lib/db/form");
+    return getFormResponses(data.projectId, data.stepNumber);
+  });

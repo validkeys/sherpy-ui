@@ -136,6 +136,54 @@ const generateArtifact = fromPromise<
 
   console.log("[generateArtifact] Extracted answers:", answers);
 
+  // Persist form responses to database (steps 1, 5, 7 only)
+  if (input.stepNumber === 1 && input.accumulatedContext.step1Responses) {
+    const responses = input.accumulatedContext.step1Responses as Record<
+      string,
+      string
+    >;
+    try {
+      const { $saveFormResponses } = await import("../server");
+      await $saveFormResponses({
+        data: {
+          projectId: input.projectId,
+          stepNumber: 1,
+          responses,
+        },
+      });
+      console.log("[generateArtifact] Persisted step 1 form responses");
+    } catch (error) {
+      console.error(
+        "[generateArtifact] Failed to persist step 1 form responses:",
+        error,
+      );
+    }
+  } else if (
+    input.stepNumber === 5 &&
+    input.accumulatedContext.step5Responses
+  ) {
+    const responses = input.accumulatedContext.step5Responses as Record<
+      string,
+      string
+    >;
+    try {
+      const { $saveFormResponses } = await import("../server");
+      await $saveFormResponses({
+        data: {
+          projectId: input.projectId,
+          stepNumber: 5,
+          responses,
+        },
+      });
+      console.log("[generateArtifact] Persisted step 5 form responses");
+    } catch (error) {
+      console.error(
+        "[generateArtifact] Failed to persist step 5 form responses:",
+        error,
+      );
+    }
+  }
+
   try {
     // Call server function for artifact generation
     console.log("[generateArtifact] Importing server function...");
@@ -184,17 +232,17 @@ function buildProjectContext(ctx: PlanningContext): string {
   // Step 2: Business Requirements
   if (ctx.step2Answers.length > 0) {
     parts.push("Business Requirements:");
-    ctx.step2Answers.forEach((a) =>
-      parts.push(`  Q: ${a.question}\n  A: ${a.value}`),
-    );
+    for (const a of ctx.step2Answers) {
+      parts.push(`  Q: ${a.question}\n  A: ${a.value}`);
+    }
   }
 
   // Step 3: Technical Requirements
   if (ctx.step3Answers.length > 0) {
     parts.push("Technical Requirements:");
-    ctx.step3Answers.forEach((a) =>
-      parts.push(`  Q: ${a.question}\n  A: ${a.value}`),
-    );
+    for (const a of ctx.step3Answers) {
+      parts.push(`  Q: ${a.question}\n  A: ${a.value}`);
+    }
   }
 
   return parts.join("\n\n");
