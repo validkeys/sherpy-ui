@@ -331,6 +331,44 @@ export const $hasPlanningState = createServerFn({ method: "GET" })
 // ─────────────────────────────────────────────────────────────
 
 /**
+ * Save interview answer to database (fire-and-forget from machine)
+ * Used by XState machine to persist answers without blocking workflow
+ */
+export const $saveInterviewAnswer = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId)
+      throw new Error("projectId required");
+    if (typeof d.stepNumber !== "number")
+      throw new Error("stepNumber must be a number");
+    if (d.stepNumber !== 2 && d.stepNumber !== 3)
+      throw new Error("stepNumber must be 2 or 3 (interview steps only)");
+    if (typeof d.question !== "string" || !d.question.trim())
+      throw new Error("question required");
+    if (typeof d.answer !== "string" || !d.answer.trim())
+      throw new Error("answer required");
+    return {
+      projectId: d.projectId,
+      stepNumber: d.stepNumber as 2 | 3,
+      question: d.question.trim(),
+      answer: d.answer.trim(),
+    };
+  })
+  .handler(async ({ data }) => {
+    // Lazy import to prevent bundling in client (BUG-017)
+    const { saveInterviewAnswer } = await import("./server.db");
+    saveInterviewAnswer(
+      data.projectId,
+      data.stepNumber,
+      data.question,
+      data.answer,
+    );
+    return { success: true };
+  });
+
+/**
  * Get all interview answers for a project and step
  * Returns answers in chronological order
  */

@@ -13,6 +13,62 @@ import type {
 } from "./types";
 
 // ─────────────────────────────────────────────────────────────
+// PERSISTENCE HELPER (BUG-019)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Persist interview answer to database (fire-and-forget)
+ * Errors are logged but don't block the workflow
+ */
+function persistInterviewAnswerToDatabase(
+  projectId: string,
+  stepNumber: 2 | 3,
+  question: string,
+  answer: string,
+): void {
+  // Use server function to persist (prevents bundling issues - BUG-017)
+  import("../server")
+    .then(({ $saveInterviewAnswer }) => {
+      $saveInterviewAnswer({
+        data: {
+          projectId,
+          stepNumber,
+          question,
+          answer,
+        },
+      })
+        .then(() => {
+          console.log(
+            `[persistInterviewAnswer] ✅ Saved: Step ${stepNumber}, Q: "${question.slice(0, 50)}..."`,
+          );
+        })
+        .catch((error) => {
+          console.error(
+            `[persistInterviewAnswer] ❌ Failed to persist answer:`,
+            {
+              projectId,
+              stepNumber,
+              question: question.slice(0, 50),
+              error: error.message,
+            },
+          );
+        });
+    })
+    .catch((error) => {
+      // Log but don't throw - persistence failure doesn't block workflow
+      console.error(
+        `[persistInterviewAnswer] ❌ Failed to import server function:`,
+        {
+          projectId,
+          stepNumber,
+          question: question.slice(0, 50),
+          error: error.message,
+        },
+      );
+    });
+}
+
+// ─────────────────────────────────────────────────────────────
 // REAL API ACTORS
 // ─────────────────────────────────────────────────────────────
 
@@ -606,14 +662,24 @@ export const planningMachine = setup({
                 event.type === "SUBMIT_ANSWER" && event.stepNumber === 2,
               target: "checkingComplete",
               actions: assign({
-                step2Answers: ({ context, event }) => [
-                  ...context.step2Answers,
-                  {
-                    question: event.question,
-                    value: event.answer,
-                    timestamp: new Date().toISOString(),
-                  },
-                ],
+                step2Answers: ({ context, event }) => {
+                  // Persist to database (fire-and-forget) - BUG-019
+                  persistInterviewAnswerToDatabase(
+                    context.projectId,
+                    2,
+                    event.question,
+                    event.answer,
+                  );
+
+                  return [
+                    ...context.step2Answers,
+                    {
+                      question: event.question,
+                      value: event.answer,
+                      timestamp: new Date().toISOString(),
+                    },
+                  ];
+                },
                 step2CurrentQuestion: null,
                 step2CurrentOptions: null,
                 updatedAt: () => new Date().toISOString(),
@@ -709,14 +775,24 @@ export const planningMachine = setup({
                 event.type === "SUBMIT_ANSWER" && event.stepNumber === 3,
               target: "checkingComplete",
               actions: assign({
-                step3Answers: ({ context, event }) => [
-                  ...context.step3Answers,
-                  {
-                    question: event.question,
-                    value: event.answer,
-                    timestamp: new Date().toISOString(),
-                  },
-                ],
+                step3Answers: ({ context, event }) => {
+                  // Persist to database (fire-and-forget) - BUG-019
+                  persistInterviewAnswerToDatabase(
+                    context.projectId,
+                    3,
+                    event.question,
+                    event.answer,
+                  );
+
+                  return [
+                    ...context.step3Answers,
+                    {
+                      question: event.question,
+                      value: event.answer,
+                      timestamp: new Date().toISOString(),
+                    },
+                  ];
+                },
                 step3CurrentQuestion: null,
                 step3CurrentOptions: null,
                 updatedAt: () => new Date().toISOString(),

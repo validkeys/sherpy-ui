@@ -94,6 +94,90 @@ mcp__playwright__browser_take_screenshot({
 
 ---
 
+## ✅ BUG-019: FIXED - Interview Answers Not Persisted to Database (2026-05-21)
+
+**Problem**: Interview Q&A from Steps 2 & 3 were not being saved to `interview_answers` database table, despite having complete infrastructure.
+
+**Root Cause**: XState machine updated context but never called database persistence functions.
+
+**Solution**: Added event-driven persistence to XState machine using fire-and-forget pattern.
+
+**Implementation**:
+- Created `$saveInterviewAnswer` server function in `src/features/planning/server.ts`
+- Added `persistInterviewAnswerToDatabase()` helper to planning machine
+- Updated Step 2 and Step 3 answer submission handlers to call persistence after context update
+- Fire-and-forget pattern: async, non-blocking, errors logged but don't interrupt workflow
+
+**How It Works**:
+1. User submits answer → XState machine receives `SUBMIT_ANSWER` event
+2. Machine updates context synchronously (immediate UI update)
+3. Machine calls persistence helper asynchronously (fire-and-forget)
+4. Helper imports server function dynamically (prevents client bundling - BUG-017)
+5. Server function saves to database via `saveInterviewAnswer()`
+6. Success/failure logged for observability
+
+**Fix Verification (2026-05-21)**:
+- ✅ Answered 2 questions in Step 2 (Business Requirements)
+- ✅ Both answers persisted to database (confirmed via SQL query)
+- ✅ Console logs show successful persistence
+- ✅ Zero UI impact (async, non-blocking)
+- ✅ Workflow continues normally even if persistence fails
+
+**Files Changed**:
+- `src/features/planning/server.ts` (+37 lines) - Added server function
+- `src/features/planning/machines/planningMachine.ts` (+63 lines) - Added persistence
+
+**Verification Query**:
+```sql
+SELECT step_number, question, answer, created_at 
+FROM interview_answers 
+WHERE project_id = '<project-id>' 
+ORDER BY step_number, created_at;
+```
+
+**Documentation**:
+- `.tmp-docs/bug-019-interview-answers-not-persisted.md` - Bug report
+- `.tmp-docs/plans/bug-019-implementation-plan.md` - Implementation plan  
+- `.tmp-docs/bug-019-verification-complete.md` - Verification results
+
+**Status**: ✅ FIXED and VERIFIED - Ready for production
+
+---
+
+## ✅ BUG-018: VERIFIED FIXED - SSR Hydration Mismatch (2026-05-21)
+
+**Problem**: Page refresh during workflow caused React hydration mismatch, reverting UI to Step 1 even though state was at Step 3.
+
+**Root Cause**: Server-side render with default state (Step 1) vs client hydration with restored state (Step 3) from localStorage.
+
+**Solution**: Disabled SSR for `/project/$projectId/build` route.
+
+**Rationale**: SSR provides no benefit for authenticated, stateful workflows that require client-side state restoration. Setting `ssr: false` prevents hydration mismatch and simplifies architecture.
+
+**Fix Verification (2026-05-21)**:
+- ✅ Tested with Playwright MCP at Step 2 (2 questions answered)
+- ✅ Page refresh preserved workflow state (stayed at Step 2)
+- ✅ All question answers preserved in localStorage
+- ✅ No workflow state reversion (original bug is FIXED)
+- ⚠️ Unrelated theme toggle hydration warning detected (cosmetic, not blocking)
+
+**Result**: 
+- ✅ Page refresh correctly maintains current step
+- ✅ No workflow hydration errors
+- ✅ Simpler code (1 line change)
+- ⚠️ Slightly longer first load (200-400ms, acceptable for authenticated flow)
+
+**Files Changed**: `app/routes/project/$projectId.build.tsx` (added `ssr: false`)
+
+**Documentation**: 
+- `.tmp-docs/bug-018-implementation-summary.md` - Implementation analysis
+- `.tmp-docs/bug-018-verification-complete.md` - Verification results
+- Screenshots: `.tmp-docs/screenshots/bug-018-*.png`
+
+**Testing**: Page refresh now works correctly at any step. No special workarounds needed in E2E tests.
+
+---
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
