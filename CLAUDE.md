@@ -94,6 +94,36 @@ mcp__playwright__browser_take_screenshot({
 
 ---
 
+## ✅ BUG-020: FIXED - Empty Business Requirements Artifact (2026-05-22)
+
+**Problem**: Business Requirements artifact (Step 2) was generated with generic placeholder content instead of actual interview answers.
+
+**Root Cause**: Data mapping mismatch between XState machine and `generateArtifact` actor. Machine passed `answers: context.step2Answers`, but actor expected `step2Answers`.
+
+**Solution**: Updated `planningMachine.ts` line 709 to use correct key name `step2Answers` instead of `answers`.
+
+**Fix Verification (2026-05-22)**:
+- ✅ Created test project "bug-020-test"
+- ✅ Answered all 10 Step 2 questions with unique, verifiable content
+- ✅ Artifact generated successfully (2.2 KB vs previous 0.7 KB)
+- ✅ All interview answers reflected in artifact content
+- ✅ Verified specific keywords: "Stripe", "QuickBooks", "GDPR", "PCI-DSS", "B2B SaaS", "recurring subscriptions", "95% error reduction"
+
+**Result**: Artifact now contains rich, interview-specific business requirements instead of generic placeholders.
+
+**Files Changed**:
+- `src/features/planning/machines/planningMachine.ts` (line 709)
+
+**Documentation**:
+- `.tmp-docs/bug-020-empty-business-requirements-artifact.md` - Bug report
+- `.tmp-docs/bug-020-test-plan.md` - Test plan
+- `.tmp-docs/bug-020-fix-verification.md` - Complete verification results
+- `.tmp-docs/screenshots/bug-020-*.png` - Before/after screenshots
+
+**Status**: ✅ FIXED and VERIFIED - Ready for production
+
+---
+
 ## ✅ BUG-019: FIXED - Interview Answers Not Persisted to Database (2026-05-21)
 
 **Problem**: Interview Q&A from Steps 2 & 3 were not being saved to `interview_answers` database table, despite having complete infrastructure.
@@ -175,6 +205,76 @@ ORDER BY step_number, created_at;
 - Screenshots: `.tmp-docs/screenshots/bug-018-*.png`
 
 **Testing**: Page refresh now works correctly at any step. No special workarounds needed in E2E tests.
+
+---
+
+## 🏗️ STATE REFACTOR: Layered Architecture Migration (2026-05-25)
+
+**Branch:** `feature/state-refactor-phase-1`  
+**Plan:** `docs/planning/002-state-refactor/plan.yaml`  
+**Status Document:** `.tmp-docs/state-refactor-status.md`
+
+### Progress Overview
+
+```
+✅ Phase 1: Domain Layer (Complete) - v2.0.0-phase1
+✅ Phase 2: Infrastructure Layer (Complete) - v2.0.0-phase2
+✅ Phase 3: Workflow Refactor (Complete) - v2.0.0-phase3
+🔄 Phase 4: Application & Adapter Layers (Ready to Start)
+⏸️  Phase 5: Migration & Cleanup (Pending)
+```
+
+### Architecture Pattern
+
+```
+UI Components
+    ↓
+Adapters (optional, if complex mapping)
+    ↓
+Application Layer (React Query hooks)
+    ↓
+Workflow Layer (XState machine)
+    ↓
+Domain Layer (pure functions)
+    ↓
+Infrastructure Layer (persistence)
+```
+
+### Phase 3 Completion (2026-05-25)
+
+**What Changed:**
+- Steps 2 & 3 now delegate answer creation to domain layer (`createInterviewAnswer`)
+- XState machine focuses on orchestration, not business logic
+- Maintained database persistence via fire-and-forget pattern
+
+**Validation:**
+- ✅ 46 domain tests passing
+- ✅ 38 planning machine tests passing
+- ✅ Zero circular dependencies (madge check)
+- ✅ Clean layer separation achieved
+
+**Key Files:**
+- Domain: `src/features/planning/domain/`
+- Infrastructure: `src/features/planning/infrastructure/`
+- Workflow: `src/features/planning/workflow/services.ts`
+- Machine: `src/features/planning/machines/planningMachine.ts`
+
+### Next: Phase 4 Tasks
+
+1. **t-008:** Create application layer queries (`src/features/planning/application/queries.ts`)
+   - React Query hooks for data fetching + domain transformations
+   - Estimated: 45 minutes
+
+2. **t-009:** Evaluate and create adapter if needed
+   - Decision: inline transformation vs adapter file
+   - Co-locate with UI components if complex
+   - Estimated: 45 minutes
+
+3. **t-010:** Refactor route to use adapters
+   - Update `app/routes/project/$projectId.tsx`
+   - Estimated: 30 minutes
+
+**Rollback Strategy:** Each phase tagged (v2.0.0-phase1, phase2, phase3). If issues: `git revert` to last stable tag.
 
 ---
 
