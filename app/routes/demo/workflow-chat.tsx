@@ -4,8 +4,14 @@
  */
 
 import { createFileRoute } from "@tanstack/react-router";
-import { FileText } from "lucide-react";
+import { useState } from "react";
+import { Header } from "@/components/header/Header";
 import { AppLayout } from "@/components/layouts";
+import {
+  SpectrumStepper,
+  type Stage,
+} from "@/components/spectrum-stepper/SpectrumStepper";
+import type { WorkflowChatProps } from "@/components/workflow-chat";
 import { WorkflowChat } from "@/components/workflow-chat";
 
 export const Route = createFileRoute("/demo/workflow-chat")({
@@ -25,6 +31,20 @@ const STAGE_COLORS = {
   9: "#A87391", // plum
   10: "var(--neutral-4)", // neutral
 };
+
+// Stages for spectrum stepper
+const DEMO_STAGES: Stage[] = [
+  { id: "1", num: 1, name: "Gap Analysis", status: "complete" },
+  { id: "2", num: 2, name: "Business Requirements", status: "complete" },
+  { id: "3", num: 3, name: "Technical Requirements", status: "complete" },
+  { id: "4", num: 4, name: "QA Test Plan", status: "complete" },
+  { id: "5", num: 5, name: "Implementation Planner", status: "now" },
+  { id: "6", num: 6, name: "Developer Summary", status: "pending" },
+  { id: "7", num: 7, name: "Architecture Decisions", status: "pending" },
+  { id: "8", num: 8, name: "Delivery Timeline", status: "pending" },
+  { id: "9", num: 9, name: "Executive Summary", status: "pending" },
+  { id: "10", num: 10, name: "Complete", status: "pending" },
+];
 
 const SAMPLE_MESSAGES = [
   // STAGE 1: GAP ANALYSIS (Form)
@@ -364,29 +384,33 @@ const SAMPLE_ARTIFACTS = [
 ];
 
 function WorkflowChatDemo() {
+  const [mode, setMode] = useState<"chat" | "artifacts">("chat");
+
   return (
     <AppLayout>
       <div className="flex flex-col h-screen">
-        {/* Header */}
-        <div className="border-b border-border-1 bg-surface px-6 py-4">
-          <div className="flex items-center gap-3">
-            <FileText className="w-5 h-5 text-fg-3" />
-            <div>
-              <h1 className="text-lg font-semibold text-fg-1">
-                Workflow Chat Demo
-              </h1>
-              <p className="text-sm text-fg-3">
-                Chat-based UI mockup showing all 10 stages
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Header with breadcrumb, stage info, and mode toggle */}
+        <Header
+          breadcrumb={[{ label: "Demo Project" }, { label: "run-01" }]}
+          stageNum={5}
+          stageTotal={10}
+          stageName="Implementation Planner"
+          mode={mode === "chat" ? "build" : "review"}
+          artifactCount={SAMPLE_ARTIFACTS.length}
+          onModeChange={(newMode) =>
+            setMode(newMode === "build" ? "chat" : "artifacts")
+          }
+        />
 
-        {/* Chat */}
+        {/* Spectrum Stepper */}
+        <SpectrumStepper stages={DEMO_STAGES} activeIndex={4} />
+
+        {/* Chat or Artifacts */}
         <div className="flex-1 min-h-0">
           <WorkflowChat
             messages={SAMPLE_MESSAGES}
             artifacts={SAMPLE_ARTIFACTS}
+            mode={mode}
           />
         </div>
       </div>

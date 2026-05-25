@@ -14,7 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ============================================================================
 // TYPES
@@ -456,30 +455,18 @@ function ArtifactsList({ artifacts }: { artifacts: Artifact[] }) {
 export interface WorkflowChatProps {
   messages: Message[];
   artifacts: Artifact[];
+  mode?: "chat" | "artifacts";
 }
 
-export function WorkflowChat({ messages, artifacts }: WorkflowChatProps) {
+export function WorkflowChat({
+  messages,
+  artifacts,
+  mode = "chat",
+}: WorkflowChatProps) {
   return (
     <div className="flex flex-col h-full bg-page">
-      <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0">
-        <div className="border-b border-border-1 px-4 pt-4">
-          <TabsList>
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="artifacts">
-              Artifacts
-              {artifacts.length > 0 && (
-                <span className="ml-2 font-mono text-[10px] text-fg-4">
-                  {artifacts.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent
-          value="chat"
-          className="flex-1 min-h-0 relative mt-0 data-[state=active]:flex data-[state=inactive]:hidden"
-        >
+      {mode === "chat" ? (
+        <div className="flex-1 min-h-0 relative">
           <div className="absolute inset-0 overflow-y-auto pb-32">
             <div className="flex flex-col gap-7 py-8">
               {messages.map((message) => (
@@ -488,15 +475,12 @@ export function WorkflowChat({ messages, artifacts }: WorkflowChatProps) {
             </div>
           </div>
           <ChatComposer />
-        </TabsContent>
-
-        <TabsContent
-          value="artifacts"
-          className="flex-1 min-h-0 mt-0 overflow-y-auto data-[state=active]:block data-[state=inactive]:hidden"
-        >
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <ArtifactsList artifacts={artifacts} />
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }
