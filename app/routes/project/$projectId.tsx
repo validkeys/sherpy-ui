@@ -6,7 +6,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { Header } from "@/components/header/Header";
-import { LeftRail } from "@/components/left-rail";
+import { AppLayout } from "@/components/layouts";
 import {
   SpectrumStepper,
   type Stage,
@@ -65,20 +65,17 @@ function ProjectComponent() {
     "Loading…";
 
   return (
-    <div className="grid grid-cols-[var(--left-rail-width)_1fr] h-screen min-h-[760px]">
-      <LeftRail />
-      <main className="flex flex-col bg-page overflow-hidden">
-        <Header
-          breadcrumb={[{ label: project?.name ?? "…" }, { label: "run-01" }]}
-          stageNum={currentStep}
-          stageTotal={10}
-          stageName={currentStepName}
-          mode={mode}
-          onModeChange={handleModeChange}
-        />
-        <SpectrumStepper stages={stages} activeIndex={currentStep - 1} />
-        <Outlet />
-      </main>
-    </div>
+    <AppLayout>
+      <Header
+        breadcrumb={[{ label: project?.name ?? "…" }, { label: "run-01" }]}
+        stageNum={currentStep}
+        stageTotal={10}
+        stageName={currentStepName}
+        mode={mode}
+        onModeChange={handleModeChange}
+      />
+      <SpectrumStepper stages={stages} activeIndex={currentStep - 1} />
+      <Outlet />
+    </AppLayout>
   );
 }
