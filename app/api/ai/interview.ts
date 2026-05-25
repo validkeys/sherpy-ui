@@ -4,40 +4,26 @@ import { buildInterviewPrompt } from "@/features/ai/prompts";
 import { streamQuestion } from "@/features/ai/streaming";
 import { $getStepState } from "@/features/planning/infrastructure/server-functions";
 import { getStepName } from "@/features/planning/step-config";
+import { interviewRequestSchema } from "../schemas";
+import { validateBody } from "../utils/validate";
 
 // Set to true to use mock streaming (demonstration mode without Bedrock)
 const USE_MOCK_STREAMING = false;
 
 export default defineEventHandler(async (event) => {
   console.log("========== INTERVIEW API CALLED ==========");
+
   // Parse and validate input
   const body = await readBody(event);
-
-  if (typeof body !== "object" || body === null) {
-    throw new Error("invalid input");
-  }
-
-  const { projectId, stepNumber, previousAnswers, projectContext } = body;
+  const { projectId, stepNumber, previousAnswers, projectContext } =
+    validateBody(body, interviewRequestSchema);
 
   console.log("[interview] Received body:", {
     projectId,
     stepNumber,
-    previousAnswersLength: previousAnswers?.length,
+    previousAnswersLength: previousAnswers.length,
     projectContext: projectContext || "UNDEFINED",
   });
-
-  if (typeof projectId !== "string" || !projectId) {
-    throw new Error("projectId required");
-  }
-  if (typeof stepNumber !== "number") {
-    throw new Error("stepNumber must be a number");
-  }
-  if (!Array.isArray(previousAnswers)) {
-    throw new Error("previousAnswers must be an array");
-  }
-  if (projectContext !== undefined && typeof projectContext !== "string") {
-    throw new Error("projectContext must be a string if provided");
-  }
 
   // Get step name
   const stepName = getStepName(stepNumber);

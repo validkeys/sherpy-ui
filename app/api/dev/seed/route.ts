@@ -17,19 +17,19 @@ import { type NextRequest, NextResponse } from "next/server";
 import { PlanningStateBuilder } from "../../../../tests/fixtures/builders/PlanningStateBuilder";
 import { auditLog } from "../../../../tests/fixtures/config";
 import { requireDevelopmentEnv } from "../../../../tests/fixtures/middleware";
+import { seedRequestSchema } from "../../schemas";
+import { validateBodyOrError } from "../../utils/validate";
 
 export const POST = requireDevelopmentEnv(async (request: NextRequest) => {
   try {
     const body = await request.json();
-    const { step, projectName, overrides } = body;
+    const validation = validateBodyOrError(body, seedRequestSchema);
 
-    // Validate step number
-    if (!step || typeof step !== "number" || step < 1 || step > 10) {
-      return NextResponse.json(
-        { error: "Invalid step number. Must be between 1 and 10." },
-        { status: 400 },
-      );
+    if ("error" in validation) {
+      return validation.error;
     }
+
+    const { step, projectName, overrides } = validation.data;
 
     // Build state using PlanningStateBuilder
     const builder = PlanningStateBuilder.atStep(step);
