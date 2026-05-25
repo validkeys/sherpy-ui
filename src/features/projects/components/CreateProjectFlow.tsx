@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Intake } from "@/components/intake/Intake";
 import { PathCard } from "@/components/intake/PathCard";
+import { Button } from "@/components/ui/button";
 import { useCreateProject } from "../hooks";
 import type { EntryPath } from "../types";
 
@@ -135,20 +136,17 @@ export function CreateProjectFlow({
                   )}
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setStep("path-select")}
-                    className="text-xs text-fg-3 hover:text-fg-1 px-3 py-1.5 rounded transition-colors"
                   >
                     Back
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isPending}
-                    className="text-xs bg-fg-1 text-bg px-3 py-1.5 rounded hover:opacity-90 transition-opacity disabled:opacity-50"
-                  >
+                  </Button>
+                  <Button type="submit" size="sm" disabled={isPending}>
                     {isPending ? "Creating…" : "Create project"}
-                  </button>
+                  </Button>
                 </div>
               </form>
             )}

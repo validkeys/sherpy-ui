@@ -373,7 +373,8 @@ export const $setStepArtifact = createServerFn({ method: "POST" })
 /**
  * Server function: Get current step state for a project
  *
- * Read-only operation, no state transformation.
+ * Read-only operation that converts XState snapshot to ProjectStepState.
+ * If no planning state exists (new project), returns default initial state.
  */
 export const $getStepState = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => {
@@ -394,12 +395,25 @@ export const $getStepState = createServerFn({ method: "GET" })
     });
 
     try {
-      const state = (await loadPlanningState(
-        data.projectId,
-      )) as ProjectStepState | null;
-      if (!state) {
-        throw new Error("Project not found");
+      // Load XState snapshot
+      const snapshot = await loadPlanningState(data.projectId);
+
+      // If no snapshot exists (new project), return default state
+      if (!snapshot) {
+        logServerAction("getStepState.success", {
+          projectId: data.projectId,
+          currentStep: 1,
+          isNewProject: true,
+        });
+
+        // Import converter (lazy to prevent bundling issues)
+        const { createDefaultStepState } = await import("./snapshot-to-state");
+        return createDefaultStepState(data.projectId);
       }
+
+      // Convert XState snapshot to ProjectStepState
+      const { snapshotToStepState } = await import("./snapshot-to-state");
+      const state = snapshotToStepState(snapshot as any);
 
       logServerAction("getStepState.success", {
         projectId: data.projectId,

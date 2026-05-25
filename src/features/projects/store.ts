@@ -6,6 +6,23 @@ import type { CreateProjectInput, Project } from "./types";
 const counterRef = { value: 42 };
 let lastTimestamp = "";
 
+function initializeCounter(): void {
+  const stmt = db.prepare(`
+    SELECT code FROM projects
+    WHERE code LIKE 'SHR-%'
+    ORDER BY code DESC
+    LIMIT 1
+  `);
+  const row = stmt.get() as { code: string } | undefined;
+
+  if (row) {
+    const match = row.code.match(/SHR-(\d+)/);
+    if (match) {
+      counterRef.value = parseInt(match[1], 10) + 1;
+    }
+  }
+}
+
 function nextCode(): string {
   return `SHR-${String(counterRef.value++).padStart(4, "0")}`;
 }
@@ -142,6 +159,10 @@ let _storeInitialized = false;
 export async function initStore(): Promise<void> {
   if (_storeInitialized) return;
   _storeInitialized = true;
+
+  // Initialize counter from existing database records
+  initializeCounter();
+
   if (process.env.SEED_DATA !== "false") {
     const { seedStore } = await import("./seed");
     seedStore(counterRef);
