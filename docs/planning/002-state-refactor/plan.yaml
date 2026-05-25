@@ -1,0 +1,2082 @@
+plan:
+  name: "State Management Architecture Refactor: Layered Architecture with XState Workflow Orchestration"
+  version: "1.1"
+  created: "2026-05-25"
+  updated: "2026-05-25"
+  estimated_duration_days: 5.5
+
+  summary: |
+    Refactor planning feature state management into clean layered architecture.
+    XState machine remains as workflow orchestrator but delegates business logic
+    to domain layer and persistence to infrastructure layer. Add adapter layer
+    to decouple UI components from domain models.
+
+    Goal: Separate concerns (workflow orchestration, business logic, persistence, UI)
+    while maintaining XState's value for complex 10-step workflow coordination.
+
+  context:
+    current_architecture: |
+      - XState machine (1186 lines) handles workflow + business logic + persistence
+      - In-memory store (297 lines) duplicates state management
+      - Route components contain transformation logic (PlanningStep → Stage)
+      - No clear separation between domain logic and UI concerns
+
+    target_architecture: |
+      ┌─ PRESENTATION ─────────────────────────────────────┐
+      │ Routes/Components                                   │
+      │ - Send events to XState                             │
+      │ - Use adapters for UI transformations               │
+      └─────────────────────────────────────────────────────┘
+                           ↓
+      ┌─ WORKFLOW (XState) ────────────────────────────────┐
+      │ planningMachine.ts - Orchestrates 10-step workflow │
+      │ - State: idle → step1 → step2 → ... → complete     │
+      │ - Events: SUBMIT_ANSWER, NEXT, BACK                │
+      │ - Services: fetchQuestion, generateArtifact         │
+      │ - Delegates to domain layer for business logic      │
+      └─────────────────────────────────────────────────────┘
+                           ↓
+      ┌─ DOMAIN ───────────────────────────────────────────┐
+      │ Pure business logic (no side effects)               │
+      │ - step-state.ts: getStepProgress(), getStepSummary()│
+      │ - step-commands.ts: submitAnswer(), completeStep()  │
+      └─────────────────────────────────────────────────────┘
+                           ↓
+      ┌─ INFRASTRUCTURE ───────────────────────────────────┐
+      │ Persistence & external I/O                          │
+      │ - repository.ts: saveStepState(), loadStepState()   │
+      │ - server-functions.ts: TanStack server functions    │
+      └─────────────────────────────────────────────────────┘
+
+    problem_statement: |
+      XState machine is doing too much - it contains workflow orchestration,
+      business logic, persistence, and implicit UI transformations. This makes
+      testing difficult, creates coupling between layers, and violates SOLID
+      principles (especially SRP and DIP).
+
+    success_criteria:
+      - Domain logic is pure functions (easily testable, zero dependencies)
+      - XState machine focuses on workflow orchestration only
+      - UI components transform domain models via adapters
+      - Each layer has clear single responsibility
+      - Dependency direction: UI → Adapters → Workflow → Domain → Infrastructure
+
+  constraints:
+    rollback_strategy:
+      branching:
+        - "Create feature branch: feature/state-refactor-phase-{N}"
+        - "Each phase gets its own branch merged to main after validation"
+        - "If phase fails: revert branch, analyze, re-plan"
+      checkpoints:
+        - "Phase 1 complete: git tag v2.0.0-phase1"
+        - "Phase 2 complete: git tag v2.0.0-phase2"
+        - "Phase 3 complete: git tag v2.0.0-phase3"
+      catastrophic_failure:
+        - "If Phase 3+ breaks production: git revert to last stable tag"
+        - "Run: git diff tag..HEAD to identify problematic changes"
+        - "Document failure in .tmp-docs/post-mortem/state-refactor-YYYY-MM-DD.md"
+
+    dependencies:
+      only_use:
+        - "xstate@^5.31.0"
+        - "@xstate/react@^5.0.0"
+        - "@tanstack/react-query@^5.0.0"
+        - "@tanstack/react-start@^1.0.0"
+      no_additional: true
+      rationale: "Use existing dependencies, no new packages needed"
+
+    files:
+      preserve_unchanged:
+        - "src/features/planning/step-config.ts (configuration data)"
+        - "src/features/planning/response-schemas.ts (validation schemas)"
+        - "src/features/planning/types.ts (extend with new types)"
+        - "src/features/planning/components/* (minimal changes)"
+        - "src/features/planning/server.db.ts (database operations)"
+
+      refactor_heavily:
+        - "src/features/planning/machines/planningMachine.ts (extract domain logic)"
+        - "src/features/planning/store.ts (migrate to domain layer)"
+        - "src/features/planning/server.ts (migrate to infrastructure)"
+        - "src/features/planning/hooks.ts (migrate to application layer)"
+        - "app/routes/project/$projectId.tsx (use adapters)"
+
+      create_new:
+        - "src/features/planning/domain/step-state.ts"
+        - "src/features/planning/domain/step-commands.ts"
+        - "src/features/planning/domain/types.ts"
+        - "src/features/planning/application/queries.ts"
+        - "src/features/planning/application/commands.ts"
+        - "src/features/planning/infrastructure/repository.ts"
+        - "src/features/planning/infrastructure/server-functions.ts"
+        - "src/features/planning/workflow/services.ts"
+        - "src/components/spectrum-stepper/adapters/step-to-stage.adapter.ts"
+
+    quality_gates:
+      pre_commit:
+        - "npm run lint -- --max-warnings 0"
+        - "npm run typecheck"
+        - "npm test -- --run"
+
+      per_task:
+        - "All existing tests pass (31 test files)"
+        - "New tests for new code (>80% coverage for domain layer)"
+        - "Type errors = 0"
+        - "No console.error in test output"
+
+      phase_completion:
+        - "Integration tests validate end-to-end workflow"
+        - "XState visualizer shows clean state machine"
+        - "No circular dependencies (check with madge)"
+
+    drift_policy:
+      stop_immediately_if:
+        - "Files outside task scope modified (>5 unexpected files)"
+        - "New dependencies added"
+        - "Tests fail and AI suggests modifying test assertions"
+        - "Type errors require changes outside task scope"
+        - "XState machine loses workflow orchestration capability"
+
+      allowed_deviations:
+        - "Import reordering by IDE"
+        - "Auto-formatting (prettier/eslint)"
+        - "Adding type annotations to existing code"
+        - "Extracting inline types to domain/types.ts"
+
+      revert_procedure:
+        - "git diff --name-only to identify changed files"
+        - "git restore <files> for out-of-scope changes"
+        - "Document in .tmp-docs/drift-incidents/YYYY-MM-DD-task-id.md"
+        - "Update plan with new constraints based on learnings"
+
+  style_anchors:
+    - path: "src/features/planning/types.ts"
+      lines: "1-32"
+      pattern: "TypeScript domain types with clear discriminated unions"
+      rationale: "Follow this pattern for new domain types (StepSummary, StepProgress)"
+
+    - path: "src/features/planning/hooks.ts"
+      lines: "15-20"
+      pattern: "React Query hook with proper query key and invalidation"
+      rationale: "Application layer queries should follow this pattern"
+
+    - path: "src/features/planning/machines/planningMachine.ts"
+      lines: "74-150"
+      pattern: "XState fromPromise actor with proper input/output types"
+      rationale: "Workflow services should maintain this async pattern"
+
+    - path: "src/features/planning/store.ts"
+      lines: "148-195"
+      pattern: "Pure state transformation function (submitAnswer)"
+      rationale: "Domain commands should be pure functions like this, but moved to domain layer"
+
+    - path: "src/features/planning/server.ts"
+      lines: "37-96"
+      pattern: "TanStack server function with validation and error handling"
+      rationale: "Infrastructure server functions should follow this pattern"
+
+  phases:
+    - id: "phase-1"
+      name: "Foundation: Domain Layer"
+      description: "Extract pure business logic into domain layer"
+      estimated_days: 1.5
+      dependencies: []
+      parallelizable_with: ["phase-2"]
+      success_criteria:
+        - "Domain functions are pure (no side effects)"
+        - "100% test coverage for domain layer"
+        - "Zero dependencies on React, XState, or UI libraries"
+        - "No circular dependencies (madge check)"
+        - "Existing DB data validated against new types"
+
+    - id: "phase-2"
+      name: "Infrastructure Layer"
+      description: "Create clean infrastructure layer for persistence"
+      estimated_days: 1
+      dependencies: []
+      parallelizable_with: ["phase-1"]
+      success_criteria:
+        - "Repository pattern isolates database operations"
+        - "Server functions orchestrate domain + persistence"
+        - "No business logic in infrastructure layer"
+        - "No circular dependencies (madge check)"
+
+    - id: "phase-3"
+      name: "Workflow Refactor"
+      description: "Refactor XState machine to use domain layer"
+      estimated_days: 2
+      dependencies: ["phase-1", "phase-2"]
+      success_criteria:
+        - "Machine delegates business logic to domain"
+        - "Machine focuses on workflow orchestration"
+        - "Services layer handles domain + infrastructure coordination"
+        - "No circular dependencies (madge check)"
+        - "Integration tests validate layer boundaries work correctly"
+
+    - id: "phase-4"
+      name: "Application & Adapter Layers"
+      description: "Create application hooks and UI adapters"
+      estimated_days: 0.5
+      dependencies: ["phase-3"]
+      success_criteria:
+        - "React Query hooks in application layer"
+        - "Adapters co-located with UI components (only if mapping is complex)"
+        - "Components use adapters or direct domain access for simple cases"
+        - "Performance benchmark: no regression vs. baseline"
+
+    - id: "phase-5"
+      name: "Migration & Cleanup"
+      description: "Remove legacy code and validate architecture"
+      estimated_days: 0.5
+      dependencies: ["phase-4"]
+      success_criteria:
+        - "Legacy store.ts removed or marked deprecated"
+        - "All 31+ test files passing"
+        - "Architecture diagram validated"
+        - "No circular dependencies"
+        - "Backward compatibility validated (existing imports work)"
+        - "Observability/logging validated"
+
+  tasks:
+    # ========================================================================
+    # PHASE 1: Foundation - Domain Layer
+    # ========================================================================
+
+    - id: "t-001"
+      phase: "phase-1"
+      name: "Create domain types and interfaces"
+      estimate_minutes: 45
+
+      files:
+        create: ["src/features/planning/domain/types.ts"]
+        reference_only: ["src/features/planning/types.ts"]
+
+      style_anchors:
+        - {path: "src/features/planning/types.ts", lines: "1-32", pattern: "Domain type definitions"}
+
+      instructions: |
+        ## Objective
+        Create domain-specific types that represent business concepts without UI concerns.
+
+        ## CRITICAL CONSTRAINTS
+        - ONLY create file: src/features/planning/domain/types.ts
+        - NO imports from React, XState, or UI libraries
+        - Types must be JSON-serializable (for persistence)
+
+        ## Implementation Steps
+
+        1. Create domain types with strict type safety:
+        ```typescript
+        // Use literal union types for type safety
+        export type StepNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+        // Core business state
+        export interface StepSummary {
+          stepNumber: StepNumber;
+          name: string;
+          isComplete: boolean;
+          isCurrent: boolean;
+          isPending: boolean;
+          isSkipped: boolean;
+        }
+
+        export interface StepProgress {
+          completed: number;
+          inProgress: number;
+          pending: number;
+          skipped: number;
+          total: number;
+          percentComplete: number;
+        }
+
+        export interface ProjectProgress {
+          currentStepNumber: StepNumber;
+          progress: StepProgress;
+          stepSummaries: StepSummary[];
+        }
+        ```
+
+        2. Add JSDoc comments explaining business meaning
+        3. Export all types for use in other domain files
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        npx madge --circular src/features/planning/domain/
+        ```
+
+        Expected: 0 type errors, no circular dependencies
+
+      validation:
+        commands:
+          - "npm run typecheck"
+          - "npx madge --circular src/features/planning/domain/"
+        expected_output: "0 errors, no circular dependencies"
+        failure_handling: "STOP. Fix type errors before proceeding."
+
+    - id: "t-002"
+      phase: "phase-1"
+      name: "Implement domain queries (read-side logic)"
+      estimate_minutes: 90
+      dependencies: ["t-001"]
+
+      files:
+        create: ["src/features/planning/domain/step-state.ts", "src/features/planning/domain/step-state.test.ts"]
+        read_only: ["src/features/planning/types.ts", "src/features/planning/domain/types.ts"]
+
+      style_anchors:
+        - {path: "src/features/planning/store.ts", lines: "95-133", pattern: "State query patterns"}
+
+      instructions: |
+        ## Objective
+        Create pure query functions that calculate derived state from ProjectStepState.
+
+        ## CRITICAL CONSTRAINTS
+        - ONLY create: src/features/planning/domain/step-state.ts (implementation)
+        - ONLY create: src/features/planning/domain/step-state.test.ts (tests)
+        - Functions MUST be pure (no side effects, deterministic)
+        - NO database calls, NO API calls, NO mutations
+
+        ## TDD Checklist
+        - [ ] Write tests FIRST for getStepSummary()
+        - [ ] Implement getStepSummary() to pass tests
+        - [ ] Write tests for getStepProgress()
+        - [ ] Implement getStepProgress() to pass tests
+        - [ ] Write tests for edge cases (empty steps, invalid step numbers)
+        - [ ] Write tests for isStepAccessible() business rules
+
+        ## Implementation
+
+        Create pure functions:
+        ```typescript
+        export function getStepSummary(
+          step: PlanningStep,
+          currentStep: number
+        ): StepSummary {
+          return {
+            stepNumber: step.stepNumber,
+            name: step.name,
+            isComplete: step.status === 'complete',
+            isCurrent: step.status === 'now',
+            isPending: step.status === 'pending',
+            isSkipped: step.status === 'skipped',
+          };
+        }
+
+        export function getStepProgress(steps: PlanningStep[]): StepProgress {
+          const completed = steps.filter(s => s.status === 'complete').length;
+          const inProgress = steps.filter(s => s.status === 'now').length;
+          const pending = steps.filter(s => s.status === 'pending').length;
+          const skipped = steps.filter(s => s.status === 'skipped').length;
+          const total = steps.length;
+
+          return {
+            completed,
+            inProgress,
+            pending,
+            skipped,
+            total,
+            percentComplete: total > 0 ? Math.round((completed / total) * 100) : 0,
+          };
+        }
+
+        export function getCurrentStepNumber(state: ProjectStepState): number {
+          return state.currentStep;
+        }
+
+        export function isStepAccessible(
+          stepNumber: number,
+          state: ProjectStepState
+        ): boolean {
+          // Business rule: can only access current step or completed steps
+          return stepNumber <= state.currentStep;
+        }
+
+        export function getProjectProgress(state: ProjectStepState): ProjectProgress {
+          return {
+            currentStepNumber: state.currentStep,
+            progress: getStepProgress(state.steps),
+            stepSummaries: state.steps.map(step =>
+              getStepSummary(step, state.currentStep)
+            ),
+          };
+        }
+        ```
+
+        ## Test Coverage Requirements
+        - Test all functions with valid inputs
+        - Test edge cases: empty arrays, null/undefined, invalid step numbers
+        - Test business rules (step accessibility)
+        - Coverage target: 100% for domain layer
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/domain/step-state.test.ts -- --run
+        npm run typecheck
+        ```
+
+        Expected: All tests pass, 0 type errors
+
+      validation:
+        commands:
+          - "npm test src/features/planning/domain/step-state.test.ts -- --run"
+          - "npm run typecheck"
+          - "npx madge --circular src/features/planning/domain/"
+        expected_output: "All tests passing, 0 errors, no circular dependencies"
+        failure_handling: "STOP. Fix failing tests. Do NOT modify test assertions."
+
+    - id: "t-002b"
+      phase: "phase-1"
+      name: "Validate existing database data against new types"
+      estimate_minutes: 30
+      dependencies: ["t-002"]
+
+      files:
+        create: ["src/features/planning/domain/data-migration-validator.test.ts"]
+        read_only: ["src/features/planning/domain/types.ts", "src/lib/db/planning.ts"]
+
+      instructions: |
+        ## Objective
+        Validate that existing production data is compatible with new domain types.
+
+        ## CRITICAL CONSTRAINTS
+        - Query actual database for sample data
+        - Test edge cases: null values, missing fields, unexpected shapes
+        - Document any data transformation needed
+
+        ## Implementation
+
+        Create validation test:
+        ```typescript
+        import { describe, it, expect } from 'vitest';
+        import { loadStepState } from '@/features/planning/server.db';
+        import type { ProjectStepState } from '@/features/planning/types';
+
+        describe('Data Migration Validation', () => {
+          it('should load existing project data without errors', async () => {
+            // Query sample projects from DB
+            const db = getDb();
+            const projects = db.prepare('SELECT id FROM projects LIMIT 10').all();
+
+            for (const project of projects) {
+              const state = await loadStepState(project.id);
+
+              // Validate structure matches domain types
+              expect(state).toBeDefined();
+              if (state) {
+                expect(state.currentStep).toBeGreaterThanOrEqual(1);
+                expect(state.currentStep).toBeLessThanOrEqual(10);
+                expect(state.steps).toBeInstanceOf(Array);
+                expect(state.steps.length).toBe(10);
+              }
+            }
+          });
+
+          it('should handle edge cases in existing data', async () => {
+            // Test null values, missing fields, etc.
+            const edgeCases = [
+              { currentStep: null, expected: 1 }, // Default to step 1
+              { steps: [], expected: [] }, // Empty steps array
+              { answers: undefined, expected: [] }, // Missing answers
+            ];
+
+            // Add validation for each edge case
+          });
+        });
+        ```
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/domain/data-migration-validator.test.ts -- --run
+        ```
+
+      validation:
+        commands:
+          - "npm test src/features/planning/domain/data-migration-validator.test.ts -- --run"
+        expected_output: "All validation tests passing"
+        failure_handling: "STOP. Document data issues in .tmp-docs/data-migration-issues.md"
+
+    - id: "t-003"
+      phase: "phase-1"
+      name: "Implement domain commands (write-side logic)"
+      estimate_minutes: 120
+      dependencies: ["t-002b"]
+
+      files:
+        create: ["src/features/planning/domain/step-commands.ts", "src/features/planning/domain/step-commands.test.ts"]
+        read_only: ["src/features/planning/types.ts", "src/features/planning/domain/types.ts"]
+
+      style_anchors:
+        - {path: "src/features/planning/store.ts", lines: "148-195", pattern: "Pure state transformation"}
+
+      instructions: |
+        ## Objective
+        Create pure command functions that return new state (no mutations).
+
+        ## CRITICAL CONSTRAINTS
+        - Functions MUST be pure: oldState → newState
+        - NO mutations of input state
+        - NO side effects (no DB calls, no API calls)
+        - Use immutable patterns (spread operators, map, filter)
+
+        ## TDD Checklist
+        - [ ] Write tests FIRST for submitStepAnswer()
+        - [ ] Implement submitStepAnswer() immutably
+        - [ ] Write tests for completeStep()
+        - [ ] Implement completeStep() with proper status updates
+        - [ ] Write tests for setStepArtifact()
+        - [ ] Write tests for error cases (invalid step, already complete)
+
+        ## Implementation
+
+        Create pure command functions with strict type safety:
+        ```typescript
+        import type { StepNumber } from './types';
+
+        export function submitStepAnswer(
+          state: ProjectStepState,
+          stepNumber: StepNumber,
+          question: string,
+          answer: string
+        ): ProjectStepState {
+          const step = state.steps.find(s => s.stepNumber === stepNumber);
+          if (!step) {
+            throw new Error(`Step ${stepNumber} not found`);
+          }
+
+          const newAnswer: StepAnswer = {
+            question,
+            value: answer,
+            submittedAt: new Date().toISOString(),
+          };
+
+          return {
+            ...state,
+            steps: state.steps.map(s =>
+              s.stepNumber === stepNumber
+                ? {
+                    ...s,
+                    answers: [...(s.answers || []), newAnswer],
+                  }
+                : s
+            ),
+          };
+        }
+
+        export function completeStep(
+          state: ProjectStepState,
+          stepNumber: StepNumber
+        ): ProjectStepState {
+          if (stepNumber >= 10) {
+            // Last step completed - workflow done
+            return {
+              ...state,
+              currentStep: 10,
+              steps: state.steps.map(s =>
+                s.stepNumber === stepNumber
+                  ? { ...s, status: 'complete' }
+                  : s
+              ),
+            };
+          }
+
+          const nextStep = stepNumber + 1;
+
+          return {
+            ...state,
+            currentStep: nextStep,
+            steps: state.steps.map(s =>
+              s.stepNumber === stepNumber
+                ? { ...s, status: 'complete' }
+                : s.stepNumber === nextStep
+                  ? { ...s, status: 'now' }
+                  : s
+            ),
+          };
+        }
+
+        export function setStepArtifact(
+          state: ProjectStepState,
+          stepNumber: StepNumber,
+          artifact: string
+        ): ProjectStepState {
+          return {
+            ...state,
+            steps: state.steps.map(s =>
+              s.stepNumber === stepNumber
+                ? { ...s, artifact }
+                : s
+            ),
+          };
+        }
+
+        export function skipStep(
+          state: ProjectStepState,
+          stepNumber: StepNumber
+        ): ProjectStepState {
+          const nextStep = stepNumber + 1;
+
+          return {
+            ...state,
+            currentStep: nextStep,
+            steps: state.steps.map(s =>
+              s.stepNumber === stepNumber
+                ? { ...s, status: 'skipped' }
+                : s.stepNumber === nextStep
+                  ? { ...s, status: 'now' }
+                  : s
+            ),
+          };
+        }
+        ```
+
+        ## Test Requirements
+        - Verify immutability (original state unchanged)
+        - Test all edge cases (last step, invalid step, already complete)
+        - Test business rules (can't skip step 1, can't go backwards)
+        - Verify new state structure is valid
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/domain/step-commands.test.ts -- --run
+        npm run typecheck
+        ```
+
+        Expected: All tests pass, no mutations detected
+
+      validation:
+        commands:
+          - "npm test src/features/planning/domain/step-commands.test.ts -- --run"
+          - "npm run typecheck"
+          - "npx madge --circular src/features/planning/domain/"
+        expected_output: "All tests passing, immutability verified, no circular dependencies"
+        failure_handling: "STOP. Fix failing tests or mutations."
+
+    # ========================================================================
+    # PHASE 2: Infrastructure Layer
+    # ========================================================================
+
+    - id: "t-004"
+      phase: "phase-2"
+      name: "Create repository layer for persistence"
+      estimate_minutes: 60
+      dependencies: ["t-003"]
+
+      files:
+        create: ["src/features/planning/infrastructure/repository.ts"]
+        modify: []
+        read_only: ["src/features/planning/server.db.ts", "src/lib/db/planning.ts"]
+
+      style_anchors:
+        - {path: "src/features/planning/server.db.ts", lines: "1-50", pattern: "Database operations"}
+
+      instructions: |
+        ## Objective
+        Create repository pattern that abstracts database operations.
+
+        ## CRITICAL CONSTRAINTS
+        - ONLY create: src/features/planning/infrastructure/repository.ts
+        - NO business logic in this layer
+        - Delegate to existing server.db.ts functions
+        - Focus on clean abstraction, not reimplementation
+
+        ## Implementation
+
+        Create repository interface and implementation:
+        ```typescript
+        import {
+          saveStepState as dbSaveStepState,
+          loadStepState as dbLoadStepState,
+          saveInterviewAnswer as dbSaveInterviewAnswer,
+        } from '../server.db';
+        import type { ProjectStepState } from '../types';
+
+        /**
+         * Repository for project step state persistence
+         * Abstracts database operations from business logic
+         */
+        export async function saveStepState(
+          state: ProjectStepState
+        ): Promise<void> {
+          await dbSaveStepState(state);
+        }
+
+        export async function loadStepState(
+          projectId: string
+        ): Promise<ProjectStepState | null> {
+          return await dbLoadStepState(projectId);
+        }
+
+        export async function saveInterviewAnswer(
+          projectId: string,
+          stepNumber: 2 | 3,
+          question: string,
+          answer: string
+        ): Promise<void> {
+          await dbSaveInterviewAnswer(projectId, stepNumber, question, answer);
+        }
+        ```
+
+        ## Notes
+        - This layer is thin by design (just abstraction)
+        - Allows swapping persistence implementation later
+        - No tests needed if just delegating to server.db.ts
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        npx madge --circular src/features/planning/infrastructure/
+        ```
+
+      validation:
+        commands:
+          - "npm run typecheck"
+          - "npx madge --circular src/features/planning/infrastructure/"
+        expected_output: "0 errors, no circular dependencies"
+        failure_handling: "STOP. Fix type errors."
+
+    - id: "t-005"
+      phase: "phase-2"
+      name: "Create infrastructure server functions with observability"
+      estimate_minutes: 90
+      dependencies: ["t-004"]
+
+      files:
+        create: ["src/features/planning/infrastructure/server-functions.ts"]
+        read_only:
+          - "src/features/planning/domain/step-commands.ts"
+          - "src/features/planning/infrastructure/repository.ts"
+
+      style_anchors:
+        - {path: "src/features/planning/server.ts", lines: "37-96", pattern: "TanStack server function"}
+
+      instructions: |
+        ## Objective
+        Create TanStack server functions that orchestrate domain + persistence.
+
+        ## CRITICAL CONSTRAINTS
+        - ONLY create: src/features/planning/infrastructure/server-functions.ts
+        - Server functions orchestrate: load state → apply domain logic → persist
+        - NO business logic here (delegate to domain layer)
+
+        ## Pattern: Load → Transform → Persist (with logging)
+
+        ```typescript
+        import { createServerFn } from '@tanstack/react-start';
+        import { submitStepAnswer, completeStep } from '../domain/step-commands';
+        import { loadStepState, saveStepState, saveInterviewAnswer } from './repository';
+
+        // Simple logging utility for observability
+        function logServerAction(action: string, data: Record<string, unknown>) {
+          console.log(`[server-fn] ${action}`, {
+            timestamp: new Date().toISOString(),
+            ...data,
+          });
+        }
+
+        export const $submitAnswer = createServerFn({ method: 'POST' })
+          .inputValidator((data: unknown) => {
+            if (typeof data !== 'object' || data === null)
+              throw new Error('invalid input');
+            const d = data as Record<string, unknown>;
+            if (typeof d.projectId !== 'string') throw new Error('projectId required');
+            if (typeof d.stepNumber !== 'number') throw new Error('stepNumber required');
+            if (typeof d.question !== 'string') throw new Error('question required');
+            if (typeof d.answer !== 'string') throw new Error('answer required');
+            return {
+              projectId: d.projectId,
+              stepNumber: d.stepNumber,
+              question: d.question,
+              answer: d.answer,
+            };
+          })
+          .handler(async ({ data }) => {
+            logServerAction('submitAnswer.start', { projectId: data.projectId, stepNumber: data.stepNumber });
+
+            try {
+              // 1. Load current state
+              const currentState = await loadStepState(data.projectId);
+              if (!currentState) throw new Error('Project not found');
+
+              // 2. Apply domain logic (pure function)
+              const newState = submitStepAnswer(
+                currentState,
+                data.stepNumber as StepNumber,
+                data.question,
+                data.answer
+              );
+
+              // 3. Persist new state (parallel operations)
+              await Promise.all([
+                saveStepState(newState),
+                saveInterviewAnswer(
+                  data.projectId,
+                  data.stepNumber as 2 | 3,
+                  data.question,
+                  data.answer
+                ),
+              ]);
+
+              logServerAction('submitAnswer.success', { projectId: data.projectId, stepNumber: data.stepNumber });
+
+              // 4. Return new state
+              return newState;
+            } catch (error) {
+              logServerAction('submitAnswer.error', {
+                projectId: data.projectId,
+                stepNumber: data.stepNumber,
+                error: error instanceof Error ? error.message : 'Unknown error'
+              });
+              throw error;
+            }
+          });
+
+        export const $completeStep = createServerFn({ method: 'POST' })
+          .inputValidator(/* ... */)
+          .handler(async ({ data }) => {
+            const currentState = await loadStepState(data.projectId);
+            if (!currentState) throw new Error('Project not found');
+
+            // Apply domain logic
+            const newState = completeStep(currentState, data.stepNumber);
+
+            // Persist
+            await saveStepState(newState);
+
+            return newState;
+          });
+
+        export const $getStepState = createServerFn({ method: 'GET' })
+          .inputValidator(/* ... */)
+          .handler(async ({ data }) => {
+            const state = await loadStepState(data.projectId);
+            if (!state) throw new Error('Project not found');
+            return state;
+          });
+        ```
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        npm run lint
+        npx madge --circular src/features/planning/infrastructure/
+        ```
+
+      validation:
+        commands:
+          - "npm run typecheck"
+          - "npm run lint"
+          - "npx madge --circular src/features/planning/infrastructure/"
+        expected_output: "0 errors, 0 warnings, no circular dependencies"
+        failure_handling: "STOP. Fix errors."
+
+    # ========================================================================
+    # PHASE 3: Workflow Refactor
+    # ========================================================================
+
+    - id: "t-006"
+      phase: "phase-3"
+      name: "Create workflow services layer"
+      estimate_minutes: 90
+      dependencies: ["t-005"]
+
+      files:
+        create: ["src/features/planning/workflow/services.ts"]
+        read_only:
+          - "src/features/planning/domain/step-commands.ts"
+          - "src/features/planning/infrastructure/repository.ts"
+
+      style_anchors:
+        - {path: "src/features/planning/machines/planningMachine.ts", lines: "74-150", pattern: "XState fromPromise actor"}
+
+      instructions: |
+        ## Objective
+        Extract XState services that coordinate domain + infrastructure.
+
+        ## CRITICAL CONSTRAINTS
+        - ONLY create: src/features/planning/workflow/services.ts
+        - Services orchestrate domain logic + persistence
+        - NO business logic here (delegate to domain)
+        - Match XState fromPromise actor pattern
+
+        ## Implementation
+
+        Create services for XState machine:
+        ```typescript
+        import { fromPromise } from 'xstate';
+        import { submitStepAnswer, setStepArtifact } from '../domain/step-commands';
+        import { loadStepState, saveStepState } from '../infrastructure/repository';
+
+        export const persistAnswerService = fromPromise<
+          ProjectStepState,
+          {
+            projectId: string;
+            stepNumber: number;
+            question: string;
+            answer: string;
+          }
+        >(async ({ input }) => {
+          // Load → Transform → Persist pattern
+          const currentState = await loadStepState(input.projectId);
+          if (!currentState) throw new Error('Project not found');
+
+          const newState = submitStepAnswer(
+            currentState,
+            input.stepNumber,
+            input.question,
+            input.answer
+          );
+
+          await saveStepState(newState);
+          return newState;
+        });
+
+        export const persistArtifactService = fromPromise<
+          ProjectStepState,
+          {
+            projectId: string;
+            stepNumber: number;
+            artifact: string;
+          }
+        >(async ({ input }) => {
+          const currentState = await loadStepState(input.projectId);
+          if (!currentState) throw new Error('Project not found');
+
+          const newState = setStepArtifact(
+            currentState,
+            input.stepNumber,
+            input.artifact
+          );
+
+          await saveStepState(newState);
+          return newState;
+        });
+
+        // Keep existing AI services (fetchQuestion, generateArtifact)
+        // These don't need refactoring - they're already well-scoped
+        ```
+
+        ## Note
+        Keep existing AI services (fetchQuestion, generateArtifact) in planningMachine.ts.
+        Only extract persistence-related services.
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        npx madge --circular src/features/planning/workflow/
+        ```
+
+      validation:
+        commands:
+          - "npm run typecheck"
+          - "npx madge --circular src/features/planning/workflow/"
+        expected_output: "0 errors, no circular dependencies"
+        failure_handling: "STOP."
+
+    - id: "t-007a"
+      phase: "phase-3"
+      name: "Refactor XState machine Step 2 (proof of concept)"
+      estimate_minutes: 60
+      dependencies: ["t-006"]
+
+      files:
+        modify: ["src/features/planning/machines/planningMachine.ts"]
+        read_only:
+          - "src/features/planning/workflow/services.ts"
+          - "src/features/planning/domain/step-commands.ts"
+
+      style_anchors:
+        - {path: "src/features/planning/machines/planningMachine.ts", lines: "400-500", pattern: "Current step2 implementation"}
+
+      instructions: |
+        ## Objective
+        Refactor ONLY Step 2 logic as proof of concept. Validate pattern before applying broadly.
+
+        ## CRITICAL CONSTRAINTS
+        - ONLY modify: src/features/planning/machines/planningMachine.ts (Step 2 state only)
+        - Machine focuses on workflow orchestration ONLY
+        - Business logic delegated to domain layer
+        - Persistence delegated to services/infrastructure
+        - ALL existing tests must pass
+        - DO NOT touch other steps (Step 1, 3-10) yet
+
+        ## Refactoring Strategy
+
+        BEFORE (machine contains business logic):
+        ```typescript
+        actions: assign({
+          step2Answers: ({ context, event }) => [
+            ...(context.step2Answers || []),
+            {
+              question: event.question,
+              value: event.answer,
+              timestamp: new Date().toISOString(),
+            }
+          ],
+        }),
+        ```
+
+        AFTER (machine delegates to domain):
+        ```typescript
+        actions: assign({
+          step2Answers: ({ context, event }) => {
+            // Machine just coordinates, domain does transformation
+            const answer = createInterviewAnswer(event.question, event.answer);
+            return [...(context.step2Answers || []), answer];
+          },
+        }),
+
+        // Or even better - invoke service that uses domain:
+        invoke: {
+          src: 'persistAnswerService',
+          input: ({ context, event }) => ({
+            projectId: context.projectId,
+            stepNumber: 2,
+            question: event.question,
+            answer: event.answer,
+          }),
+          onDone: {
+            target: 'asking',
+            actions: assign({
+              step2Answers: ({ event }) => event.output.step2Answers,
+            }),
+          },
+        },
+        ```
+
+        ## Steps
+
+        1. Import domain functions:
+        ```typescript
+        import { submitStepAnswer, completeStep } from '../domain/step-commands';
+        import { persistAnswerService, persistArtifactService } from '../workflow/services';
+        ```
+
+        2. Replace inline business logic with domain function calls
+        3. Replace direct persistence with service invocations
+        4. Keep workflow orchestration (transitions, guards, event handling)
+        5. Maintain all existing behavior
+
+        ## What to Keep in Machine
+        - State transitions (idle → step1 → step2)
+        - Event handling (SUBMIT_ANSWER, NEXT, BACK)
+        - Async coordination (invoke actors, wait for completion)
+        - Context updates (assign)
+        - Guards (canProceed, isComplete)
+
+        ## What to Move Out
+        - State transformation logic → domain/step-commands.ts
+        - Data calculations → domain/step-state.ts
+        - Persistence → workflow/services.ts
+
+        ## Validation (Step 2 only)
+        ```bash
+        npm test src/features/planning/machines/planningMachine.test.ts -- --run
+        npm test src/features/planning/__tests__/bug-014-form-data-capture.test.tsx -- --run
+        npm run typecheck
+        npx madge --circular src/features/planning/
+        ```
+
+        Expected: Step 2 tests pass, no circular dependencies
+
+      validation:
+        commands:
+          - "npm test src/features/planning/machines/planningMachine.test.ts -- --run"
+          - "npm test src/features/planning/__tests__/bug-014-form-data-capture.test.tsx -- --run"
+          - "npm run typecheck"
+          - "npx madge --circular src/features/planning/"
+        expected_output: "Step 2 tests passing, no circular dependencies"
+        failure_handling: "STOP. Fix failing tests. Do NOT modify test assertions."
+
+      notes: |
+        This is a proof of concept for the refactoring pattern.
+        Validate Step 2 works end-to-end before applying to other steps.
+
+    - id: "t-007b"
+      phase: "phase-3"
+      name: "Validate Step 2 refactor end-to-end"
+      estimate_minutes: 30
+      dependencies: ["t-007a"]
+
+      files:
+        read_only: ["src/features/planning/machines/planningMachine.ts"]
+
+      instructions: |
+        ## Objective
+        Manually test Step 2 workflow to ensure refactored code works in real app.
+
+        ## CRITICAL CONSTRAINTS
+        - Run dev server
+        - Create test project
+        - Walk through Step 2 (Business Requirements)
+        - Verify answers persist to database
+        - Verify state transitions work correctly
+
+        ## Manual Testing Steps
+        1. `npm run dev`
+        2. Create new project
+        3. Navigate to Step 2
+        4. Answer all 10 questions
+        5. Verify artifact generated
+        6. Check database: `SELECT * FROM interview_answers WHERE project_id = '...'`
+        7. Refresh page, verify state restored
+        8. Navigate forward/backward, verify workflow intact
+
+        ## Success Criteria
+        - Step 2 works identically to before refactor
+        - No console errors
+        - Database persistence works
+        - State restoration works
+
+      validation:
+        commands:
+          - "echo 'Manual testing complete - document results in .tmp-docs/t-007b-validation.md'"
+        expected_output: "Manual testing passed"
+        failure_handling: "STOP. Fix issues in t-007a before proceeding."
+
+    - id: "t-007c"
+      phase: "phase-3"
+      name: "Apply refactoring pattern to remaining steps (Steps 1, 3-10)"
+      estimate_minutes: 120
+      dependencies: ["t-007b"]
+
+      files:
+        modify: ["src/features/planning/machines/planningMachine.ts"]
+        read_only:
+          - "src/features/planning/workflow/services.ts"
+          - "src/features/planning/domain/step-commands.ts"
+
+      instructions: |
+        ## Objective
+        Apply validated refactoring pattern from Step 2 to all remaining steps.
+
+        ## CRITICAL CONSTRAINTS
+        - ONLY modify: src/features/planning/machines/planningMachine.ts
+        - Use EXACT same pattern as Step 2 refactor (t-007a)
+        - Machine focuses on workflow orchestration ONLY
+        - Business logic delegated to domain layer
+        - ALL existing tests must pass
+
+        ## Pattern to Apply
+        Use the Step 2 refactor as template:
+        1. Extract inline business logic → domain functions
+        2. Replace direct persistence → service invocations
+        3. Keep workflow orchestration (transitions, events, guards)
+        4. Maintain context updates via assign
+
+        ## Steps
+        Apply pattern to each step:
+        - Step 1: Project initialization
+        - Step 3: Technical requirements interview
+        - Steps 4-10: Artifact generation workflows
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/machines/planningMachine.test.ts -- --run
+        npm test src/features/planning/__tests__/ -- --run
+        npm run typecheck
+        npx madge --circular src/features/planning/
+        ```
+
+        Expected: ALL tests pass, machine size reduced
+
+      validation:
+        commands:
+          - "npm test src/features/planning/machines/planningMachine.test.ts -- --run"
+          - "npm test src/features/planning/__tests__/ -- --run"
+          - "npm run typecheck"
+          - "npx madge --circular src/features/planning/"
+        expected_output: "All tests passing (31+ files), no circular dependencies"
+        failure_handling: "STOP. Fix failing tests. Do NOT modify test assertions."
+
+      notes: |
+        Apply proven pattern from Step 2. If any step fails, revert that step only.
+        Machine size should reduce from 1186 lines to <1000 lines.
+
+    # ========================================================================
+    # PHASE 3.5: Integration Testing
+    # ========================================================================
+
+    - id: "t-007d"
+      phase: "phase-3"
+      name: "Integration tests for layer boundaries"
+      estimate_minutes: 60
+      dependencies: ["t-007c"]
+
+      files:
+        create: ["src/features/planning/__tests__/integration/layer-boundaries.test.ts"]
+        read_only:
+          - "src/features/planning/domain/step-commands.ts"
+          - "src/features/planning/infrastructure/server-functions.ts"
+          - "src/features/planning/workflow/services.ts"
+
+      instructions: |
+        ## Objective
+        Test integration between architectural layers (not just unit tests).
+
+        ## CRITICAL CONSTRAINTS
+        - Test domain → infrastructure integration
+        - Test workflow → domain integration
+        - Test workflow → infrastructure integration
+        - Use real database (not mocks) for integration tests
+
+        ## Implementation
+
+        Create integration tests:
+        ```typescript
+        import { describe, it, expect, beforeEach } from 'vitest';
+        import { submitStepAnswer } from '@/features/planning/domain/step-commands';
+        import { $submitAnswer } from '@/features/planning/infrastructure/server-functions';
+        import { persistAnswerService } from '@/features/planning/workflow/services';
+        import { createTestProject, cleanupTestData } from '@/test/helpers';
+
+        describe('Layer Boundary Integration Tests', () => {
+          let testProjectId: string;
+
+          beforeEach(async () => {
+            testProjectId = await createTestProject();
+          });
+
+          afterEach(async () => {
+            await cleanupTestData(testProjectId);
+          });
+
+          describe('Domain → Infrastructure', () => {
+            it('should persist domain command results via server function', async () => {
+              // Test that domain logic integrates with persistence
+              const result = await $submitAnswer({
+                data: {
+                  projectId: testProjectId,
+                  stepNumber: 2,
+                  question: 'Test question?',
+                  answer: 'Test answer',
+                },
+              });
+
+              expect(result.steps[1].answers).toHaveLength(1);
+              expect(result.steps[1].answers[0].value).toBe('Test answer');
+            });
+          });
+
+          describe('Workflow → Domain', () => {
+            it('should invoke domain logic from workflow service', async () => {
+              // Test that workflow services use domain functions
+              const result = await persistAnswerService.invoke({
+                input: {
+                  projectId: testProjectId,
+                  stepNumber: 2,
+                  question: 'Test question?',
+                  answer: 'Test answer',
+                },
+              });
+
+              expect(result.output).toBeDefined();
+              expect(result.output.steps[1].answers).toHaveLength(1);
+            });
+          });
+
+          describe('End-to-End Layer Flow', () => {
+            it('should work: UI → Workflow → Domain → Infrastructure → DB', async () => {
+              // Simulate full stack: XState machine → services → domain → repository → DB
+              // Then query back and verify data integrity
+
+              // 1. Persist via workflow
+              await persistAnswerService.invoke({
+                input: {
+                  projectId: testProjectId,
+                  stepNumber: 2,
+                  question: 'What problem does this solve?',
+                  answer: 'Customer pain point X',
+                },
+              });
+
+              // 2. Load from DB
+              const state = await loadStepState(testProjectId);
+
+              // 3. Verify data made round trip through all layers
+              expect(state).toBeDefined();
+              expect(state.steps[1].answers).toHaveLength(1);
+              expect(state.steps[1].answers[0].value).toBe('Customer pain point X');
+
+              // 4. Query interview_answers table
+              const db = getDb();
+              const records = db
+                .prepare('SELECT * FROM interview_answers WHERE project_id = ?')
+                .all(testProjectId);
+
+              expect(records).toHaveLength(1);
+              expect(records[0].answer).toBe('Customer pain point X');
+            });
+          });
+
+          describe('Error Propagation', () => {
+            it('should propagate domain errors through infrastructure layer', async () => {
+              // Test that domain validation errors surface correctly
+              await expect(
+                $submitAnswer({
+                  data: {
+                    projectId: testProjectId,
+                    stepNumber: 99, // Invalid step
+                    question: 'Test',
+                    answer: 'Test',
+                  },
+                })
+              ).rejects.toThrow('Step 99 not found');
+            });
+          });
+        });
+        ```
+
+        ## Validation
+        ```bash
+        npm test src/features/planning/__tests__/integration/layer-boundaries.test.ts -- --run
+        npm run typecheck
+        ```
+
+      validation:
+        commands:
+          - "npm test src/features/planning/__tests__/integration/layer-boundaries.test.ts -- --run"
+          - "npm run typecheck"
+        expected_output: "All integration tests passing"
+        failure_handling: "STOP. Fix layer integration issues before proceeding to Phase 4."
+
+      notes: |
+        These tests validate that layers work together, not just in isolation.
+        Catches issues like: wrong function signatures, missing error handling, data transformation bugs.
+
+    # ========================================================================
+    # PHASE 4: Application & Adapter Layers
+    # ========================================================================
+
+    - id: "t-008"
+      phase: "phase-4"
+      name: "Create application layer queries"
+      estimate_minutes: 45
+      dependencies: ["t-007d"]
+
+      files:
+        create: ["src/features/planning/application/queries.ts"]
+        read_only:
+          - "src/features/planning/domain/step-state.ts"
+          - "src/features/planning/infrastructure/server-functions.ts"
+
+      style_anchors:
+        - {path: "src/features/planning/hooks.ts", lines: "15-20", pattern: "React Query hook"}
+
+      instructions: |
+        ## Objective
+        Create application-layer React Query hooks that expose domain data.
+
+        ## CRITICAL CONSTRAINTS
+        - ONLY create: src/features/planning/application/queries.ts
+        - Hooks orchestrate: fetch data → transform with domain logic
+        - NO business logic here (delegate to domain)
+
+        ## Implementation
+
+        ```typescript
+        import { useQuery } from '@tanstack/react-query';
+        import { $getStepState } from '../infrastructure/server-functions';
+        import { getProjectProgress } from '../domain/step-state';
+
+        export function stepStateQueryKey(projectId: string) {
+          return ['stepState', projectId] as const;
+        }
+
+        export function useProjectProgress(projectId: string) {
+          const { data: stepState, ...rest } = useQuery({
+            queryKey: stepStateQueryKey(projectId),
+            queryFn: () => $getStepState({ data: { projectId } }),
+          });
+
+          // Transform using domain logic
+          const progress = stepState ? getProjectProgress(stepState) : null;
+
+          return {
+            ...rest,
+            data: progress,
+            stepState, // Expose raw state for backward compatibility
+          };
+        }
+        ```
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        ```
+
+      validation:
+        commands:
+          - "npm run typecheck"
+        expected_output: "0 errors"
+        failure_handling: "STOP."
+
+    - id: "t-009"
+      phase: "phase-4"
+      name: "Evaluate and create adapter if needed"
+      estimate_minutes: 45
+      dependencies: ["t-008"]
+
+      files:
+        create_if_needed:
+          - "src/components/spectrum-stepper/adapters/step-to-stage.adapter.ts"
+          - "src/components/spectrum-stepper/adapters/step-to-stage.adapter.test.ts"
+        read_only: ["src/features/planning/domain/types.ts", "src/components/spectrum-stepper/SpectrumStepper.tsx"]
+
+      instructions: |
+        ## Objective
+        Evaluate if adapter pattern is needed. Only create if transformation is complex.
+
+        ## DECISION CRITERIA
+        - If mapping is 1:1 (4 fields → 4 fields) → NO adapter, inline in component
+        - If transformation has business logic → YES adapter
+        - If used in multiple components → YES adapter (reusability)
+        - If transformation is >10 lines → YES adapter
+
+        ## Evaluation Steps
+        1. Compare StepSummary (domain) vs Stage (UI) types
+        2. Calculate transformation complexity
+        3. Decide: adapter file OR inline transformation
+
+        ## Option A: Simple Inline (if 1:1 mapping)
+        ```typescript
+        // In component:
+        const stages = progress?.stepSummaries.map(s => ({
+          id: String(s.stepNumber),
+          num: s.stepNumber,
+          name: s.name,
+          status: s.isSkipped ? 'skipped' : s.isComplete ? 'complete' : s.isCurrent ? 'now' : 'pending',
+        })) ?? FALLBACK_STAGES;
+        ```
+
+        ## Option B: Adapter File (if complex)
+
+        ## CRITICAL CONSTRAINTS
+        - Adapter co-located with UI component it serves
+        - Adapter imports domain types, NOT vice versa
+        - Keep adapter simple (pure transformation function)
+
+        ## TDD Checklist
+        - [ ] Write test for complete step → complete stage
+        - [ ] Write test for current step → now stage
+        - [ ] Write test for pending step → pending stage
+        - [ ] Write test for skipped step → skipped stage
+
+        ## Implementation
+
+        ```typescript
+        import type { Stage } from '../SpectrumStepper';
+        import type { StepSummary } from '@/features/planning/domain/types';
+
+        export function adaptStepToStage(summary: StepSummary): Stage {
+          return {
+            id: String(summary.stepNumber),
+            num: summary.stepNumber,
+            name: summary.name,
+            status: getStageStatus(summary),
+          };
+        }
+
+        function getStageStatus(summary: StepSummary): Stage['status'] {
+          if (summary.isSkipped) return 'skipped';
+          if (summary.isComplete) return 'complete';
+          if (summary.isCurrent) return 'now';
+          return 'pending';
+        }
+
+        export function adaptStepsToStages(summaries: StepSummary[]): Stage[] {
+          return summaries.map(adaptStepToStage);
+        }
+        ```
+
+        ## Validation
+        ```bash
+        npm test src/components/spectrum-stepper/adapters/step-to-stage.adapter.test.ts -- --run
+        npm run typecheck
+        ```
+
+      validation:
+        commands:
+          - "npm test src/components/spectrum-stepper/adapters/step-to-stage.adapter.test.ts -- --run"
+          - "npm run typecheck"
+        expected_output: "All tests passing"
+        failure_handling: "STOP."
+
+    - id: "t-010"
+      phase: "phase-4"
+      name: "Refactor route to use adapters"
+      estimate_minutes: 30
+      dependencies: ["t-009"]
+
+      files:
+        modify: ["app/routes/project/$projectId.tsx"]
+        read_only:
+          - "src/features/planning/application/queries.ts"
+          - "src/components/spectrum-stepper/adapters/step-to-stage.adapter.ts"
+
+      instructions: |
+        ## Objective
+        Remove transformation logic from route, use application hooks + adapters.
+
+        ## CRITICAL CONSTRAINTS
+        - ONLY modify: app/routes/project/$projectId.tsx
+        - Replace inline transformation with adapter
+        - Component should be simpler after refactor
+
+        ## Refactoring
+
+        BEFORE:
+        ```typescript
+        const { data: stepState } = useStepState(projectId);
+        const stages = stepState
+          ? stepState.steps.map(s => ({
+              id: String(s.stepNumber),
+              num: s.stepNumber,
+              name: s.name,
+              status: s.status,
+            }))
+          : FALLBACK_STAGES;
+        ```
+
+        AFTER:
+        ```typescript
+        import { useProjectProgress } from '@/features/planning/application/queries';
+        import { adaptStepsToStages } from '@/components/spectrum-stepper/adapters/step-to-stage.adapter';
+
+        const { data: progress } = useProjectProgress(projectId);
+        const stages = progress?.stepSummaries
+          ? adaptStepsToStages(progress.stepSummaries)
+          : FALLBACK_STAGES;
+        const currentStep = progress?.currentStepNumber ?? 1;
+        ```
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        npm test app/routes/dashboard.test.tsx -- --run
+        ```
+
+      validation:
+        commands:
+          - "npm run typecheck"
+          - "npm test app/routes/dashboard.test.tsx -- --run"
+        expected_output: "0 errors, tests passing"
+        failure_handling: "STOP."
+
+    # ========================================================================
+    # PHASE 5: Migration & Cleanup
+    # ========================================================================
+
+    - id: "t-010b"
+      phase: "phase-4"
+      name: "Performance benchmark before/after"
+      estimate_minutes: 30
+      dependencies: ["t-010"]
+
+      files:
+        create: ["src/features/planning/__tests__/performance/benchmark.test.ts"]
+
+      instructions: |
+        ## Objective
+        Measure performance impact of new layered architecture.
+
+        ## CRITICAL CONSTRAINTS
+        - Benchmark key operations: submitAnswer, completeStep, getStepState
+        - Compare baseline (git stash changes) vs. new architecture
+        - Fail if >10% regression
+
+        ## Implementation
+
+        ```typescript
+        import { describe, it, expect, bench } from 'vitest';
+        import { submitStepAnswer } from '@/features/planning/domain/step-commands';
+        import { $submitAnswer } from '@/features/planning/infrastructure/server-functions';
+
+        describe('Performance Benchmarks', () => {
+          bench('submitStepAnswer (domain)', () => {
+            const mockState = createMockProjectState();
+            submitStepAnswer(mockState, 2, 'Question?', 'Answer');
+          });
+
+          bench('$submitAnswer (full stack)', async () => {
+            await $submitAnswer({
+              data: {
+                projectId: 'test-id',
+                stepNumber: 2,
+                question: 'Question?',
+                answer: 'Answer',
+              },
+            });
+          });
+
+          // Add benchmarks for other operations
+        });
+        ```
+
+        ## Baseline Measurement
+        1. Git stash current changes
+        2. Run benchmarks on old code → save results
+        3. Git stash pop
+        4. Run benchmarks on new code → compare
+
+        ## Acceptance Criteria
+        - Domain functions: <1ms (pure functions should be fast)
+        - Server functions: <100ms (includes DB I/O)
+        - No regression >10% vs. baseline
+
+      validation:
+        commands:
+          - "npm run test -- --run src/features/planning/__tests__/performance/benchmark.test.ts"
+        expected_output: "No performance regression >10%"
+        failure_handling: "Document regression in .tmp-docs/performance-analysis.md"
+
+    - id: "t-011"
+      phase: "phase-5"
+      name: "Validate backward compatibility"
+      estimate_minutes: 30
+      dependencies: ["t-010b"]
+
+      files:
+        create: ["scripts/check-backward-compatibility.sh"]
+
+      instructions: |
+        ## Objective
+        Ensure existing code that imports from store.ts still works.
+
+        ## CRITICAL CONSTRAINTS
+        - Grep entire codebase for imports from store.ts
+        - Verify each import still resolves
+        - Run tests for files that import store.ts
+        - Document migration path for each consumer
+
+        ## Implementation
+
+        ```bash
+        #!/bin/bash
+        # scripts/check-backward-compatibility.sh
+
+        echo "Checking backward compatibility..."
+
+        # Find all files importing from store.ts
+        IMPORTERS=$(grep -r "from.*features/planning/store" src/ app/ --include="*.ts" --include="*.tsx" | cut -d: -f1 | sort -u)
+
+        if [ -z "$IMPORTERS" ]; then
+          echo "✅ No files import from store.ts"
+          exit 0
+        fi
+
+        echo "Files importing from store.ts:"
+        echo "$IMPORTERS"
+
+        # Run tests for each importer
+        for file in $IMPORTERS; do
+          echo "Testing: $file"
+          TEST_FILE="${file%.tsx}.test.tsx"
+          TEST_FILE="${TEST_FILE%.ts}.test.ts"
+
+          if [ -f "$TEST_FILE" ]; then
+            npm test "$TEST_FILE" -- --run || {
+              echo "❌ FAILED: $TEST_FILE"
+              exit 1
+            }
+          fi
+        done
+
+        echo "✅ All backward compatibility tests passed"
+        ```
+
+        ## Validation
+        ```bash
+        chmod +x scripts/check-backward-compatibility.sh
+        ./scripts/check-backward-compatibility.sh
+        ```
+
+      validation:
+        commands:
+          - "bash scripts/check-backward-compatibility.sh"
+        expected_output: "All backward compatibility tests passed"
+        failure_handling: "STOP. Fix imports or update consumers before deprecating store.ts"
+
+    - id: "t-011b"
+      phase: "phase-5"
+      name: "Deprecate legacy store.ts"
+      estimate_minutes: 30
+      dependencies: ["t-011"]
+
+      files:
+        modify: ["src/features/planning/store.ts"]
+
+      instructions: |
+        ## Objective
+        Mark legacy store as deprecated, add migration notes.
+
+        ## CRITICAL CONSTRAINTS
+        - Do NOT delete store.ts yet (gradual migration)
+        - Add deprecation warnings
+        - Document migration path
+
+        ## Implementation
+
+        Add to top of store.ts:
+        ```typescript
+        /**
+         * @deprecated This file is being phased out.
+         *
+         * Migration path:
+         * - State queries → src/features/planning/domain/step-state.ts
+         * - State mutations → src/features/planning/domain/step-commands.ts
+         * - Persistence → src/features/planning/infrastructure/repository.ts
+         * - Server functions → src/features/planning/infrastructure/server-functions.ts
+         *
+         * This file will be removed in v2.0.0
+         */
+        ```
+
+        Add deprecation JSDoc to each exported function:
+        ```typescript
+        /**
+         * @deprecated Use submitStepAnswer from domain/step-commands.ts
+         */
+        export function submitAnswer(/* ... */) {
+          // ...
+        }
+        ```
+
+        ## Validation
+        ```bash
+        npm run typecheck
+        ```
+
+      validation:
+        commands:
+          - "npm run typecheck"
+        expected_output: "0 errors"
+        failure_handling: "STOP."
+
+    - id: "t-012"
+      phase: "phase-5"
+      name: "Validate architecture with full test suite"
+      estimate_minutes: 45
+      dependencies: ["t-011b"]
+
+      files:
+        read_only: ["all test files"]
+
+      instructions: |
+        ## Objective
+        Run full test suite to validate refactoring didn't break anything.
+
+        ## Validation Commands
+        ```bash
+        # Run all tests
+        npm test -- --run
+
+        # Type check
+        npm run typecheck
+
+        # Lint
+        npm run lint -- --max-warnings 0
+
+        # Check for circular dependencies
+        npx madge --circular src/features/planning/
+        ```
+
+        ## Success Criteria
+        - All 31+ test files passing
+        - 0 type errors
+        - 0 lint warnings
+        - No circular dependencies detected
+        - XState machine still orchestrates workflow correctly
+
+        ## If Tests Fail
+        - Identify which layer has the issue
+        - Fix at the appropriate layer (domain, infrastructure, workflow, application)
+        - Do NOT modify test assertions
+        - Re-run validation
+
+      validation:
+        commands:
+          - "npm test -- --run"
+          - "npm run typecheck"
+          - "npm run lint -- --max-warnings 0"
+          - "npx madge --circular src/features/planning/"
+        expected_output: "All tests passing, 0 errors, 0 warnings, no circular deps"
+        failure_handling: "STOP. Fix issues before proceeding."
+
+    - id: "t-013"
+      phase: "phase-5"
+      name: "Create architecture documentation"
+      estimate_minutes: 30
+      dependencies: ["t-012"]
+
+      files:
+        create: ["docs/planning/002-state-refactor/architecture.md"]
+
+      instructions: |
+        ## Objective
+        Document the new layered architecture for future developers.
+
+        ## Content Structure
+
+        1. Architecture Overview
+           - Diagram showing layers
+           - Dependency direction
+           - Responsibility of each layer
+
+        2. Layer Descriptions
+           - Domain: Pure business logic
+           - Infrastructure: Persistence and I/O
+           - Workflow: XState orchestration
+           - Application: React Query hooks
+           - Adapters: UI transformations (only if complex)
+
+        3. Decision Records
+           - Why XState was kept
+           - Why adapters are co-located with components (and optional for simple cases)
+           - Why domain layer is pure functions
+           - Why we use literal union types (StepNumber = 1 | 2 | ... | 10)
+
+        4. Developer Decision Tree
+           ```
+           "I need to..."
+
+           ├─ Add business logic
+           │  └─ → domain/step-commands.ts or domain/step-state.ts
+           │
+           ├─ Add database operation
+           │  └─ → infrastructure/repository.ts
+           │
+           ├─ Add API endpoint
+           │  └─ → infrastructure/server-functions.ts
+           │
+           ├─ Add React Query hook
+           │  └─ → application/queries.ts
+           │
+           ├─ Change workflow (add step, change transitions)
+           │  └─ → machines/planningMachine.ts
+           │
+           ├─ Transform data for UI
+           │  ├─ Simple (1:1 mapping)? → Inline in component
+           │  └─ Complex? → Create adapter in component/adapters/
+           │
+           └─ Add observability/logging
+              └─ → infrastructure/server-functions.ts (add to logServerAction)
+           ```
+
+        5. Migration Guide
+           - How to add new step
+           - How to add new query
+           - How to add new command
+           - How to create new adapter (when needed)
+           - How to add logging
+
+        6. Testing Strategy
+           - Domain: Pure function tests (fast, isolated)
+           - Infrastructure: Integration tests with DB
+           - Workflow: XState machine tests
+           - Adapters: Transformation tests
+           - Integration: Layer boundary tests
+
+        7. Performance Considerations
+           - Domain functions: <1ms (pure, no I/O)
+           - Server functions: <100ms (includes DB)
+           - Benchmark results from t-010b
+
+        8. Troubleshooting Guide
+           - Circular dependency detected → Check import order
+           - Test fails after refactor → Check layer boundaries
+           - Performance regression → Check benchmark results
+           - Type error in domain → Ensure StepNumber literal type used
+
+        ## Validation
+        - Document is readable
+        - Diagrams are clear
+        - Examples are concrete
+
+      validation:
+        commands: []
+        expected_output: "Documentation complete"
+        failure_handling: "N/A"
+
+  deliverables:
+    - name: "Domain Layer"
+      files:
+        - "src/features/planning/domain/types.ts"
+        - "src/features/planning/domain/step-state.ts"
+        - "src/features/planning/domain/step-state.test.ts"
+        - "src/features/planning/domain/step-commands.ts"
+        - "src/features/planning/domain/step-commands.test.ts"
+      criteria: "Pure functions, 100% test coverage, zero dependencies"
+
+    - name: "Infrastructure Layer"
+      files:
+        - "src/features/planning/infrastructure/repository.ts"
+        - "src/features/planning/infrastructure/server-functions.ts"
+      criteria: "Clean abstraction over persistence, no business logic"
+
+    - name: "Workflow Layer"
+      files:
+        - "src/features/planning/workflow/services.ts"
+        - "src/features/planning/machines/planningMachine.ts (refactored)"
+      criteria: "XState machine delegates to domain, focuses on orchestration"
+
+    - name: "Application Layer"
+      files:
+        - "src/features/planning/application/queries.ts"
+      criteria: "React Query hooks compose domain + infrastructure"
+
+    - name: "Adapter Layer (Optional)"
+      files:
+        - "src/components/spectrum-stepper/adapters/step-to-stage.adapter.ts (if complex)"
+        - "src/components/spectrum-stepper/adapters/step-to-stage.adapter.test.ts (if complex)"
+      criteria: "Pure transformations, co-located with components, only if mapping is complex"
+
+    - name: "Integration Tests"
+      files:
+        - "src/features/planning/__tests__/integration/layer-boundaries.test.ts"
+        - "src/features/planning/domain/data-migration-validator.test.ts"
+      criteria: "Validate layer boundaries work together, validate existing data"
+
+    - name: "Performance & Compatibility"
+      files:
+        - "src/features/planning/__tests__/performance/benchmark.test.ts"
+        - "scripts/check-backward-compatibility.sh"
+      criteria: "No performance regression >10%, backward compatibility validated"
+
+    - name: "Documentation"
+      files:
+        - "docs/planning/002-state-refactor/architecture.md"
+      criteria: "Clear explanation of layered architecture"
+
+  success_metrics:
+    - metric: "Test Coverage"
+      target: ">80% for domain layer"
+      measurement: "npm run test:coverage"
+
+    - metric: "Type Safety"
+      target: "0 type errors"
+      measurement: "npm run typecheck"
+
+    - metric: "Code Quality"
+      target: "0 lint warnings"
+      measurement: "npm run lint"
+
+    - metric: "Circular Dependencies"
+      target: "0 circular dependencies (checked after each phase)"
+      measurement: "npx madge --circular src/features/planning/"
+
+    - metric: "Test Suite"
+      target: "All 31+ test files passing"
+      measurement: "npm test -- --run"
+
+    - metric: "Integration Tests"
+      target: "All layer boundary tests passing"
+      measurement: "npm test src/features/planning/__tests__/integration/ -- --run"
+
+    - metric: "Performance"
+      target: "No regression >10% vs. baseline"
+      measurement: "npm test src/features/planning/__tests__/performance/ -- --run"
+
+    - metric: "Backward Compatibility"
+      target: "All existing imports still work"
+      measurement: "bash scripts/check-backward-compatibility.sh"
+
+    - metric: "XState Machine Size"
+      target: "<1000 lines (reduced from 1186)"
+      measurement: "wc -l src/features/planning/machines/planningMachine.ts"
+
+    - metric: "Domain Layer Purity"
+      target: "Zero imports from React, XState, UI libraries"
+      measurement: "grep -r 'from.*react\\|from.*xstate' src/features/planning/domain/"
+
+    - metric: "Data Migration"
+      target: "Existing DB data compatible with new types"
+      measurement: "npm test src/features/planning/domain/data-migration-validator.test.ts -- --run"
+
+  risks:
+    - risk: "Breaking existing tests during refactor"
+      mitigation: "Run test suite after each task, revert if tests fail"
+      severity: "high"
+
+    - risk: "XState machine loses workflow orchestration capability"
+      mitigation: "Keep workflow state machine intact, only extract business logic"
+      severity: "critical"
+
+    - risk: "Performance regression from additional layers"
+      mitigation: "Domain functions are pure (fast), no additional I/O operations"
+      severity: "low"
+
+    - risk: "Circular dependencies between layers"
+      mitigation: "Enforce dependency direction: UI → Adapters → Workflow → Domain → Infrastructure"
+      severity: "medium"
+
+    - risk: "Incomplete migration leaves code in inconsistent state"
+      mitigation: "Gradual migration, deprecate old code, document migration path"
+      severity: "medium"
+
+  notes: |
+    ## Key Architectural Decisions
+
+    1. **XState Remains Central**: The 10-step Sherpy workflow IS a state machine.
+       XState provides value for workflow orchestration, async coordination, and
+       state-dependent behavior. We're not removing XState, we're refactoring what
+       it owns.
+
+    2. **Domain Layer is Pure**: All business logic lives in pure functions with
+       zero side effects. This makes testing trivial and ensures business rules
+       are isolated from infrastructure concerns.
+
+    3. **Adapters Are Optional**: Only create adapters for complex transformations.
+       Simple 1:1 mappings can be inline in components. This reduces over-engineering
+       while maintaining clean separation when needed.
+
+    4. **Gradual Migration**: We're not doing a big-bang rewrite. Legacy code is
+       deprecated but not deleted. New code uses new architecture. Components migrate
+       gradually.
+
+    5. **Load → Transform → Persist Pattern**: Infrastructure layer follows consistent
+       pattern: load state from DB → apply domain logic → persist new state. This
+       makes code predictable and testable.
+
+    6. **Type Safety First**: Use literal union types (StepNumber = 1 | 2 | ... | 10)
+       instead of generic numbers. Catch errors at compile time, not runtime.
+
+    7. **Observability Built-In**: All server functions log start/success/error events
+       with timestamps and context. Makes debugging production issues tractable.
+
+    8. **Incremental Validation**: Run `madge` after each phase to catch circular
+       dependencies early. Run integration tests after Phase 3 to validate layer
+       boundaries before building on top of them.
+
+    ## Testing Strategy
+
+    - **Domain Tests**: Fast, isolated, pure function tests. No mocks needed.
+    - **Infrastructure Tests**: Integration tests with actual DB (use test fixtures).
+    - **Workflow Tests**: XState machine tests using @xstate/test.
+    - **Adapter Tests**: Pure transformation tests (input → output), only if adapter created.
+    - **Integration Tests**: Layer boundary tests validate domain → infrastructure → workflow.
+    - **Performance Tests**: Benchmarks ensure no regression >10%.
+    - **Data Migration Tests**: Validate existing DB data compatible with new types.
+    - **E2E Tests**: Existing E2E tests validate full workflow still works.
+
+    ## Performance Considerations
+
+    - Domain functions are pure → fast, no I/O (target: <1ms)
+    - Adapters are simple transformations → negligible overhead
+    - Infrastructure layer doesn't add extra DB calls (just reorganizes existing ones)
+    - React Query handles caching (no performance regression)
+    - Benchmark after Phase 4 to validate assumptions
+
+    ## Rollback Strategy
+
+    - Each phase merged to main only after validation passes
+    - Git tags at phase completion: v2.0.0-phase1, v2.0.0-phase2, etc.
+    - If catastrophic failure: `git revert` to last stable tag
+    - If single task fails: revert that file, re-plan task, retry
+
+    ## Future Extensions
+
+    - Add new workflow step: extend domain, add machine state, optionally create adapter
+    - Add new UI component: create adapter only if transformation is complex
+    - Swap persistence layer: modify infrastructure, domain unchanged
+    - Add validation rules: add to domain layer, infrastructure calls them
+    - Add observability: extend logServerAction in server-functions.ts
