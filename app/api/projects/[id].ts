@@ -1,23 +1,13 @@
-import { defineEventHandler, readBody, getRouterParam } from "vinxi/http";
-import { updateCurrentStep, initStore } from "@/features/projects/store";
+import { defineEventHandler, getRouterParam, readBody } from "vinxi/http";
+import { initStore, updateCurrentStep } from "@/features/projects/store";
+import { updateCurrentStepSchema } from "../schemas";
+import { validateBody } from "../utils/validate";
 
 export default defineEventHandler(async (event) => {
   await initStore();
 
   const body = await readBody(event);
-
-  if (typeof body !== "object" || body === null) {
-    throw new Error("invalid input");
-  }
-
-  const { currentStep } = body;
-
-  if (currentStep === undefined) {
-    throw new Error("currentStep required");
-  }
-  if (typeof currentStep !== "number") {
-    throw new Error("currentStep must be a number");
-  }
+  const { currentStep } = validateBody(body, updateCurrentStepSchema);
 
   const projectId = getRouterParam(event, "id");
   if (!projectId) {
