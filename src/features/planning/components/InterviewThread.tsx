@@ -37,7 +37,6 @@ export function InterviewThread({
     answer: string;
     stepName: string;
   } | null>(null);
-  const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Get previous answers for current step (supports multi-turn Q&A)
@@ -52,7 +51,7 @@ export function InterviewThread({
   );
 
   // Streaming AI question - enabled for M4-007 end-to-end wiring
-  // Using refetchTrigger to force refetch after answer submission
+  // Uses stepState.currentStep directly as dependency instead of separate refetchTrigger state
   const {
     text: streamedQuestion,
     loading: isStreaming,
@@ -65,7 +64,7 @@ export function InterviewThread({
     stepNumber: stepState.currentStep,
     previousAnswers: completedAnswers,
     enabled: true,
-    refetchTrigger,
+    refetchTrigger: stepState.currentStep, // Use step number directly as trigger
   });
 
   const { mutate: submitAnswer, isPending } = useSubmitAnswer(projectId);
@@ -88,45 +87,61 @@ export function InterviewThread({
 
       // Prevent duplicate completion calls for the same step
       if (lastCompletedStepRef.current === currentStepNum) {
-        console.log("[InterviewThread] Step already completed, skipping duplicate call", {
-          stepNumber: currentStepNum,
-        });
+        console.log(
+          "[InterviewThread] Step already completed, skipping duplicate call",
+          {
+            stepNumber: currentStepNum,
+          },
+        );
         return;
       }
 
-      console.log("[InterviewThread] Step completion detected, calling completeStep", {
-        stepNumber: currentStepNum,
-        stepName: currentStepData?.name,
-      });
+      console.log(
+        "[InterviewThread] Step completion detected, calling completeStep",
+        {
+          stepNumber: currentStepNum,
+          stepName: currentStepData?.name,
+        },
+      );
 
       lastCompletedStepRef.current = currentStepNum;
       completeStep({ stepNumber: currentStepNum });
     }
-  }, [isComplete, isStreaming, stepState.currentStep, completeStep, currentStepData?.name]);
+  }, [
+    isComplete,
+    isStreaming,
+    stepState.currentStep,
+    completeStep,
+    currentStepData?.name,
+  ]);
 
   // Reset completion tracker when step changes (but not on initial mount)
   useEffect(() => {
-    if (lastCompletedStepRef.current !== null && lastCompletedStepRef.current !== stepState.currentStep) {
-      console.log("[InterviewThread] Step changed, resetting completion tracker", {
-        oldStep: lastCompletedStepRef.current,
-        newStep: stepState.currentStep,
-      });
+    if (
+      lastCompletedStepRef.current !== null &&
+      lastCompletedStepRef.current !== stepState.currentStep
+    ) {
+      console.log(
+        "[InterviewThread] Step changed, resetting completion tracker",
+        {
+          oldStep: lastCompletedStepRef.current,
+          newStep: stepState.currentStep,
+        },
+      );
       lastCompletedStepRef.current = null;
     }
   }, [stepState.currentStep]);
 
-  // Refetch question when step changes (BUG-005 fix)
-  useEffect(() => {
-    console.log("[InterviewThread] Step changed, triggering refetch");
-    setRefetchTrigger(prev => prev + 1);
-  }, [stepState.currentStep]);
+  // Note: Refetch is now handled by passing stepState.currentStep directly to useStreamingQuestion
+  // No useEffect needed - the hook will refetch when currentStep changes
 
   const completedSteps = stepState.steps.filter((s) => s.status === "complete");
   const currentStep = currentStepData;
 
   // Use streamedOptions from hook result during streaming or when available
   // Fall back to currentStep.options for cached/completed questions
-  const optionsToRender = streamedOptions.length > 0 ? streamedOptions : currentStep?.options;
+  const optionsToRender =
+    streamedOptions.length > 0 ? streamedOptions : currentStep?.options;
 
   const selectedOptionTitle =
     optionsToRender?.find((o) => o.letter === selectedOption)?.title ?? "";
@@ -134,10 +149,11 @@ export function InterviewThread({
   // Calculate question counter: sum of all answers from all steps + 1 for current question
   const totalAnswersFromCompletedSteps = completedSteps.reduce(
     (sum, step) => sum + (step.answers?.length ?? (step.answer ? 1 : 0)),
-    0
+    0,
   );
   const answersInCurrentStep = completedAnswers.length;
-  const currentQuestionNumber = totalAnswersFromCompletedSteps + answersInCurrentStep + 1;
+  const currentQuestionNumber =
+    totalAnswersFromCompletedSteps + answersInCurrentStep + 1;
   const totalQuestions = 33; // 1 (Step 1) + 16 (Step 2) + 16 (Step 3)
 
   function handleSubmit() {
@@ -179,10 +195,7 @@ export function InterviewThread({
             stepNumber: currentStep.stepNumber,
             options: [],
           });
-          // Increment trigger to force refetch of next question
-          console.log("[InterviewThread] Incrementing refetch trigger");
-          setRefetchTrigger(prev => prev + 1);
-          // Exit transition state
+          // Exit transition state (refetch happens automatically when step changes)
           setIsTransitioning(false);
         },
         onError: () => {
@@ -223,7 +236,7 @@ export function InterviewThread({
         {step.artifact && (
           <ArtifactCard stepName={step.name} content={step.artifact} />
         )}
-      </div>
+      </div>,
     );
   }
 
@@ -236,7 +249,7 @@ export function InterviewThread({
           stepName={currentStepData.name}
           question={ans.question}
           answer={ans.value}
-        />
+        />,
       );
     });
   }
@@ -249,7 +262,7 @@ export function InterviewThread({
         stepName={optimisticAnswer.stepName}
         question={optimisticAnswer.question}
         answer={optimisticAnswer.answer}
-      />
+      />,
     );
   }
 
@@ -292,25 +305,26 @@ export function InterviewThread({
   });
 
   // Hide options during transition to prevent old options from showing
-  const options = !isTransitioning && optionsToRender?.length ? (
-    <OptionStack>
-      {optionsToRender.map((opt) => (
-        <OptionCard
-          key={opt.letter}
-          letter={opt.letter}
-          title={opt.title}
-          body={opt.body}
-          recommended={opt.recommended}
-          selected={selectedOption === opt.letter}
-          onClick={() =>
-            setSelectedOption((prev) =>
-              prev === opt.letter ? null : opt.letter,
-            )
-          }
-        />
-      ))}
-    </OptionStack>
-  ) : undefined;
+  const options =
+    !isTransitioning && optionsToRender?.length ? (
+      <OptionStack>
+        {optionsToRender.map((opt) => (
+          <OptionCard
+            key={opt.letter}
+            letter={opt.letter}
+            title={opt.title}
+            body={opt.body}
+            recommended={opt.recommended}
+            selected={selectedOption === opt.letter}
+            onClick={() =>
+              setSelectedOption((prev) =>
+                prev === opt.letter ? null : opt.letter,
+              )
+            }
+          />
+        ))}
+      </OptionStack>
+    ) : undefined;
 
   const composerInput = (
     <input
@@ -341,9 +355,7 @@ export function InterviewThread({
     <button
       type="button"
       onClick={handleSubmit}
-      disabled={
-        isLoadingQuestion || (!selectedOption && !inputText.trim())
-      }
+      disabled={isLoadingQuestion || (!selectedOption && !inputText.trim())}
       className="font-mono text-[11px] px-3 py-1.5 rounded-md bg-inverse text-fg-on-inverse disabled:opacity-40 disabled:cursor-not-allowed"
     >
       {isPending ? "…" : isStreaming ? "…" : "Submit →"}
