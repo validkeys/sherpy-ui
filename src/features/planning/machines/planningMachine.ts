@@ -28,44 +28,21 @@ function persistInterviewAnswerToDatabase(
   answer: string,
 ): void {
   // Use server function to persist (prevents bundling issues - BUG-017)
-  import("../server")
-    .then(({ $saveInterviewAnswer }) => {
-      $saveInterviewAnswer({
-        data: {
-          projectId,
-          stepNumber,
-          question,
-          answer,
-        },
-      })
-        .then(() => {
-          console.log(
-            `[persistInterviewAnswer] ✅ Saved: Step ${stepNumber}, Q: "${question.slice(0, 50)}..."`,
-          );
-        })
-        .catch((error) => {
-          console.error(
-            `[persistInterviewAnswer] ❌ Failed to persist answer:`,
-            {
-              projectId,
-              stepNumber,
-              question: question.slice(0, 50),
-              error: error.message,
-            },
-          );
-        });
+  import("../server.db")
+    .then(({ saveInterviewAnswer }) => {
+      saveInterviewAnswer(projectId, stepNumber, question, answer);
+      console.log(
+        `[persistInterviewAnswer] ✅ Saved: Step ${stepNumber}, Q: "${question.slice(0, 50)}..."`,
+      );
     })
     .catch((error) => {
       // Log but don't throw - persistence failure doesn't block workflow
-      console.error(
-        `[persistInterviewAnswer] ❌ Failed to import server function:`,
-        {
-          projectId,
-          stepNumber,
-          question: question.slice(0, 50),
-          error: error.message,
-        },
-      );
+      console.error(`[persistInterviewAnswer] ❌ Failed to persist answer:`, {
+        projectId,
+        stepNumber,
+        question: question.slice(0, 50),
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
 }
 
@@ -200,14 +177,10 @@ const generateArtifact = fromPromise<
       string
     >;
     try {
-      const { $saveFormResponses } = await import("../server");
-      await $saveFormResponses({
-        data: {
-          projectId: input.projectId,
-          stepNumber: 1,
-          responses,
-        },
-      });
+      const { saveFormResponse } = await import("../server.db");
+      for (const [fieldName, fieldValue] of Object.entries(responses)) {
+        saveFormResponse(input.projectId, 1, fieldName, fieldValue);
+      }
       console.log("[generateArtifact] Persisted step 1 form responses");
     } catch (error) {
       console.error(
@@ -224,14 +197,10 @@ const generateArtifact = fromPromise<
       string
     >;
     try {
-      const { $saveFormResponses } = await import("../server");
-      await $saveFormResponses({
-        data: {
-          projectId: input.projectId,
-          stepNumber: 5,
-          responses,
-        },
-      });
+      const { saveFormResponse } = await import("../server.db");
+      for (const [fieldName, fieldValue] of Object.entries(responses)) {
+        saveFormResponse(input.projectId, 5, fieldName, fieldValue);
+      }
       console.log("[generateArtifact] Persisted step 5 form responses");
     } catch (error) {
       console.error(

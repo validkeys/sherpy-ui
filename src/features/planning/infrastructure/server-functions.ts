@@ -415,3 +415,87 @@ export const $getStepState = createServerFn({ method: "GET" })
       throw error;
     }
   });
+
+/**
+ * Server function: Save planning machine state (XState snapshot) to database
+ */
+export const $savePlanningState = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null) {
+      throw new Error("invalid input: expected object");
+    }
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId) {
+      throw new Error("projectId required");
+    }
+    if (typeof d.snapshot !== "object" || d.snapshot === null) {
+      throw new Error("snapshot required");
+    }
+    return {
+      projectId: d.projectId,
+      snapshot: d.snapshot,
+    };
+  })
+  .handler(async ({ data }: { data: { projectId: string; snapshot: any } }) => {
+    logServerAction("savePlanningState.start", {
+      projectId: data.projectId,
+    });
+
+    try {
+      await savePlanningState(
+        data.projectId,
+        data.snapshot as Record<string, unknown>,
+      );
+
+      logServerAction("savePlanningState.success", {
+        projectId: data.projectId,
+      });
+
+      return { success: true };
+    } catch (error) {
+      logServerAction("savePlanningState.error", {
+        projectId: data.projectId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      throw error;
+    }
+  });
+
+/**
+ * Server function: Load planning machine state (XState snapshot) from database
+ */
+export const $loadPlanningState = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null) {
+      throw new Error("invalid input: expected object");
+    }
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId) {
+      throw new Error("projectId required");
+    }
+    return {
+      projectId: d.projectId,
+    };
+  })
+  .handler(async ({ data }: { data: { projectId: string } }): Promise<any> => {
+    logServerAction("loadPlanningState.start", {
+      projectId: data.projectId,
+    });
+
+    try {
+      const snapshot = await loadPlanningState(data.projectId);
+
+      logServerAction("loadPlanningState.success", {
+        projectId: data.projectId,
+        hasSnapshot: !!snapshot,
+      });
+
+      return snapshot as any;
+    } catch (error) {
+      logServerAction("loadPlanningState.error", {
+        projectId: data.projectId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      throw error;
+    }
+  });
