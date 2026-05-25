@@ -783,14 +783,12 @@ export const planningMachine = setup({
                     event.answer,
                   );
 
-                  return [
-                    ...context.step3Answers,
-                    {
-                      question: event.question,
-                      value: event.answer,
-                      timestamp: new Date().toISOString(),
-                    },
-                  ];
+                  // Delegate answer creation to domain layer
+                  const newAnswer = createInterviewAnswer(
+                    event.question,
+                    event.answer,
+                  );
+                  return [...context.step3Answers, newAnswer];
                 },
                 step3CurrentQuestion: null,
                 step3CurrentOptions: null,
