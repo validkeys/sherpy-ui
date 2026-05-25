@@ -43,7 +43,11 @@ export function stepStateQueryKey(projectId: string) {
  * ```
  */
 export function useProjectProgress(projectId: string) {
-  const { data: stepState, ...rest } = useQuery({
+  const {
+    data: stepState,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: stepStateQueryKey(projectId),
     queryFn: () => $getStepState({ data: { projectId } }),
   });
@@ -52,7 +56,8 @@ export function useProjectProgress(projectId: string) {
   const progress = stepState ? getProjectProgress(stepState) : null;
 
   return {
-    ...rest,
+    isLoading,
+    error,
     data: progress,
     stepState, // Expose raw state for backward compatibility
   };
