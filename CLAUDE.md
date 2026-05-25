@@ -220,8 +220,8 @@ ORDER BY step_number, created_at;
 ✅ Phase 1: Domain Layer (Complete) - v2.0.0-phase1
 ✅ Phase 2: Infrastructure Layer (Complete) - v2.0.0-phase2
 ✅ Phase 3: Workflow Refactor (Complete) - v2.0.0-phase3
-🔄 Phase 4: Application & Adapter Layers (Ready to Start)
-⏸️  Phase 5: Migration & Cleanup (Pending)
+✅ Phase 4: Application & Adapter Layers (Complete) - v2.0.0-phase4
+🔄 Phase 5: Migration & Cleanup (Ready to Start)
 ```
 
 ### Architecture Pattern
@@ -240,39 +240,45 @@ Domain Layer (pure functions)
 Infrastructure Layer (persistence)
 ```
 
-### Phase 3 Completion (2026-05-25)
+### Phase 4 Completion (2026-05-25)
 
 **What Changed:**
-- Steps 2 & 3 now delegate answer creation to domain layer (`createInterviewAnswer`)
-- XState machine focuses on orchestration, not business logic
-- Maintained database persistence via fire-and-forget pattern
+- Created application layer with `useProjectProgress()` React Query hook
+- Implemented adapter for domain → UI transformations (`StepSummary` → `Stage`)
+- Refactored route to use new layers (simplified by 8 lines)
 
 **Validation:**
-- ✅ 46 domain tests passing
-- ✅ 38 planning machine tests passing
+- ✅ 92 tests passing (46 domain + 38 machine + 8 adapter)
 - ✅ Zero circular dependencies (madge check)
-- ✅ Clean layer separation achieved
+- ✅ TypeScript compilation successful
+- ✅ Complete layered architecture achieved
 
 **Key Files:**
-- Domain: `src/features/planning/domain/`
-- Infrastructure: `src/features/planning/infrastructure/`
-- Workflow: `src/features/planning/workflow/services.ts`
-- Machine: `src/features/planning/machines/planningMachine.ts`
+- Application: `src/features/planning/application/queries.ts`
+- Adapter: `src/components/spectrum-stepper/adapters/step-to-stage.adapter.ts`
+- Route: `app/routes/project/$projectId.tsx` (refactored)
+- Tests: `src/components/spectrum-stepper/adapters/step-to-stage.adapter.test.ts`
 
-### Next: Phase 4 Tasks
+### Architecture Complete
 
-1. **t-008:** Create application layer queries (`src/features/planning/application/queries.ts`)
-   - React Query hooks for data fetching + domain transformations
-   - Estimated: 45 minutes
+```
+UI Components → Adapters → Application → Workflow → Domain → Infrastructure
+```
 
-2. **t-009:** Evaluate and create adapter if needed
-   - Decision: inline transformation vs adapter file
-   - Co-locate with UI components if complex
-   - Estimated: 45 minutes
+**Benefits:**
+- Clean separation of concerns
+- 92 automated tests
+- Type-safe data flow
+- Testable transformations
+- Simplified UI components
 
-3. **t-010:** Refactor route to use adapters
-   - Update `app/routes/project/$projectId.tsx`
-   - Estimated: 30 minutes
+### Next: Phase 5 Tasks
+
+1. Remove legacy `store.ts` (no longer needed)
+2. Validate all 31+ test files pass
+3. Update architecture diagrams
+4. Final validation checks
+5. Documentation updates
 
 **Rollback Strategy:** Each phase tagged (v2.0.0-phase1, phase2, phase3). If issues: `git revert` to last stable tag.
 

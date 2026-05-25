@@ -7,11 +7,12 @@ import {
 } from "@tanstack/react-router";
 import { Header } from "@/components/header/Header";
 import { AppLayout } from "@/components/layouts";
+import { adaptStepsToStages } from "@/components/spectrum-stepper/adapters/step-to-stage.adapter";
 import {
   SpectrumStepper,
   type Stage,
 } from "@/components/spectrum-stepper/SpectrumStepper";
-import { useStepState } from "@/features/planning/hooks";
+import { useProjectProgress } from "@/features/planning/application/queries";
 import { useProject } from "@/features/projects/hooks";
 
 export const Route = createFileRoute("/project/$projectId")({
@@ -35,7 +36,7 @@ function ProjectComponent() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
   const { data: project } = useProject(projectId);
-  const { data: stepState } = useStepState(projectId);
+  const { data: progress } = useProjectProgress(projectId);
 
   const { pathname } = useLocation();
   const mode = pathname.endsWith("/review") ? "review" : "build";
@@ -50,18 +51,13 @@ function ProjectComponent() {
     });
   }
 
-  const stages: Stage[] = stepState
-    ? stepState.steps.map((s) => ({
-        id: String(s.stepNumber),
-        num: s.stepNumber,
-        name: s.name,
-        status: s.status,
-      }))
+  const stages: Stage[] = progress
+    ? adaptStepsToStages(progress.stepSummaries)
     : FALLBACK_STAGES;
 
-  const currentStep = stepState?.currentStep ?? 1;
+  const currentStep = progress?.currentStepNumber ?? 1;
   const currentStepName =
-    stepState?.steps.find((s) => s.stepNumber === currentStep)?.name ??
+    progress?.stepSummaries.find((s) => s.stepNumber === currentStep)?.name ??
     "Loading…";
 
   return (
