@@ -1,15 +1,15 @@
 import { defineEventHandler, readBody } from "vinxi/http";
+import { handleMockStreamingRequest } from "@/features/ai/mock-streaming";
 import { buildInterviewPrompt } from "@/features/ai/prompts";
 import { streamQuestion } from "@/features/ai/streaming";
-import { handleMockStreamingRequest } from "@/features/ai/mock-streaming";
+import { $getStepState } from "@/features/planning/infrastructure/server-functions";
 import { getStepName } from "@/features/planning/step-config";
-import { getStepState } from "@/features/planning/store";
 
 // Set to true to use mock streaming (demonstration mode without Bedrock)
 const USE_MOCK_STREAMING = false;
 
 export default defineEventHandler(async (event) => {
-  console.log('========== INTERVIEW API CALLED ==========');
+  console.log("========== INTERVIEW API CALLED ==========");
   // Parse and validate input
   const body = await readBody(event);
 
@@ -19,11 +19,11 @@ export default defineEventHandler(async (event) => {
 
   const { projectId, stepNumber, previousAnswers, projectContext } = body;
 
-  console.log('[interview] Received body:', {
+  console.log("[interview] Received body:", {
     projectId,
     stepNumber,
     previousAnswersLength: previousAnswers?.length,
-    projectContext: projectContext || 'UNDEFINED',
+    projectContext: projectContext || "UNDEFINED",
   });
 
   if (typeof projectId !== "string" || !projectId) {
@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
   // Fallback to server store if projectContext not provided
   if (!projectOverview && stepNumber > 1) {
     try {
-      const stepState = getStepState(projectId);
+      const stepState = await $getStepState({ data: { projectId } });
       const step1 = stepState.steps.find((s) => s.stepNumber === 1);
       // Step 1 should have 2 answers: 1) scratch/doc choice, 2) project overview
       if (step1?.answers && step1.answers.length >= 2) {
@@ -64,34 +64,42 @@ export default defineEventHandler(async (event) => {
 
   // Use mock streaming for demonstration (or when Bedrock unavailable)
   if (USE_MOCK_STREAMING) {
-    return handleMockStreamingRequest({ projectId, stepNumber, previousAnswers });
+    return handleMockStreamingRequest({
+      projectId,
+      stepNumber,
+      previousAnswers,
+    });
   }
 
   // Debug: log what we're sending to the AI
-  console.log('[interview API] Building prompt with:', {
+  console.log("[interview API] Building prompt with:", {
     stepName,
     stepNumber,
     previousAnswersCount: previousAnswers.length,
-    projectOverview: projectOverview || 'NO PROJECT CONTEXT',
+    projectOverview: projectOverview || "NO PROJECT CONTEXT",
   });
 
   // Build prompt and stream response from Bedrock
-  const messages = buildInterviewPrompt(stepName, stepNumber, previousAnswers, projectOverview);
-
-  console.log('[interview API] First message preview:', messages[0]?.content?.substring(0, 200));
-  const stream = await streamQuestion(
-    messages,
+  const messages = buildInterviewPrompt(
+    stepName,
     stepNumber,
-    {
-      name: "interview-streaming-question",
-      sessionId: projectId,
-      metadata: {
-        stepNumber,
-        stepName,
-        previousAnswersCount: previousAnswers.length,
-      },
-    }
+    previousAnswers,
+    projectOverview,
   );
+
+  console.log(
+    "[interview API] First message preview:",
+    messages[0]?.content?.substring(0, 200),
+  );
+  const stream = await streamQuestion(messages, stepNumber, {
+    name: "interview-streaming-question",
+    sessionId: projectId,
+    metadata: {
+      stepNumber,
+      stepName,
+      previousAnswersCount: previousAnswers.length,
+    },
+  });
 
   // Return streaming response
   return new Response(stream, {

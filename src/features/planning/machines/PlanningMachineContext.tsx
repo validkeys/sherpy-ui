@@ -11,7 +11,10 @@ import React, {
   useEffect,
 } from "react";
 import { createActor, type SnapshotFrom } from "xstate";
-import { $loadPlanningState, $savePlanningState } from "../server";
+import {
+  $loadPlanningState,
+  $savePlanningState,
+} from "../infrastructure/server-functions";
 import { planningMachine } from "./planningMachine";
 import type { PlanningInput } from "./types";
 

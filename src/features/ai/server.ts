@@ -13,13 +13,13 @@ import {
 } from "@/lib/langfuse-helpers";
 import { getArtifact, upsertArtifact } from "../artifacts/store";
 import type { Artifact } from "../artifacts/types";
+import { $getStepState } from "../planning/infrastructure/server-functions";
 import {
   getStepArtifactKey,
   getStepName,
   getStepNumberFromArtifactKey,
   getStepResponseSchema,
 } from "../planning/step-config";
-import { getStepState } from "../planning/store";
 import { isStructuredOutputEnabled } from "./feature-flags";
 import {
   buildArtifactPrompt,
@@ -149,7 +149,9 @@ export const $generateQuestion = createServerFn({ method: "POST" })
     let projectOverview: string | undefined;
     if (data.stepNumber > 1) {
       try {
-        const stepState = getStepState(data.projectId);
+        const stepState = await $getStepState({
+          data: { projectId: data.projectId },
+        });
         const step1 = stepState.steps.find((s) => s.stepNumber === 1);
         // Step 1 should have 2 answers: 1) scratch/doc choice, 2) project overview
         if (step1?.answers && step1.answers.length >= 2) {

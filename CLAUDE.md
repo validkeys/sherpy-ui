@@ -94,6 +94,196 @@ mcp__playwright__browser_take_screenshot({
 
 ---
 
+## ✅ BUG-020: FIXED - Empty Business Requirements Artifact (2026-05-22)
+
+**Problem**: Business Requirements artifact (Step 2) was generated with generic placeholder content instead of actual interview answers.
+
+**Root Cause**: Data mapping mismatch between XState machine and `generateArtifact` actor. Machine passed `answers: context.step2Answers`, but actor expected `step2Answers`.
+
+**Solution**: Updated `planningMachine.ts` line 709 to use correct key name `step2Answers` instead of `answers`.
+
+**Fix Verification (2026-05-22)**:
+- ✅ Created test project "bug-020-test"
+- ✅ Answered all 10 Step 2 questions with unique, verifiable content
+- ✅ Artifact generated successfully (2.2 KB vs previous 0.7 KB)
+- ✅ All interview answers reflected in artifact content
+- ✅ Verified specific keywords: "Stripe", "QuickBooks", "GDPR", "PCI-DSS", "B2B SaaS", "recurring subscriptions", "95% error reduction"
+
+**Result**: Artifact now contains rich, interview-specific business requirements instead of generic placeholders.
+
+**Files Changed**:
+- `src/features/planning/machines/planningMachine.ts` (line 709)
+
+**Documentation**:
+- `.tmp-docs/bug-020-empty-business-requirements-artifact.md` - Bug report
+- `.tmp-docs/bug-020-test-plan.md` - Test plan
+- `.tmp-docs/bug-020-fix-verification.md` - Complete verification results
+- `.tmp-docs/screenshots/bug-020-*.png` - Before/after screenshots
+
+**Status**: ✅ FIXED and VERIFIED - Ready for production
+
+---
+
+## ✅ BUG-019: FIXED - Interview Answers Not Persisted to Database (2026-05-21)
+
+**Problem**: Interview Q&A from Steps 2 & 3 were not being saved to `interview_answers` database table, despite having complete infrastructure.
+
+**Root Cause**: XState machine updated context but never called database persistence functions.
+
+**Solution**: Added event-driven persistence to XState machine using fire-and-forget pattern.
+
+**Implementation**:
+- Created `$saveInterviewAnswer` server function in `src/features/planning/server.ts`
+- Added `persistInterviewAnswerToDatabase()` helper to planning machine
+- Updated Step 2 and Step 3 answer submission handlers to call persistence after context update
+- Fire-and-forget pattern: async, non-blocking, errors logged but don't interrupt workflow
+
+**How It Works**:
+1. User submits answer → XState machine receives `SUBMIT_ANSWER` event
+2. Machine updates context synchronously (immediate UI update)
+3. Machine calls persistence helper asynchronously (fire-and-forget)
+4. Helper imports server function dynamically (prevents client bundling - BUG-017)
+5. Server function saves to database via `saveInterviewAnswer()`
+6. Success/failure logged for observability
+
+**Fix Verification (2026-05-21)**:
+- ✅ Answered 2 questions in Step 2 (Business Requirements)
+- ✅ Both answers persisted to database (confirmed via SQL query)
+- ✅ Console logs show successful persistence
+- ✅ Zero UI impact (async, non-blocking)
+- ✅ Workflow continues normally even if persistence fails
+
+**Files Changed**:
+- `src/features/planning/server.ts` (+37 lines) - Added server function
+- `src/features/planning/machines/planningMachine.ts` (+63 lines) - Added persistence
+
+**Verification Query**:
+```sql
+SELECT step_number, question, answer, created_at 
+FROM interview_answers 
+WHERE project_id = '<project-id>' 
+ORDER BY step_number, created_at;
+```
+
+**Documentation**:
+- `.tmp-docs/bug-019-interview-answers-not-persisted.md` - Bug report
+- `.tmp-docs/plans/bug-019-implementation-plan.md` - Implementation plan  
+- `.tmp-docs/bug-019-verification-complete.md` - Verification results
+
+**Status**: ✅ FIXED and VERIFIED - Ready for production
+
+---
+
+## ✅ BUG-018: VERIFIED FIXED - SSR Hydration Mismatch (2026-05-21)
+
+**Problem**: Page refresh during workflow caused React hydration mismatch, reverting UI to Step 1 even though state was at Step 3.
+
+**Root Cause**: Server-side render with default state (Step 1) vs client hydration with restored state (Step 3) from localStorage.
+
+**Solution**: Disabled SSR for `/project/$projectId/build` route.
+
+**Rationale**: SSR provides no benefit for authenticated, stateful workflows that require client-side state restoration. Setting `ssr: false` prevents hydration mismatch and simplifies architecture.
+
+**Fix Verification (2026-05-21)**:
+- ✅ Tested with Playwright MCP at Step 2 (2 questions answered)
+- ✅ Page refresh preserved workflow state (stayed at Step 2)
+- ✅ All question answers preserved in localStorage
+- ✅ No workflow state reversion (original bug is FIXED)
+- ⚠️ Unrelated theme toggle hydration warning detected (cosmetic, not blocking)
+
+**Result**: 
+- ✅ Page refresh correctly maintains current step
+- ✅ No workflow hydration errors
+- ✅ Simpler code (1 line change)
+- ⚠️ Slightly longer first load (200-400ms, acceptable for authenticated flow)
+
+**Files Changed**: `app/routes/project/$projectId.build.tsx` (added `ssr: false`)
+
+**Documentation**: 
+- `.tmp-docs/bug-018-implementation-summary.md` - Implementation analysis
+- `.tmp-docs/bug-018-verification-complete.md` - Verification results
+- Screenshots: `.tmp-docs/screenshots/bug-018-*.png`
+
+**Testing**: Page refresh now works correctly at any step. No special workarounds needed in E2E tests.
+
+---
+
+## 🏗️ STATE REFACTOR: Layered Architecture Migration (2026-05-25)
+
+**Branch:** `feature/state-refactor-phase-1`  
+**Plan:** `docs/planning/002-state-refactor/plan.yaml`  
+**Status Document:** `.tmp-docs/state-refactor-status.md`
+
+### Progress Overview
+
+```
+✅ Phase 1: Domain Layer (Complete) - v2.0.0-phase1
+✅ Phase 2: Infrastructure Layer (Complete) - v2.0.0-phase2
+✅ Phase 3: Workflow Refactor (Complete) - v2.0.0-phase3
+✅ Phase 4: Application & Adapter Layers (Complete) - v2.0.0-phase4
+🔄 Phase 5: Migration & Cleanup (Ready to Start)
+```
+
+### Architecture Pattern
+
+```
+UI Components
+    ↓
+Adapters (optional, if complex mapping)
+    ↓
+Application Layer (React Query hooks)
+    ↓
+Workflow Layer (XState machine)
+    ↓
+Domain Layer (pure functions)
+    ↓
+Infrastructure Layer (persistence)
+```
+
+### Phase 4 Completion (2026-05-25)
+
+**What Changed:**
+- Created application layer with `useProjectProgress()` React Query hook
+- Implemented adapter for domain → UI transformations (`StepSummary` → `Stage`)
+- Refactored route to use new layers (simplified by 8 lines)
+
+**Validation:**
+- ✅ 92 tests passing (46 domain + 38 machine + 8 adapter)
+- ✅ Zero circular dependencies (madge check)
+- ✅ TypeScript compilation successful
+- ✅ Complete layered architecture achieved
+
+**Key Files:**
+- Application: `src/features/planning/application/queries.ts`
+- Adapter: `src/components/spectrum-stepper/adapters/step-to-stage.adapter.ts`
+- Route: `app/routes/project/$projectId.tsx` (refactored)
+- Tests: `src/components/spectrum-stepper/adapters/step-to-stage.adapter.test.ts`
+
+### Architecture Complete
+
+```
+UI Components → Adapters → Application → Workflow → Domain → Infrastructure
+```
+
+**Benefits:**
+- Clean separation of concerns
+- 92 automated tests
+- Type-safe data flow
+- Testable transformations
+- Simplified UI components
+
+### Next: Phase 5 Tasks
+
+1. Remove legacy `store.ts` (no longer needed)
+2. Validate all 31+ test files pass
+3. Update architecture diagrams
+4. Final validation checks
+5. Documentation updates
+
+**Rollback Strategy:** Each phase tagged (v2.0.0-phase1, phase2, phase3). If issues: `git revert` to last stable tag.
+
+---
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
