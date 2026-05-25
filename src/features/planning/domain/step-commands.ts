@@ -152,3 +152,24 @@ export function skipStep(
     ),
   };
 }
+
+/**
+ * Create an interview answer object with timestamp.
+ *
+ * Pure factory function for creating interview answer records.
+ * Used by XState machine to construct answers in a consistent format.
+ *
+ * @param question - The question being answered
+ * @param answer - The user's answer
+ * @returns Interview answer object with timestamp
+ */
+export function createInterviewAnswer(
+  question: string,
+  answer: string,
+): { question: string; value: string; timestamp: string } {
+  return {
+    question,
+    value: answer,
+    timestamp: new Date().toISOString(),
+  };
+}

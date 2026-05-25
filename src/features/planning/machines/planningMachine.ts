@@ -5,6 +5,7 @@
  */
 
 import { assign, fromPromise, setup } from "xstate";
+import { createInterviewAnswer } from "../domain/step-commands";
 import type {
   Artifact,
   PlanningContext,
@@ -671,14 +672,12 @@ export const planningMachine = setup({
                     event.answer,
                   );
 
-                  return [
-                    ...context.step2Answers,
-                    {
-                      question: event.question,
-                      value: event.answer,
-                      timestamp: new Date().toISOString(),
-                    },
-                  ];
+                  // Delegate answer creation to domain layer
+                  const newAnswer = createInterviewAnswer(
+                    event.question,
+                    event.answer,
+                  );
+                  return [...context.step2Answers, newAnswer];
                 },
                 step2CurrentQuestion: null,
                 step2CurrentOptions: null,
@@ -706,7 +705,7 @@ export const planningMachine = setup({
               stepNumber: 2,
               accumulatedContext: {
                 responses: context.step1Responses,
-                answers: context.step2Answers,
+                step2Answers: context.step2Answers,
                 projectOverview: buildProjectContext(context),
               },
             }),
