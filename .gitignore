@@ -34,3 +34,6 @@ coverage/
 .tmp-docs/
 .playwright-mcp/
 test-results/
+
+# Database files
+*.db
