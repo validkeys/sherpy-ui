@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CodePreview } from "@/components/doc-browser/CodePreview";
 import { type DocGroup, DocList } from "@/components/doc-browser/DocList";
@@ -19,6 +19,7 @@ const LEFT_PANEL_CLASS =
   "flex items-center justify-center text-fg-4 font-mono text-[12px] bg-sunken border-r border-border-1";
 
 export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
+  const queryClient = useQueryClient();
   const artifactsQuery = useArtifacts(projectId);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -65,8 +66,8 @@ export function ArtifactBrowser({ projectId }: ArtifactBrowserProps) {
     },
     onSuccess: () => {
       setRefineMode(false);
-      // Invalidate the artifact query to refetch updated content
-      void artifactsQuery.refetch();
+      // Invalidate both artifacts list and individual artifact queries
+      queryClient.invalidateQueries({ queryKey: ["artifacts", projectId] });
     },
   });
 
