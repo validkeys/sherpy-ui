@@ -10,19 +10,19 @@ export const Route = createFileRoute("/dashboard")({
 function DashboardComponent() {
   const navigate = useNavigate();
 
-  const handleProjectClick = useCallback(
-    (project: { id: string }) => {
-      navigate({
-        to: "/project/$projectId/build",
-        params: { projectId: project.id },
-      });
-    },
-    [navigate],
-  );
-
   return (
     <AppLayout>
-      <ProjectList onProjectClick={handleProjectClick} />
+      <ProjectList
+        onProjectClick={useCallback(
+          (project: { id: string }) => {
+            navigate({
+              to: "/project/$projectId/build",
+              params: { projectId: project.id },
+            });
+          },
+          [navigate],
+        )}
+      />
     </AppLayout>
   );
 }

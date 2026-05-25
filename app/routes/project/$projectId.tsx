@@ -25,13 +25,6 @@ export const Route = createFileRoute("/project/$projectId")({
   component: ProjectComponent,
 });
 
-const FALLBACK_STAGES: Stage[] = Array.from({ length: 10 }, (_, i) => ({
-  id: String(i + 1),
-  num: i + 1,
-  name: `Step ${i + 1}`,
-  status: i === 0 ? "now" : "pending",
-}));
-
 function ProjectComponent() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
@@ -53,7 +46,12 @@ function ProjectComponent() {
 
   const stages: Stage[] = progress
     ? adaptStepsToStages(progress.stepSummaries)
-    : FALLBACK_STAGES;
+    : Array.from({ length: 10 }, (_, i) => ({
+        id: String(i + 1),
+        num: i + 1,
+        name: `Step ${i + 1}`,
+        status: i === 0 ? "now" : "pending",
+      }));
 
   const currentStep = progress?.currentStepNumber ?? 1;
   const currentStepName =
