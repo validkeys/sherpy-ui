@@ -52,7 +52,7 @@ export function WorkflowChat({
       </div>
 
       {/* Right Column: Chat (2/3) */}
-      <div className="w-2/3 flex flex-col">
+      <div className="w-2/3 flex flex-col pt-6">
         <div className="flex-1 min-h-0 relative">
           <div className="absolute inset-0 overflow-y-auto pb-32">
             <div className="flex flex-col gap-7 py-8">
