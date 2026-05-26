@@ -93,21 +93,10 @@ export function ArtifactDialog({
           <div className="flex items-start gap-3 px-[22px] py-[14px] border-b border-border-1 flex-shrink-0">
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <span className="font-mono text-[11px] text-fg-3 tracking-[0.02em]">
-                {`artifacts / ${artifact.name}`}
+                {`artifacts / ${artifact.stageName} / ${artifact.name}`}
               </span>
               <span className="flex items-center gap-[10px] text-[16px] font-medium tracking-[-0.01em] text-fg-1">
                 {artifact.stageName}
-              </span>
-              <span className="flex items-center gap-[6px] font-mono text-[11px] text-fg-3">
-                <span
-                  className="w-[6px] h-[6px] rounded-full flex-shrink-0 bg-[--stage-color]"
-                  style={
-                    {
-                      "--stage-color": "var(--bot-2)",
-                    } as React.CSSProperties
-                  }
-                />
-                Stage {artifact.stage}
               </span>
             </div>
           </div>
