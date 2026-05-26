@@ -80,4 +80,35 @@ describe("AnswerCard", () => {
       summary: "Planning assistant",
     });
   });
+
+  it("supports uncontrolled form entry and blocks incomplete submissions", async () => {
+    const user = userEvent.setup();
+    const onSubmitForm = vi.fn();
+
+    render(
+      <AnswerCard
+        formFields={[
+          { id: "projectName", label: "Project name", type: "text" },
+          { id: "summary", label: "Summary", type: "textarea" },
+        ]}
+        onSubmitForm={onSubmitForm}
+      />,
+    );
+
+    const submitButton = screen.getByRole("button", { name: "Submit answer" });
+    expect(submitButton).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Project name"), "Sherpy");
+    expect(submitButton).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Summary"), "Planning assistant");
+    expect(submitButton).toBeEnabled();
+
+    await user.click(submitButton);
+
+    expect(onSubmitForm).toHaveBeenCalledWith({
+      projectName: "Sherpy",
+      summary: "Planning assistant",
+    });
+  });
 });

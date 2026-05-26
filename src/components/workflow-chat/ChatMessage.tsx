@@ -31,6 +31,8 @@ interface ChatMessageProps {
   canOpenArtifact?: (artifactId: string) => boolean;
   onSelectOption?: (question: string, option: string, index: number) => void;
   onSubmitForm?: (question: string, values: Record<string, string>) => void;
+  disabled?: boolean;
+  isSubmitting?: boolean;
 }
 
 export function ChatMessage({
@@ -39,6 +41,8 @@ export function ChatMessage({
   canOpenArtifact,
   onSelectOption,
   onSubmitForm,
+  disabled = false,
+  isSubmitting = false,
 }: ChatMessageProps) {
   if (message.type === "divider") {
     return (
@@ -99,6 +103,12 @@ export function ChatMessage({
             <AnswerCard
               options={message.options}
               formFields={message.formFields}
+              disabled={
+                disabled ||
+                Boolean(message.options && !onSelectOption) ||
+                Boolean(message.formFields && !onSubmitForm)
+              }
+              isSubmitting={isSubmitting}
               onSelectOption={(option, index) =>
                 onSelectOption?.(message.question, option, index)
               }

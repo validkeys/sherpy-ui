@@ -24,7 +24,7 @@
  * - Hover states on options
  */
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type FormValues = Record<string, string>;
@@ -58,13 +58,24 @@ export function AnswerCard({
   onSubmitForm,
 }: AnswerCardProps) {
   const optionGroupName = useId();
-  const values = formValues ?? {};
+  const [internalFormValues, setInternalFormValues] = useState<FormValues>({});
+  const values = formValues ?? internalFormValues;
+  const fields = formFields ?? [];
+  const canSubmitForm =
+    fields.length > 0 &&
+    fields.every((field) => values[field.id]?.trim()) &&
+    !disabled &&
+    !isSubmitting;
 
   const handleFormValueChange = (fieldId: string, value: string) => {
+    if (!formValues) {
+      setInternalFormValues((current) => ({ ...current, [fieldId]: value }));
+    }
     onFormValueChange?.(fieldId, value);
   };
 
   const handleFormSubmit = () => {
+    if (!canSubmitForm) return;
     onSubmitForm?.(values);
   };
 
@@ -149,7 +160,7 @@ export function AnswerCard({
           <Button
             size="sm"
             className="self-end"
-            disabled={disabled || isSubmitting}
+            disabled={!canSubmitForm}
             onClick={handleFormSubmit}
             aria-label={isSubmitting ? "Submitting answer" : "Submit answer"}
           >

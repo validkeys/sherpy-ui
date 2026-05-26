@@ -73,6 +73,8 @@ export function WorkflowChat({
     setComposerValue("");
   };
 
+  const isComposerDisabled = disabled || !onSubmitMessage;
+
   return (
     <div
       className="flex h-full min-h-0 flex-col bg-page lg:flex-row"
@@ -112,6 +114,8 @@ export function WorkflowChat({
                   canOpenArtifact={canOpenArtifact}
                   onSelectOption={onSelectOption}
                   onSubmitForm={onSubmitForm}
+                  disabled={disabled}
+                  isSubmitting={isSubmitting}
                 />
               ))}
             </div>
@@ -120,7 +124,7 @@ export function WorkflowChat({
             value={composerValue}
             onChange={setComposerValue}
             onSubmit={handleSubmitMessage}
-            disabled={disabled}
+            disabled={isComposerDisabled}
             isSubmitting={isSubmitting}
           />
         </div>

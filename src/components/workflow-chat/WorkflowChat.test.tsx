@@ -17,6 +17,29 @@ const messages: Message[] = [
 ];
 
 describe("WorkflowChat", () => {
+  it("fails closed when interactive handlers are not wired", () => {
+    render(
+      <WorkflowChat
+        messages={[
+          {
+            id: "question-message",
+            role: "assistant",
+            type: "question",
+            timestamp: "now",
+            question: "Pick one",
+            options: ["First", "Second"],
+          },
+        ]}
+        artifacts={[]}
+      />,
+    );
+
+    expect(screen.getByLabelText("Message")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "First" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Second" })).toBeDisabled();
+  });
+
   it("defines a stacked mobile layout and desktop two-column layout", () => {
     const artifacts: Artifact[] = [];
 
