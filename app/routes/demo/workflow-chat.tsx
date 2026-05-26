@@ -442,6 +442,7 @@ function WorkflowChatDemo() {
           stageName="Implementation Planner"
           mode="build"
           artifactCount={SAMPLE_ARTIFACTS.length}
+          onModeChange={() => {}}
         />
 
         {/* Spectrum Stepper */}

@@ -719,6 +719,7 @@ const SAMPLE_ARTIFACTS = [
     name: "business-requirements.yaml",
     stage: 2,
     stageName: "Business Requirements",
+    status: "created" as const,
     content: SAMPLE_MESSAGES.find((m) => m.id === "msg-12")
       ?.artifactContent as string,
     createdAt: "1 hour ago",
@@ -728,6 +729,7 @@ const SAMPLE_ARTIFACTS = [
     name: "technical-requirements.yaml",
     stage: 3,
     stageName: "Technical Requirements",
+    status: "created" as const,
     content: SAMPLE_MESSAGES.find((m) => m.id === "msg-18")
       ?.artifactContent as string,
     createdAt: "55 min ago",
@@ -737,6 +739,7 @@ const SAMPLE_ARTIFACTS = [
     name: "qa-test-plan.yaml",
     stage: 4,
     stageName: "QA Test Plan",
+    status: "created" as const,
     content: SAMPLE_MESSAGES.find((m) => m.id === "msg-20")
       ?.artifactContent as string,
     createdAt: "50 min ago",
@@ -746,6 +749,7 @@ const SAMPLE_ARTIFACTS = [
     name: "developer-summary.yaml",
     stage: 6,
     stageName: "Developer Summary",
+    status: "created" as const,
     content: SAMPLE_MESSAGES.find((m) => m.id === "msg-27")
       ?.artifactContent as string,
     createdAt: "35 min ago",
@@ -755,6 +759,7 @@ const SAMPLE_ARTIFACTS = [
     name: "architecture-decisions.yaml",
     stage: 7,
     stageName: "Architecture Decisions",
+    status: "created" as const,
     content: SAMPLE_MESSAGES.find((m) => m.id === "msg-29")
       ?.artifactContent as string,
     createdAt: "30 min ago",
@@ -764,6 +769,7 @@ const SAMPLE_ARTIFACTS = [
     name: "delivery-timeline.yaml",
     stage: 8,
     stageName: "Delivery Timeline",
+    status: "created" as const,
     content: SAMPLE_MESSAGES.find((m) => m.id === "msg-31")
       ?.artifactContent as string,
     createdAt: "25 min ago",
@@ -773,6 +779,7 @@ const SAMPLE_ARTIFACTS = [
     name: "executive-summary.yaml",
     stage: 9,
     stageName: "Executive Summary",
+    status: "created" as const,
     content: SAMPLE_MESSAGES.find((m) => m.id === "msg-33")
       ?.artifactContent as string,
     createdAt: "20 min ago",
