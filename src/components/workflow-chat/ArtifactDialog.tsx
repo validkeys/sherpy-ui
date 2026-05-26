@@ -129,6 +129,9 @@ export function ArtifactDialog({
             >
               <Copy size={13} strokeWidth={1.5} />
             </button>
+            <span className="sr-only" aria-live="polite">
+              {copied ? "Artifact content copied to clipboard." : ""}
+            </span>
             <button
               type="button"
               onClick={handleDownload}

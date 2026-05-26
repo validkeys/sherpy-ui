@@ -1,8 +1,8 @@
 # WorkflowChat Integration - Executive Summary
 
 **Date:** 2026-05-26  
-**Status:** Plan finalized, awaiting go-ahead  
-**Plan Document:** `.tmp-docs/plans/workflow-chat-integration-plan.md`
+**Status:** Plan hardened for AI execution, awaiting go-ahead
+**Plan Document:** `docs/planning/003-workflow-chat-integration/plan.md`
 
 ---
 
@@ -28,18 +28,28 @@ Replacing the existing planning workflow UI with a new chat-based interface (`Wo
 ### Core Principle
 **One piece at a time, manual test, user sign-off before next phase.**
 
-### 10 Phases
+### AI Execution Rules
 
+- Read current code before editing; do not trust stale plan assumptions.
+- Add or update focused tests before behavior changes.
+- Use Playwright MCP for React form/browser validation.
+- Never seed workflow state with partial localStorage context.
+- Do not delete files/folders or run destructive rollback commands without express permission.
+- Each phase ends with evidence: tests, screenshots where applicable, and unresolved risks.
+
+### 11 Phases
+
+0. **Component Contract Hardening** - Make WorkflowChat safe to integrate
 1. **Data Layer (Adapters)** - Transform XState context → WorkflowChat props
-2. **Hook Layer** - React hook that wraps adapters
-3. **Parallel Rendering** - Show both UIs side-by-side (hardcoded flag)
-4. **Step 2 Wiring** - Wire ChatComposer to machine (interview Q&A)
-5. **Step 3 Wiring** - Same as Step 2 for Tech Requirements
-6. **Form Wiring (Step 1)** - Multi-field forms via ChatComposer
-7. **Automated Steps (4,6,8,9)** - Loading + artifact generation
-8. **Artifact-Only (Step 7)** - Just show artifact, no questions
+2. **Hook Layer (XState selectors)** - React hook that wraps adapters
+3. **Flagged Rendering** - Render old or new UI via hardcoded flag
+4. **Step 2 Wiring** - Wire ChatComposer to machine (Business Requirements)
+5. **Step 3 Wiring** - Wire ChatComposer to machine (Technical Requirements)
+6. **Form Wiring (Steps 1 & 5)** - Multi-field forms via AnswerCard
+7. **Automated Steps (4,6,8,9,10)** - Loading + artifact generation
+8. **Artifact-Only (Step 7)** - Review artifact, no questions
 9. **Full Workflow Test** - End-to-end validation (all 10 steps)
-10. **Cleanup & Cutover** - Remove old UI, make WorkflowChat default
+10. **Cleanup & Cutover** - Make WorkflowChat default, delete only with approval
 
 ---
 
@@ -55,12 +65,13 @@ Each phase uses Playwright MCP tools to:
 
 **Example:**
 ```typescript
-// Jog to Step 2
-const project = jogProjectToStep(2);
+// Seed Step 2 first:
+// pnpm seed:step2
+// Then run the printed complete localStorage command.
 
 // Navigate
-mcp__playwright__browser_navigate({ 
-  url: `http://localhost:5180/project/${project.id}/build` 
+mcp__playwright__browser_navigate({
+  url: "http://localhost:5180/project/<project-id>/build"
 });
 
 // Answer question
@@ -78,24 +89,13 @@ mcp__playwright__browser_take_screenshot({
 ```
 
 ### Seed Helpers
-Use existing `createProject()` and `updateCurrentStep()` from project store:
+Use the existing seed CLI/API and complete XState snapshots:
 
-```typescript
-import { createProject, updateCurrentStep } from "@/features/projects/store";
-
-function jogProjectToStep(stepNumber: number) {
-  const project = createProject({
-    name: `Test - Step ${stepNumber}`,
-    entryPath: "scratch"
-  });
-  
-  if (stepNumber > 1) {
-    updateCurrentStep(project.id, stepNumber);
-  }
-  
-  return project;
-}
+```bash
+pnpm seed:step2
 ```
+
+The script prints the project URL and complete `localStorage.setItem(...)` command. Do not create browser-side helpers that import database-backed project store code, and do not write partial context objects to localStorage. If the script prints `npm run dev`, treat that as stale output and use `pnpm dev`.
 
 ---
 
@@ -122,8 +122,8 @@ return (
 );
 ```
 
-**Phase 3-9:** Toggle flag, reload, test, compare  
-**Phase 10:** Set to `true`, delete old components, remove flag
+**Phase 3-9:** Toggle flag, reload, test old/new against the same seeded state
+**Phase 10:** Set default to new UI, request approval for any file/folder deletion, then remove flag
 
 ---
 
@@ -135,7 +135,7 @@ XState Context
     ↓
 Adapters (machine-to-messages, machine-to-artifacts)
     ↓
-Hook (useWorkflowChatData)
+Hook (useWorkflowChatData using XState selectors)
     ↓
 WorkflowChat Component
     ↓
@@ -152,14 +152,13 @@ XState Context (updates)
 - `src/features/planning/adapters/machine-to-messages.adapter.ts`
 - `src/features/planning/adapters/machine-to-artifacts.adapter.ts`
 - `src/features/planning/hooks/useWorkflowChatData.ts`
-- `src/features/planning/testing/seed-helpers.ts`
 
 **Modified:**
 - `app/routes/project/$projectId.build.tsx` (add flag + WorkflowChat)
 - `src/components/workflow-chat/WorkflowChat.tsx` (add onSubmit handler)
 - `src/components/workflow-chat/ChatComposer.tsx` (wire to machine)
 
-**Removed (Phase 10):**
+**Deletion candidates (Phase 10, only after express permission):**
 - `src/features/planning/components/StepContainer.tsx`
 - `src/features/planning/components/InterviewStep.tsx`
 - `src/features/planning/components/FormStep.tsx`
@@ -190,18 +189,19 @@ XState Context (updates)
 
 | Phase | Effort | Type |
 |-------|--------|------|
+| 0. Contract Hardening | 2-3h | Code + Tests |
 | 1. Data Layer | 2-3h | Code + Tests |
 | 2. Hook Layer | 1h | Code + Tests |
-| 3. Parallel Render | 1h | Code + Manual Test |
+| 3. Flagged Render | 1h | Code + Manual Test |
 | 4. Step 2 Wiring | 2-3h | Code + Manual Test |
 | 5. Step 3 Wiring | 1h | Code + Manual Test |
-| 6. Form Wiring | 2-3h | Code + Manual Test |
-| 7. Automated Steps | 2h | Code + Manual Test |
+| 6. Form Wiring | 3-4h | Code + Manual Test |
+| 7. Automated Steps | 2-3h | Code + Manual Test |
 | 8. Artifact Step | 30m | Code + Manual Test |
 | 9. Full Workflow | 1-2h | Manual Test Only |
 | 10. Cleanup | 1-2h | Cleanup + Tests |
 
-**Total:** ~15-20 hours (includes testing time)
+**Total:** ~19-27 hours (includes testing time)
 
 ---
 
@@ -211,51 +211,51 @@ Each phase tagged: `v2.1.0-phase1`, `v2.1.0-phase2`, etc.
 
 If issues arise:
 ```bash
-# Revert last commit
-git revert HEAD~1
-
-# Or reset to previous phase
-git reset --hard v2.1.0-phase2
+git revert <commit-sha>
 ```
+
+Do not use `git reset --hard`. Do not delete files or folders during rollback without express permission.
 
 ---
 
 ## Key Design Decisions
 
 1. **Adapters over inline transformations** - Testable, reusable, clear separation
-2. **Interview steps first (2 & 3)** - Simplest pattern, builds confidence
-3. **Forms later (Step 1)** - More complex, benefit from learnings
-4. **Hardcoded flag over env var** - Simpler, easier to toggle during dev
-5. **Keep DebugPanel during integration** - Essential for validation
-6. **Playwright MCP over agent-browser** - Proven to work with React forms (per CLAUDE.md)
-7. **Side-by-side comparison** - Visual validation, catch adapter bugs early
+2. **Component contracts first** - Prevent adapter work from relying on prototype-only APIs
+3. **Interview steps first (2 & 3)** - Simplest pattern, builds confidence
+4. **Forms later (Steps 1 & 5)** - More complex, benefit from learnings
+5. **Hardcoded flag over env var** - Simpler, easier to toggle during dev
+6. **Keep DebugPanel during integration** - Essential for validation
+7. **Playwright MCP over agent-browser** - Proven to work with React forms
+8. **Seed with complete snapshots only** - Avoid invalid XState restoration
 
 ---
 
 ## What's Next
 
 1. ✅ Plan finalized
-2. ⏳ **Awaiting user go-ahead to start Phase 1**
+2. ⏳ **Awaiting user go-ahead to start Phase 0**
 3. ⏳ Create branch `feature/workflow-chat-integration`
-4. ⏳ Begin Phase 1: Adapter implementation + tests
+4. ⏳ Begin Phase 0: Component Contract Hardening
 
 ---
 
 ## Questions Resolved
 
-✅ Seed helpers - Use existing `createProject()` and `updateCurrentStep()`  
+✅ Seed helpers - Use existing `pnpm seed:stepN` / `/api/dev/seed` with complete snapshots
 ✅ Feature flag - Hardcoded `const USE_NEW_UI = false;`  
 ✅ Dev server - Already on `:5180`  
 ✅ Artifact modal - Use WorkflowChat's `ArtifactDialog`  
 ✅ Layout scope - Keep app layout, only replace content body  
 ✅ Navigation - Keep existing during integration, evaluate in Phase 10  
+✅ Cleanup - Deletion requires express permission
 
 ---
 
 ## Contact Points
 
-- **Plan Document:** `.tmp-docs/plans/workflow-chat-integration-plan.md` (detailed breakdown)
-- **Current Branch:** `feature/design-consistency` (clean state)
+- **Plan Document:** `docs/planning/003-workflow-chat-integration/plan.md` (detailed breakdown)
+- **Current Branch:** `feature/design-consistency`
 - **New Branch:** `feature/workflow-chat-integration` (to be created)
 - **WorkflowChat Location:** `src/components/workflow-chat/`
 

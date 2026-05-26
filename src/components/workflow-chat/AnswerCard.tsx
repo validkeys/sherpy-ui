@@ -24,7 +24,7 @@
  * - Hover states on options
  */
 
-import { useState } from "react";
+import { useId } from "react";
 import { Button } from "@/components/ui/button";
 
 type FormValues = Record<string, string>;
@@ -57,19 +57,11 @@ export function AnswerCard({
   onSelectOption,
   onSubmitForm,
 }: AnswerCardProps) {
-  const [localFormValues, setLocalFormValues] = useState<FormValues>({});
-  const values = formValues ?? localFormValues;
+  const optionGroupName = useId();
+  const values = formValues ?? {};
 
   const handleFormValueChange = (fieldId: string, value: string) => {
-    if (onFormValueChange) {
-      onFormValueChange(fieldId, value);
-      return;
-    }
-
-    setLocalFormValues((currentValues) => ({
-      ...currentValues,
-      [fieldId]: value,
-    }));
+    onFormValueChange?.(fieldId, value);
   };
 
   const handleFormSubmit = () => {
@@ -83,25 +75,38 @@ export function AnswerCard({
       </div>
 
       {options ? (
-        <div className="flex flex-col gap-1.5">
+        <div
+          className="flex flex-col gap-1.5"
+          role="radiogroup"
+          aria-label="Answer options"
+        >
           {options.map((option, i) => (
-            <button
+            <label
               key={i}
-              type="button"
-              disabled={disabled || isSubmitting}
-              aria-pressed={selectedOption === i}
-              onClick={() => onSelectOption?.(option, i)}
               className={`flex items-start gap-2.5 p-2.5 border rounded-sm bg-page transition-colors text-left ${
                 selectedOption === i
                   ? "border-fg-1"
-                  : "border-border-1 hover:border-fg-1"
+                  : disabled || isSubmitting
+                    ? "border-border-1"
+                    : "border-border-1 hover:border-fg-1"
               }`}
             >
+              <input
+                type="radio"
+                name={optionGroupName}
+                value={option}
+                checked={selectedOption === i}
+                disabled={disabled || isSubmitting}
+                aria-label={option}
+                data-testid={`answer-option-${i}`}
+                onChange={() => onSelectOption?.(option, i)}
+                className="sr-only"
+              />
               <span className="font-mono text-[11px] text-fg-4 mt-0.5">
                 {String.fromCharCode(65 + i)}
               </span>
               <span className="text-[13px] text-fg-1 flex-1">{option}</span>
-            </button>
+            </label>
           ))}
         </div>
       ) : formFields ? (
@@ -146,6 +151,7 @@ export function AnswerCard({
             className="self-end"
             disabled={disabled || isSubmitting}
             onClick={handleFormSubmit}
+            aria-label={isSubmitting ? "Submitting answer" : "Submit answer"}
           >
             {isSubmitting ? "Submitting..." : "Submit"}
           </Button>

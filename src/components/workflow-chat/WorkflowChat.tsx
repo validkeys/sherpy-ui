@@ -51,9 +51,19 @@ export function WorkflowChat({
   const [selectedArtifact, setSelectedArtifact] =
     useState<CreatedArtifact | null>(null);
 
+  const isViewableArtifact = (
+    artifact: Artifact | undefined,
+  ): artifact is CreatedArtifact =>
+    artifact?.status === "created" && artifact.content.trim().length > 0;
+
+  const canOpenArtifact = (artifactId: string) =>
+    isViewableArtifact(
+      artifacts.find((artifact) => artifact.id === artifactId),
+    );
+
   const handleArtifactClick = (artifactId: string) => {
     const artifact = artifacts.find((a) => a.id === artifactId);
-    if (artifact && artifact.status === "created") {
+    if (isViewableArtifact(artifact)) {
       setSelectedArtifact(artifact);
     }
   };
@@ -64,10 +74,16 @@ export function WorkflowChat({
   };
 
   return (
-    <div className="flex h-full bg-page">
+    <div
+      className="flex h-full min-h-0 flex-col bg-page lg:flex-row"
+      data-testid="workflow-chat-root"
+    >
       {/* Left Column: Artifacts (1/3) */}
-      <div className="w-1/3 border-r border-border-1 flex flex-col">
-        <div className="px-8 pt-6 pb-3">
+      <div
+        className="flex max-h-56 w-full flex-col border-b border-border-1 lg:max-h-none lg:w-1/3 lg:border-r lg:border-b-0"
+        data-testid="workflow-chat-artifacts"
+      >
+        <div className="px-4 pt-4 pb-3 sm:px-8 lg:pt-6">
           <div className="font-mono text-[11px] text-fg-3 tracking-[0.04em]">
             artifacts
           </div>
@@ -81,7 +97,10 @@ export function WorkflowChat({
       </div>
 
       {/* Right Column: Chat (2/3) */}
-      <div className="w-2/3 flex flex-col pt-6">
+      <div
+        className="flex min-h-0 w-full flex-1 flex-col pt-4 lg:w-2/3 lg:pt-6"
+        data-testid="workflow-chat-messages"
+      >
         <div className="flex-1 min-h-0 relative">
           <div className="absolute inset-0 overflow-y-auto pb-32">
             <div className="flex flex-col gap-7 py-8">
@@ -90,6 +109,7 @@ export function WorkflowChat({
                   key={message.id}
                   message={message}
                   onArtifactClick={handleArtifactClick}
+                  canOpenArtifact={canOpenArtifact}
                   onSelectOption={onSelectOption}
                   onSubmitForm={onSubmitForm}
                 />

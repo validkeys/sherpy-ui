@@ -31,27 +31,33 @@ export function ArtifactsList({
   return (
     <div className="flex flex-col gap-1.5 p-4">
       {artifacts.map((artifact) => {
-        const isCreated = artifact.status === "created";
+        const isViewable =
+          artifact.status === "created" && artifact.content.trim().length > 0;
 
         return (
           <button
             key={artifact.id}
             type="button"
-            onClick={() => isCreated && onArtifactClick(artifact.id)}
-            disabled={!isCreated}
+            onClick={() => isViewable && onArtifactClick(artifact.id)}
+            disabled={!isViewable}
+            aria-label={
+              isViewable
+                ? `Open artifact ${artifact.name} from artifacts`
+                : `Artifact ${artifact.name} is not available yet`
+            }
             className={`flex flex-col gap-1 p-2.5 border rounded-sm text-left transition-colors ${
-              isCreated
+              isViewable
                 ? "border-border-1 bg-surface hover:border-fg-1 cursor-pointer"
                 : "border-border-1 bg-sunken cursor-default opacity-50"
             }`}
           >
             <div className="flex items-center gap-2">
               <FileText
-                className={`w-3 h-3 ${isCreated ? "text-fg-3" : "text-fg-4"}`}
+                className={`w-3 h-3 ${isViewable ? "text-fg-3" : "text-fg-4"}`}
               />
               <span
                 className={`font-mono text-[11px] tracking-[0.04em] ${
-                  isCreated ? "text-fg-1" : "text-fg-4"
+                  isViewable ? "text-fg-1" : "text-fg-4"
                 }`}
               >
                 {artifact.name}

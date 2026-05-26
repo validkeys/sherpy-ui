@@ -41,11 +41,12 @@ export function ChatComposer({
   };
 
   return (
-    <div className="absolute left-0 right-0 bottom-0 px-8 pb-6 pt-6 pointer-events-none bg-gradient-to-t from-page via-page/95 to-transparent">
+    <div className="pointer-events-none absolute right-0 bottom-0 left-0 bg-gradient-to-t from-page via-page/95 to-transparent px-4 pt-6 pb-4 sm:px-8 sm:pb-6">
       <div className="max-w-[720px] mx-auto pointer-events-auto">
         <div className="bg-surface border border-border-2 rounded-xl shadow-md p-3 flex flex-col gap-2 focus-within:border-fg-1 transition-colors">
           <textarea
             id="chat-composer-input"
+            data-testid="chat-composer-input"
             rows={1}
             aria-label="Message"
             placeholder={placeholder}
@@ -73,6 +74,8 @@ export function ChatComposer({
               className="h-7 px-3 rounded-full"
               disabled={!canSubmit}
               onClick={handleSubmit}
+              aria-label={isSubmitting ? "Sending message" : "Send message"}
+              data-testid="chat-composer-submit"
             >
               <span className="text-xs">
                 {isSubmitting ? "Sending..." : "Send"}

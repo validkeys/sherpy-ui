@@ -28,6 +28,7 @@ import type { Message } from "./types";
 interface ChatMessageProps {
   message: Message;
   onArtifactClick?: (artifactId: string) => void;
+  canOpenArtifact?: (artifactId: string) => boolean;
   onSelectOption?: (question: string, option: string, index: number) => void;
   onSubmitForm?: (question: string, values: Record<string, string>) => void;
 }
@@ -35,6 +36,7 @@ interface ChatMessageProps {
 export function ChatMessage({
   message,
   onArtifactClick,
+  canOpenArtifact,
   onSelectOption,
   onSubmitForm,
 }: ChatMessageProps) {
@@ -55,7 +57,7 @@ export function ChatMessage({
   const isAssistant = message.role === "assistant";
 
   return (
-    <div className="flex gap-3.5 max-w-[720px] mx-auto w-full px-8">
+    <div className="mx-auto flex w-full max-w-[720px] gap-3.5 px-4 sm:px-8">
       {/* Avatar */}
       <div
         className={`w-[26px] h-[26px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
@@ -136,8 +138,13 @@ export function ChatMessage({
             </div>
             <ArtifactPill
               name={message.artifactName}
+              disabled={!canOpenArtifact?.(message.artifactId)}
               onClick={() => {
-                if (onArtifactClick && message.artifactId) {
+                if (
+                  onArtifactClick &&
+                  message.artifactId &&
+                  canOpenArtifact?.(message.artifactId)
+                ) {
                   onArtifactClick(message.artifactId);
                 }
               }}

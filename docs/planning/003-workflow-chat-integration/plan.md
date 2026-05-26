@@ -1,6 +1,6 @@
 # WorkflowChat Integration Plan
 
-**Goal:** Incrementally replace existing planning UI with new WorkflowChat UI, testing each piece before moving forward.
+**Goal:** Incrementally replace existing planning UI with new WorkflowChat UI, testing each piece before moving forward with an AI-executable path that avoids hidden assumptions.
 
 **Branch:** `feature/workflow-chat-integration`  
 **Date:** 2026-05-26
@@ -29,7 +29,7 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 - **Container:** `StepContainer.tsx` routes to 4 component types:
   - `InterviewStep` (Steps 2 & 3) - Q&A with options
   - `FormStep` (Steps 1 & 5) - Multi-field forms
-  - `AutomatedStep` (Steps 4, 6, 8, 9) - Loading → artifact generation
+  - `AutomatedStep` (Steps 4, 6, 8, 9, 10) - Loading → artifact generation
   - `ArtifactOnlyStep` (Step 7) - Just shows artifact
 - **State:** XState machine (`planningMachine.ts`) with localStorage persistence
 - **Data Flow:** Machine context → Selectors → Components
@@ -48,6 +48,38 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 ---
 
 ## Integration Strategy
+
+### AI Execution Rules
+
+These rules are mandatory for every implementation phase:
+
+1. **Read before editing**
+   - Re-read the touched component, machine, route, and test files before making changes.
+   - Do not rely on stale plan assumptions when code has drifted.
+
+2. **Test first for behavior changes**
+   - Add or update focused tests before changing behavior.
+   - For UI interaction, prefer component tests for contracts and Playwright MCP for browser validation.
+
+3. **Use Playwright MCP for React form/browser validation**
+   - Do not use agent-browser for React forms.
+   - Put all screenshots in `.tmp-docs/screenshots`.
+
+4. **Do not write partial machine snapshots**
+   - XState persistence requires a complete snapshot with `status`, `value`, and `context`.
+   - Never seed workflow state by writing partial context directly to `localStorage`.
+   - Use existing seed API/script output or full snapshot fixtures only.
+
+5. **No destructive cleanup without express permission**
+   - Do not delete old components, files, or folders during implementation phases.
+   - Phase 10 must first produce a deletion candidate list for user approval.
+   - Do not use `git reset --hard` as a rollback step.
+
+6. **Phase completion requires evidence**
+   - Record commands run, tests passed/failed, screenshots captured, and unresolved risks before advancing.
+   - If a phase cannot be fully validated, stop and document the blocker.
+
+---
 
 ### Phase 0: Component Contract Hardening
 **Goal:** Make the existing WorkflowChat prototype safe to integrate before adapting XState data into it.
@@ -127,14 +159,15 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 
 ---
 
-### Phase 2: Hook Layer (React Query)
+### Phase 2: Hook Layer (XState Selectors)
 **Goal:** Create React hook that provides WorkflowChat-ready data
 
 **Tasks:**
 1. Create `src/features/planning/hooks/useWorkflowChatData.ts`
    - Use existing `usePlanningMachine()` and `useSelector()`
    - Call adapters to transform context
-   - Return `{ messages, artifacts, isLoading }`
+   - Return `{ messages, artifacts, currentStepNumber, currentQuestion, currentOptions, isSubmitting, actor }`
+   - Keep React Query out of this hook unless current code proves it is needed
 
 2. Write tests for hook
    - Mock PlanningMachineContext
@@ -148,34 +181,35 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 
 ---
 
-### Phase 3: Parallel Rendering (Side-by-Side)
-**Goal:** Render both old and new UI simultaneously for visual comparison
+### Phase 3: Flagged Rendering (Old or New UI)
+**Goal:** Render either the old UI or the new UI behind a hardcoded development flag
 
 **Tasks:**
 1. Update `app/routes/project/$projectId.build.tsx`
    - Add `useWorkflowChatData()` hook
-   - Render WorkflowChat in a side-by-side layout (conditional on hardcoded flag)
+   - Render WorkflowChat behind a hardcoded flag
    - Keep existing StepContainer as default
    - Add hardcoded condition: `const USE_NEW_UI = false;`
 
-2. Add CSS for split layout during transition
+2. Add route-level conditional rendering
    - When `USE_NEW_UI = false`: Show old UI only
    - When `USE_NEW_UI = true`: Show new UI only
    - No toggle button - simple boolean flag
+   - Keep app layout, header, LeftRail, footer, provider, `InspectorLogger`, and `DebugPanel` unchanged
 
 **Manual Testing (Playwright MCP):**
-- [ ] Jog project to Step 1 using seed helper
+- [ ] Seed or create a Step 1 project using the approved seed path below
 - [ ] Set `USE_NEW_UI = true`, reload page
 - [ ] Verify WorkflowChat renders without errors
 - [ ] Set `USE_NEW_UI = false`, reload page
 - [ ] Verify old UI renders (baseline comparison)
 - [ ] Toggle flag multiple times, verify no hydration errors
 - [ ] Take screenshots of both UIs for comparison
-- [ ] Verify message/artifact data matches between UIs
+- [ ] Compare old/new screenshots and DebugPanel context for the same seeded state
 
 **Validation:**
 - ✅ Both UIs render without errors
-- ✅ Both UIs show same data (visual comparison)
+- ✅ Both UIs show equivalent data when tested against the same seeded state
 - ✅ No hydration warnings
 - ✅ No console errors
 - ✅ User sign-off on visual comparison
@@ -190,7 +224,8 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 **Tasks:**
 1. Add `onSubmitAnswer` prop to WorkflowChat
    - Pass through to ChatComposer
-   - Wire to `actor.send({ type: 'SUBMIT_ANSWER', ... })`
+   - Wire to `actor.send({ type: "SUBMIT_ANSWER", stepNumber: 2, question: currentQuestion, answer })`
+   - Guard submit when `currentQuestion` is missing; show disabled composer instead of sending malformed events
 
 2. Update WorkflowChat to handle current step
    - Add `currentStep` prop
@@ -202,7 +237,7 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
    - Keep it mounted but hidden for state comparison
 
 **Manual Testing (Playwright MCP):**
-- [ ] Jog project to Step 2 using `jogProjectToStep(2)`
+- [ ] Seed project to Step 2 using the approved seed path below
 - [ ] Set `USE_NEW_UI = true`, reload page
 - [ ] Answer question via new ChatComposer (Playwright fill + click)
 - [ ] Verify answer appears in message history
@@ -229,10 +264,12 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 **Tasks:**
 1. Update adapter to handle Step 3 Q&A
 2. Update hook to detect Step 3 vs Step 2
-3. Update ChatComposer to handle Step 3 submission
+3. Update ChatComposer submission to send:
+   - `actor.send({ type: "SUBMIT_ANSWER", stepNumber: 3, question: currentQuestion, answer })`
+   - Guard submit when `currentQuestion` is missing
 
 **Manual Testing (Playwright MCP):**
-- [ ] Jog project to Step 3 using `jogProjectToStep(3)`
+- [ ] Seed project to Step 3 using the approved seed path below
 - [ ] Set `USE_NEW_UI = true`, reload page
 - [ ] Answer 3-5 questions via ChatComposer
 - [ ] Verify artifact generation
@@ -247,51 +284,64 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 
 ---
 
-### Phase 6: Form Step Wiring (Step 1)
-**Goal:** Wire form-based steps (Gap Analysis)
+### Phase 6: Form Step Wiring (Steps 1 and 5)
+**Goal:** Wire form-based steps through question messages and `AnswerCard`
 
 **Why Later?** Forms are more complex - multi-field, validation, different submit pattern.
 
 **Tasks:**
-1. Update WorkflowChat to support form questions
+1. Update WorkflowChat to support form question messages
    - QuestionMessage already has `formFields` type
-   - ChatComposer needs multi-field input mode
+   - Render multi-field forms in `AnswerCard`, not `ChatComposer`
+   - Keep `ChatComposer` for free-text interview answers only
 
 2. Wire form submission to machine
-   - Map form values to `SUBMIT_FORM` event
+   - Step 1: `actor.send({ type: "SUBMIT_FORM", stepNumber: 1, responses })`
+   - Step 5: `actor.send({ type: "SUBMIT_FORM", stepNumber: 5, responses })`
+   - Preserve existing validation behavior from `FormStep`
+
+3. Add step-specific tests
+   - Step 1 captures all required Gap Analysis fields
+   - Step 5 captures all required Implementation Planner fields
+   - Both steps advance only after valid responses
 
 **Manual Testing (Playwright MCP):**
 - [ ] Start fresh workflow (no jogging)
 - [ ] Set `USE_NEW_UI = true`, reload page
-- [ ] Fill out Gap Analysis form via ChatComposer
-- [ ] Verify form data captured correctly (check DebugPanel)
+- [ ] Fill out Gap Analysis form in the chat question card
+- [ ] Verify Step 1 form data captured correctly (check DebugPanel)
 - [ ] Progress to Step 2, verify transition works
-- [ ] Compare with old UI form behavior
+- [ ] Seed or progress to Step 5
+- [ ] Fill out Implementation Planner form in the chat question card
+- [ ] Verify Step 5 form data captured correctly (check DebugPanel)
+- [ ] Compare both forms with old UI behavior
 
 **Validation:**
-- ✅ Form submission works
-- ✅ Multi-field validation works
+- ✅ Step 1 form submission works
+- ✅ Step 5 form submission works
+- ✅ Multi-field validation works for both form steps
 - ✅ Machine context captures form data
 - ✅ User sign-off
 
 ---
 
-### Phase 7: Automated Steps (Steps 4, 6, 8, 9)
+### Phase 7: Automated Steps (Steps 4, 6, 8, 9, 10)
 **Goal:** Handle automated artifact generation steps
 
 **Tasks:**
 1. Update adapter to show loading messages during generation
 2. Show artifact messages when complete
 3. Show "Continue" or auto-advance after generation
+4. Confirm Step 10 summary generation behavior matches the old UI
 
 **Manual Testing (Playwright MCP):**
-- [ ] Jog to Step 4 using `jogProjectToStep(4)`
+- [ ] Seed to Step 4 using the approved seed path below
 - [ ] Set `USE_NEW_UI = true`, reload page
 - [ ] Verify loading message appears
 - [ ] Wait for artifact generation
 - [ ] Verify artifact message appears when done
 - [ ] Verify artifact status changes to "created" in sidebar
-- [ ] Repeat for Steps 6, 8, 9
+- [ ] Repeat for Steps 6, 8, 9, 10
 
 **Validation:**
 - ✅ All automated steps work
@@ -309,7 +359,7 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 2. No questions, just "Review and continue" pattern
 
 **Manual Testing (Playwright MCP):**
-- [ ] Jog to Step 7 using `jogProjectToStep(7)`
+- [ ] Seed to Step 7 using the approved seed path below
 - [ ] Set `USE_NEW_UI = true`, reload page
 - [ ] Verify artifact message displays (no questions)
 - [ ] Verify artifact clickable in sidebar
@@ -334,6 +384,8 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 - [ ] Verify localStorage persistence
 - [ ] Test page refresh at various steps
 - [ ] Test browser back/forward
+- [ ] Test Step 1, 2, 3, 4, 5, 6, 7, 8, 9, and 10 explicitly in one continuous run
+- [ ] Capture screenshots for first step, one interview answer, one form submit, one generated artifact, Step 7 artifact review, and final completion
 
 **Validation:**
 - ✅ Full workflow completes
@@ -348,17 +400,24 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 
 **Tasks:**
 1. Set `USE_NEW_UI = true` (make it the default)
-2. Remove old components (InterviewStep, FormStep, AutomatedStep, ArtifactOnlyStep)
-3. Remove StepContainer router component
-4. Remove Navigation component (if no longer needed)
-5. Delete `USE_NEW_UI` flag (no longer needed)
+2. Produce a deletion candidate list for old UI components and tests
+   - `InterviewStep`
+   - `FormStep`
+   - `AutomatedStep`
+   - `ArtifactOnlyStep`
+   - `StepContainer`
+   - any old CSS specific to previous UI
+3. Ask for express permission before deleting any file or folder
+4. Keep `Navigation` unless the new UI has a verified replacement for its behavior
+5. Delete `USE_NEW_UI` flag only after default-new UI passes validation
 6. Update tests to use new UI
 7. Update documentation
-8. Remove any old CSS specific to previous UI
+8. Run dead-code checks and remove only approved old files
 
 **Validation:**
 - ✅ All tests pass (31+ test files)
-- ✅ No dead code remains
+- ✅ No unapproved deletion occurred
+- ✅ No known dead code remains after approved cleanup
 - ✅ Bundle size check (should be smaller)
 - ✅ All WorkflowChat components remain in `src/components/workflow-chat/`
 - ✅ App layout (header, LeftRail, footer) unchanged
@@ -366,68 +425,42 @@ Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspac
 
 ---
 
-## Testing Helpers Needed
+## Testing Helpers
 
-### 1. Seed Scripts
-Create `src/features/planning/testing/seed-helpers.ts`:
+### 1. Approved Seed Path
 
-```typescript
-import { createProject } from "@/features/projects/store";
-import { updateCurrentStep } from "@/features/projects/store";
+Use the existing project seed CLI/API instead of creating browser-side helpers that import database-backed store code.
 
-/**
- * Create a test project and jog it to a specific step
- * Uses existing project store utilities
- */
-export function jogProjectToStep(stepNumber: number) {
-  // Create project via existing createProject utility
-  const project = createProject({
-    name: `Test Project - Step ${stepNumber}`,
-    entryPath: "scratch"
-  });
-  
-  // If not Step 1, update to target step
-  if (stepNumber > 1) {
-    updateCurrentStep(project.id, stepNumber);
-  }
-  
-  // Return project for navigation
-  return project;
-}
+Preferred command:
 
-// Pre-populate interview answers for Step 2/3 testing
-export function seedInterviewAnswers(projectId: string, stepNumber: 2 | 3) {
-  const answers = stepNumber === 2 
-    ? MOCK_BUSINESS_REQ_ANSWERS 
-    : MOCK_TECH_REQ_ANSWERS;
-    
-  // Populate localStorage with mock Q&A
-  const storageKey = `planning-machine-${projectId}`;
-  const context = {
-    [`step${stepNumber}Answers`]: answers,
-    // ... other context
-  };
-  localStorage.setItem(storageKey, JSON.stringify(context));
-}
-
-const MOCK_BUSINESS_REQ_ANSWERS = [
-  { question: "Who is the primary user?", value: "Project managers" },
-  { question: "What's the main goal?", value: "Increase efficiency by 30%" },
-];
-
-const MOCK_TECH_REQ_ANSWERS = [
-  { question: "What's your tech stack?", value: "React, Node.js, PostgreSQL" },
-  { question: "Hosting preference?", value: "AWS" },
-];
+```bash
+pnpm seed:step2
 ```
+
+The seed script calls `/api/dev/seed` and prints:
+- project id
+- workflow URL
+- complete XState snapshot
+- exact `localStorage.setItem(...)` command
+
+Rules:
+- Do not create `src/features/planning/testing/seed-helpers.ts` unless implementation proves the existing seed path cannot support a phase.
+- Do not import `src/features/projects/store.ts` into browser-facing test helpers.
+- Do not write partial context objects to localStorage.
+- If the seed script prints `npm run dev`, treat that as stale output and use `pnpm dev`.
+- If manual browser seeding is required, use the complete snapshot printed by `scripts/seed-project.js`.
+- If an automated Playwright helper is added later, it must call the seed API or load a full snapshot fixture and then write the complete snapshot.
 
 ### 2. Playwright Test Helpers
 Create `.tmp-docs/e2e-testing/workflow-chat-helpers.md`:
 
 ```typescript
-// Navigate to build page
-mcp__playwright__browser_navigate({ 
-  url: "http://localhost:5180/project/test-123/build" 
+// Seed a project first using `pnpm seed:step2`.
+// Then use the printed URL and complete localStorage command.
+
+// Navigate to build page after localStorage has the complete snapshot.
+mcp__playwright__browser_navigate({
+  url: "http://localhost:5180/project/<project-id>/build"
 });
 
 // Answer a question
@@ -457,12 +490,18 @@ mcp__playwright__browser_take_screenshot({
 
 ## Rollback Strategy
 
-Each phase tagged (e.g., `v2.1.0-phase3`). If issues:
+Each phase may be tagged after validation (e.g., `v2.1.0-phase3`). If issues arise:
+
 ```bash
-git revert HEAD~1  # Revert last commit
-# or
-git reset --hard v2.1.0-phase2  # Reset to previous phase
+git revert <commit-sha>
 ```
+
+Rules:
+- Prefer `git revert` for committed phase rollback.
+- For uncommitted changes, inspect `git diff` and revert only the specific hunks/files created by the current AI session.
+- Do not run `git reset --hard`.
+- Do not delete files or folders without express permission.
+- If rollback requires removing files, present the file list and wait for approval.
 
 ---
 
@@ -492,27 +531,29 @@ git reset --hard v2.1.0-phase2  # Reset to previous phase
 | 0. Component Contract Hardening | 2-3 hours | - |
 | 1. Data Layer | 2-3 hours | Phase 0 |
 | 2. Hook Layer | 1 hour | Phase 1 |
-| 3. Parallel Render | 1 hour | Phase 2 |
+| 3. Flagged Render | 1 hour | Phase 2 |
 | 4. Step 2 Wiring | 2-3 hours | Phase 3 |
 | 5. Step 3 Wiring | 1 hour | Phase 4 |
-| 6. Form Wiring | 2-3 hours | Phase 5 |
-| 7. Automated Steps | 2 hours | Phase 6 |
+| 6. Form Wiring (Steps 1 & 5) | 3-4 hours | Phase 5 |
+| 7. Automated Steps (4, 6, 8, 9, 10) | 2-3 hours | Phase 6 |
 | 8. Artifact Step | 30 min | Phase 7 |
 | 9. Full Workflow | 1-2 hours | Phase 8 |
 | 10. Cleanup | 1-2 hours | Phase 9 |
 
-**Total:** ~17-23 hours with testing
+**Total:** ~19-27 hours with testing
 
 ---
 
 ## Scope Clarifications
 
-1. ✅ **Seed helpers:** Use existing `createProject()` and `updateCurrentStep()` from `src/features/projects/store.ts`
+1. ✅ **Seed helpers:** Use existing `pnpm seed:stepN` / `/api/dev/seed` path and complete XState snapshots
 2. ✅ **Feature flag:** Hardcoded `const USE_NEW_UI = false;` in route file - simple boolean toggle
 3. ✅ **Artifact modal:** Use WorkflowChat's `ArtifactDialog` exclusively
 4. ✅ **Layout:** Keep existing app layout, header, LeftRail. Only replace content body (StepContainer → WorkflowChat)
 5. ✅ **Dev server:** Already running on `:5180`
 6. ⏳ **DebugPanel:** Keep visible during integration (helpful for validation)
+7. ✅ **No partial snapshots:** Never seed by writing partial machine context to localStorage
+8. ✅ **No unapproved deletes:** Cleanup requires express permission before file/folder deletion
 
 ---
 
