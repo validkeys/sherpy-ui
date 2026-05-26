@@ -28,9 +28,16 @@ import type { Message } from "./types";
 interface ChatMessageProps {
   message: Message;
   onArtifactClick?: (artifactId: string) => void;
+  onSelectOption?: (question: string, option: string, index: number) => void;
+  onSubmitForm?: (question: string, values: Record<string, string>) => void;
 }
 
-export function ChatMessage({ message, onArtifactClick }: ChatMessageProps) {
+export function ChatMessage({
+  message,
+  onArtifactClick,
+  onSelectOption,
+  onSubmitForm,
+}: ChatMessageProps) {
   if (message.type === "divider") {
     return (
       <StageDivider
@@ -88,9 +95,14 @@ export function ChatMessage({ message, onArtifactClick }: ChatMessageProps) {
               <p>{message.question}</p>
             </div>
             <AnswerCard
-              question={message.question}
               options={message.options}
               formFields={message.formFields}
+              onSelectOption={(option, index) =>
+                onSelectOption?.(message.question, option, index)
+              }
+              onSubmitForm={(values) =>
+                onSubmitForm?.(message.question, values)
+              }
             />
           </>
         )}

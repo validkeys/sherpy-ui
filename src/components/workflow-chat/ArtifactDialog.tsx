@@ -23,10 +23,10 @@ import { Copy, Download } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { YamlHighlight } from "@/components/doc-browser/yaml-highlight";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import type { Artifact } from "./types";
+import type { CreatedArtifact } from "./types";
 
 interface ArtifactDialogProps {
-  artifact: Artifact | null;
+  artifact: CreatedArtifact | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

@@ -1,5 +1,4 @@
 import { getSkillContent } from "./skills-content";
-import { getStepName } from "../planning/step-config";
 
 interface Message {
   role: "user" | "assistant";
@@ -12,7 +11,7 @@ export function buildInterviewPrompt(
   previousAnswers: string[],
   projectOverview?: string,
 ): Message[] {
-  console.log('[buildInterviewPrompt] Called with:', {
+  console.log("[buildInterviewPrompt] Called with:", {
     stepName,
     stepNumber,
     hasProjectOverview: !!projectOverview,
@@ -29,7 +28,7 @@ export function buildInterviewPrompt(
 
     // Add project context FIRST if available (for Step 2+)
     if (projectOverview) {
-      console.log('[buildInterviewPrompt] Adding project context to prompt');
+      console.log("[buildInterviewPrompt] Adding project context to prompt");
       systemContext += `## 🎯 PROJECT CONTEXT - CRITICAL INSTRUCTIONS
 
 The user is building: "${projectOverview}"
@@ -81,7 +80,8 @@ Example 3 - Mobile App:
     systemContext += skillContent;
 
     if (previousAnswers.length > 0) {
-      systemContext += "\n\n## Progress So Far\n\nPrevious answers in this interview:\n";
+      systemContext +=
+        "\n\n## Progress So Far\n\nPrevious answers in this interview:\n";
       for (const [index, answer] of previousAnswers.entries()) {
         systemContext += `${index + 1}. ${answer}\n`;
       }
@@ -148,11 +148,12 @@ Now ask the first question, customized for "${projectOverview}".`;
       },
       {
         role: "user",
-        content: previousAnswers.length === 0
-          ? (projectOverview
+        content:
+          previousAnswers.length === 0
+            ? projectOverview
               ? `Begin the interview by asking the first question about "${projectOverview}". Remember to rewrite the question to reference this specific project.`
-              : "Begin the interview by asking the first question.")
-          : "Ask the next question in the sequence.",
+              : "Begin the interview by asking the first question."
+            : "Ask the next question in the sequence.",
       },
     ];
   }
@@ -178,7 +179,8 @@ Now ask the first question, customized for "${projectOverview}".`;
     { role: "user", content: systemContext },
     {
       role: "assistant",
-      content: "Understood. I will help guide the planning process and signal when a step is complete.",
+      content:
+        "Understood. I will help guide the planning process and signal when a step is complete.",
     },
     { role: "user", content: userContext },
   ];

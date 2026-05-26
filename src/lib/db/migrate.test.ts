@@ -1,6 +1,6 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import Database from "better-sqlite3";
-import * as fs from "fs";
-import * as path from "path";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // Mock the schema to avoid file system issues in tests

@@ -14,10 +14,7 @@
  * 4. If automated: Add processing logic to server.ts
  */
 
-import {
-  ARTIFACT_RESPONSE_SCHEMA,
-  INTERVIEW_QUESTION_SCHEMA,
-} from "./response-schemas";
+import { INTERVIEW_QUESTION_SCHEMA } from "./response-schemas";
 
 export type StepType = "automated" | "interview";
 

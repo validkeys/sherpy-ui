@@ -7,6 +7,21 @@
 
 ---
 
+## Package Manager
+
+Use `pnpm` for all package scripts and dependency operations.
+
+Examples:
+- `pnpm install`
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm test:e2e`
+
+Do not use `npm` for this package. The repo has `pnpm-lock.yaml`, `pnpm-workspace.yaml`, and `package.json` declares `packageManager: pnpm@10.24.0`.
+
+---
+
 ## Current State
 
 ### Existing Architecture
@@ -34,6 +49,57 @@
 
 ## Integration Strategy
 
+### Phase 0: Component Contract Hardening
+**Goal:** Make the existing WorkflowChat prototype safe to integrate before adapting XState data into it.
+
+**Why first?** The current componentry is visually strong, but several APIs are still static-prototype shaped. If adapters are built first, integration will need to redesign the component contract while also touching XState behavior.
+
+**Tasks:**
+1. Make `ChatComposer` controlled and event-driven
+   - Add `value`, `onChange`, `onSubmit`, `disabled`, and `isSubmitting` props
+   - Support Enter-to-send and Shift+Enter newline behavior
+   - Add stable selectors/labels needed for Playwright MCP
+   - Keep textarea state outside the component so XState integration owns workflow input
+
+2. Make `AnswerCard` report user actions upward
+   - Add option selection callback with selected option index/value
+   - Add form submission callback with keyed field values
+   - Represent selected/disabled/submitting states explicitly
+   - Avoid local-only form state that cannot be observed by the planning machine
+
+3. Centralize artifact opening state in `WorkflowChat`
+   - Remove independent dialog ownership from `ArtifactsList`
+   - Pass an `onArtifactClick(artifactId)` callback into the sidebar
+   - Use one `ArtifactDialog` instance for both chat artifact pills and sidebar clicks
+   - Apply the same "created with content" eligibility rule everywhere
+
+4. Tighten artifact/message types
+   - Make created artifacts require content, or add a type guard before rendering `ArtifactDialog`
+   - Remove unused `ArtifactMessage.artifactContent` if artifact lookup remains the source of truth
+   - Remove or implement unused props such as `WorkflowChat.mode` and `AnswerCard.question`
+   - Ensure adapter output cannot produce a clickable artifact with missing content
+
+5. Add responsive and accessibility requirements
+   - Define behavior below desktop widths: stacked layout, collapsible artifact rail, or explicit desktop-only constraint
+   - Add accessible labels for composer and artifact actions
+   - Add grouped semantics and selected state for multiple-choice options
+   - Add screen-reader-visible copy feedback in `ArtifactDialog`
+
+6. Add component tests before wiring
+   - Test `ChatComposer` submit, disabled state, and keyboard behavior
+   - Test `AnswerCard` option and form callbacks
+   - Test one shared artifact dialog path from sidebar and chat pill
+   - Test missing-content artifact behavior
+
+**Validation:**
+- ✅ `pnpm typecheck`
+- ✅ `pnpm lint`
+- ✅ Focused component tests pass
+- ✅ WorkflowChat story/demo still renders
+- ✅ No XState integration required yet
+
+---
+
 ### Phase 1: Data Layer (Adapters)
 **Goal:** Create adapters to transform XState context → WorkflowChat props
 
@@ -57,7 +123,7 @@
 **Validation:**
 - ✅ All adapter tests pass
 - ✅ No circular dependencies (madge check)
-- ✅ TypeScript compiles
+- ✅ `pnpm typecheck`
 
 ---
 
@@ -78,7 +144,7 @@
 **Validation:**
 - ✅ Hook tests pass
 - ✅ Hook returns correct shape
-- ✅ TypeScript compiles
+- ✅ `pnpm typecheck`
 
 ---
 
@@ -404,7 +470,8 @@ git reset --hard v2.1.0-phase2  # Reset to previous phase
 
 ### Per-Phase
 - ✅ All automated tests pass
-- ✅ TypeScript compiles without errors
+- ✅ `pnpm typecheck` compiles without errors
+- ✅ `pnpm lint` passes for touched files
 - ✅ Manual Playwright testing completes
 - ✅ Screenshots captured for comparison
 - ✅ User explicitly signs off before next phase
@@ -422,7 +489,8 @@ git reset --hard v2.1.0-phase2  # Reset to previous phase
 
 | Phase | Effort | Depends On |
 |-------|--------|------------|
-| 1. Data Layer | 2-3 hours | - |
+| 0. Component Contract Hardening | 2-3 hours | - |
+| 1. Data Layer | 2-3 hours | Phase 0 |
 | 2. Hook Layer | 1 hour | Phase 1 |
 | 3. Parallel Render | 1 hour | Phase 2 |
 | 4. Step 2 Wiring | 2-3 hours | Phase 3 |
@@ -433,7 +501,7 @@ git reset --hard v2.1.0-phase2  # Reset to previous phase
 | 9. Full Workflow | 1-2 hours | Phase 8 |
 | 10. Cleanup | 1-2 hours | Phase 9 |
 
-**Total:** ~15-20 hours with testing
+**Total:** ~17-23 hours with testing
 
 ---
 
@@ -451,6 +519,6 @@ git reset --hard v2.1.0-phase2  # Reset to previous phase
 ## Next Steps
 
 1. ✅ Review this plan with user
-2. ⏳ Answer questions above
+2. ⏳ Confirm `pnpm` is available locally and run `pnpm install` if needed
 3. ⏳ Create branch `feature/workflow-chat-integration`
-4. ⏳ Start Phase 1: Data Layer (Adapters)
+4. ⏳ Start Phase 0: Component Contract Hardening

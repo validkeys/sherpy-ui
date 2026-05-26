@@ -24,10 +24,12 @@
  * - Hover states on options
  */
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
+type FormValues = Record<string, string>;
+
 interface AnswerCardProps {
-  question: string;
   options?: string[];
   formFields?: Array<{
     id: string;
@@ -35,9 +37,45 @@ interface AnswerCardProps {
     type: "text" | "textarea";
     placeholder?: string;
   }>;
+  selectedOption?: number;
+  disabled?: boolean;
+  isSubmitting?: boolean;
+  formValues?: FormValues;
+  onFormValueChange?: (fieldId: string, value: string) => void;
+  onSelectOption?: (option: string, index: number) => void;
+  onSubmitForm?: (values: FormValues) => void;
 }
 
-export function AnswerCard({ question, options, formFields }: AnswerCardProps) {
+export function AnswerCard({
+  options,
+  formFields,
+  selectedOption,
+  disabled = false,
+  isSubmitting = false,
+  formValues,
+  onFormValueChange,
+  onSelectOption,
+  onSubmitForm,
+}: AnswerCardProps) {
+  const [localFormValues, setLocalFormValues] = useState<FormValues>({});
+  const values = formValues ?? localFormValues;
+
+  const handleFormValueChange = (fieldId: string, value: string) => {
+    if (onFormValueChange) {
+      onFormValueChange(fieldId, value);
+      return;
+    }
+
+    setLocalFormValues((currentValues) => ({
+      ...currentValues,
+      [fieldId]: value,
+    }));
+  };
+
+  const handleFormSubmit = () => {
+    onSubmitForm?.(values);
+  };
+
   return (
     <div className="border border-border-1 rounded-md bg-surface p-3.5 mt-1 flex flex-col gap-2.5">
       <div className="font-mono text-[10px] tracking-widest uppercase text-fg-4">
@@ -50,7 +88,14 @@ export function AnswerCard({ question, options, formFields }: AnswerCardProps) {
             <button
               key={i}
               type="button"
-              className="flex items-start gap-2.5 p-2.5 border border-border-1 rounded-sm bg-page hover:border-fg-1 transition-colors text-left"
+              disabled={disabled || isSubmitting}
+              aria-pressed={selectedOption === i}
+              onClick={() => onSelectOption?.(option, i)}
+              className={`flex items-start gap-2.5 p-2.5 border rounded-sm bg-page transition-colors text-left ${
+                selectedOption === i
+                  ? "border-fg-1"
+                  : "border-border-1 hover:border-fg-1"
+              }`}
             >
               <span className="font-mono text-[11px] text-fg-4 mt-0.5">
                 {String.fromCharCode(65 + i)}
@@ -74,6 +119,11 @@ export function AnswerCard({ question, options, formFields }: AnswerCardProps) {
                   id={field.id}
                   rows={3}
                   placeholder={field.placeholder}
+                  value={values[field.id] ?? ""}
+                  disabled={disabled || isSubmitting}
+                  onChange={(event) =>
+                    handleFormValueChange(field.id, event.target.value)
+                  }
                   className="w-full px-3 py-2 text-sm bg-sunken border border-border-1 rounded-sm text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-fg-1"
                 />
               ) : (
@@ -81,13 +131,23 @@ export function AnswerCard({ question, options, formFields }: AnswerCardProps) {
                   type="text"
                   id={field.id}
                   placeholder={field.placeholder}
+                  value={values[field.id] ?? ""}
+                  disabled={disabled || isSubmitting}
+                  onChange={(event) =>
+                    handleFormValueChange(field.id, event.target.value)
+                  }
                   className="w-full px-3 py-2 text-sm bg-sunken border border-border-1 rounded-sm text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-fg-1"
                 />
               )}
             </div>
           ))}
-          <Button size="sm" className="self-end">
-            Submit
+          <Button
+            size="sm"
+            className="self-end"
+            disabled={disabled || isSubmitting}
+            onClick={handleFormSubmit}
+          >
+            {isSubmitting ? "Submitting..." : "Submit"}
           </Button>
         </div>
       ) : null}

@@ -26,28 +26,41 @@ import { ArtifactDialog } from "./ArtifactDialog";
 import { ArtifactsList } from "./ArtifactsList";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessage } from "./ChatMessage";
-import type { Artifact, Message } from "./types";
+import type { Artifact, CreatedArtifact, Message } from "./types";
 
 export interface WorkflowChatProps {
   messages: Message[];
   artifacts: Artifact[];
-  mode?: "chat" | "artifacts";
+  onSubmitMessage?: (message: string) => void;
+  onSelectOption?: (question: string, option: string, index: number) => void;
+  onSubmitForm?: (question: string, values: Record<string, string>) => void;
+  disabled?: boolean;
+  isSubmitting?: boolean;
 }
 
 export function WorkflowChat({
   messages,
   artifacts,
-  mode = "chat",
+  onSubmitMessage,
+  onSelectOption,
+  onSubmitForm,
+  disabled = false,
+  isSubmitting = false,
 }: WorkflowChatProps) {
-  const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(
-    null,
-  );
+  const [composerValue, setComposerValue] = useState("");
+  const [selectedArtifact, setSelectedArtifact] =
+    useState<CreatedArtifact | null>(null);
 
   const handleArtifactClick = (artifactId: string) => {
     const artifact = artifacts.find((a) => a.id === artifactId);
     if (artifact && artifact.status === "created") {
       setSelectedArtifact(artifact);
     }
+  };
+
+  const handleSubmitMessage = (message: string) => {
+    onSubmitMessage?.(message);
+    setComposerValue("");
   };
 
   return (
@@ -60,7 +73,10 @@ export function WorkflowChat({
           </div>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <ArtifactsList artifacts={artifacts} />
+          <ArtifactsList
+            artifacts={artifacts}
+            onArtifactClick={handleArtifactClick}
+          />
         </div>
       </div>
 
@@ -74,11 +90,19 @@ export function WorkflowChat({
                   key={message.id}
                   message={message}
                   onArtifactClick={handleArtifactClick}
+                  onSelectOption={onSelectOption}
+                  onSubmitForm={onSubmitForm}
                 />
               ))}
             </div>
           </div>
-          <ChatComposer />
+          <ChatComposer
+            value={composerValue}
+            onChange={setComposerValue}
+            onSubmit={handleSubmitMessage}
+            disabled={disabled}
+            isSubmitting={isSubmitting}
+          />
         </div>
       </div>
 

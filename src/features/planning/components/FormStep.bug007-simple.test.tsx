@@ -3,24 +3,24 @@
  * Checks if FormStep component re-renders when machine state changes
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { PlanningMachineProvider } from '../machines/PlanningMachineContext';
-import { StepContainer } from './StepContainer';
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
+import { StepContainer } from "./StepContainer";
 
 // Mock the server module at the top level
-vi.mock('../../ai/server', () => ({
+vi.mock("../../ai/server", () => ({
   $generateArtifact: vi.fn().mockResolvedValue({
-    format: 'markdown',
-    content: '# Gap Analysis\n\nTest content',
+    format: "markdown",
+    content: "# Gap Analysis\n\nTest content",
     generatedAt: new Date().toISOString(),
   }),
 }));
 
-describe('BUG-007: Simplified Diagnostic', () => {
+describe("BUG-007: Simplified Diagnostic", () => {
   const defaultInput = {
-    projectId: 'test-bug-007',
-    entryPath: 'new-project' as const,
+    projectId: "test-bug-007",
+    entryPath: "new-project" as const,
   };
 
   beforeEach(() => {
@@ -31,7 +31,7 @@ describe('BUG-007: Simplified Diagnostic', () => {
       removeItem: vi.fn(),
       clear: vi.fn(),
     };
-    Object.defineProperty(window, 'localStorage', {
+    Object.defineProperty(window, "localStorage", {
       value: localStorageMock,
       writable: true,
     });
@@ -41,55 +41,63 @@ describe('BUG-007: Simplified Diagnostic', () => {
       ok: true,
       body: {
         getReader: () => ({
-          read: vi.fn()
+          read: vi
+            .fn()
             .mockResolvedValueOnce({
               done: false,
-              value: new TextEncoder().encode('{"question": "Test?", "options": []}'),
+              value: new TextEncoder().encode(
+                '{"question": "Test?", "options": []}',
+              ),
             })
             .mockResolvedValueOnce({ done: true }),
         }),
       },
-      headers: new Map([['content-type', 'application/json']]),
+      headers: new Map([["content-type", "application/json"]]),
     });
   });
 
-  it('exposes bug: button does not show Submitting state', async () => {
+  it("exposes bug: button does not show Submitting state", async () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <StepContainer />
-      </PlanningMachineProvider>
+      </PlanningMachineProvider>,
     );
 
     // Fill form
-    const requirementsField = screen.getByLabelText(/Do you have existing requirements/i);
+    const requirementsField = screen.getByLabelText(
+      /Do you have existing requirements/i,
+    );
     const descriptionField = screen.getByLabelText(/What are you building/i);
 
     fireEvent.change(requirementsField, {
-      target: { value: 'No, starting from scratch' },
+      target: { value: "No, starting from scratch" },
     });
 
     fireEvent.change(descriptionField, {
-      target: { value: 'Healthcare Portal' },
+      target: { value: "Healthcare Portal" },
     });
 
     // Wait for button to be enabled
-    const submitButton = screen.getByRole('button', { name: /submit/i });
+    const submitButton = screen.getByRole("button", { name: /submit/i });
     await waitFor(() => expect(submitButton).not.toBeDisabled());
 
-    console.log('BEFORE CLICK - Button text:', submitButton.textContent);
-    console.log('BEFORE CLICK - Button disabled:', submitButton.disabled);
+    console.log("BEFORE CLICK - Button text:", submitButton.textContent);
+    console.log("BEFORE CLICK - Button disabled:", submitButton.disabled);
 
     // Click submit
     fireEvent.click(submitButton);
 
     // BUG: Button should show "Submitting..." but it doesn't
-    await waitFor(() => {
-      console.log('AFTER CLICK - Button text:', submitButton.textContent);
-      console.log('AFTER CLICK - Button disabled:', submitButton.disabled);
+    await waitFor(
+      () => {
+        console.log("AFTER CLICK - Button text:", submitButton.textContent);
+        console.log("AFTER CLICK - Button disabled:", submitButton.disabled);
 
-      // This is what SHOULD happen:
-      expect(submitButton.textContent).toBe('Submitting...');
-      expect(submitButton.disabled).toBe(true);
-    }, { timeout: 500 });
+        // This is what SHOULD happen:
+        expect(submitButton.textContent).toBe("Submitting...");
+        expect(submitButton.disabled).toBe(true);
+      },
+      { timeout: 500 },
+    );
   }, 10000);
 });

@@ -40,7 +40,6 @@ export interface ArtifactMessage extends BaseMessage {
   content: string;
   artifactName: string;
   artifactId: string;
-  artifactContent: string;
 }
 
 export interface LoadingMessage extends BaseMessage {
@@ -64,12 +63,21 @@ export type Message =
   | LoadingMessage
   | DividerMessage;
 
-export interface Artifact {
+export interface BaseArtifact {
   id: string;
   name: string;
   stage: number;
   stageName: string;
-  content?: string;
-  createdAt?: string;
-  status: "pending" | "created";
 }
+
+export interface PendingArtifact extends BaseArtifact {
+  status: "pending";
+}
+
+export interface CreatedArtifact extends BaseArtifact {
+  status: "created";
+  content: string;
+  createdAt?: string;
+}
+
+export type Artifact = PendingArtifact | CreatedArtifact;

@@ -3,26 +3,26 @@
  * Tests XState provider integration and component wiring
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the route module to test component logic
-vi.mock('@tanstack/react-router', async () => {
-  const actual = await vi.importActual('@tanstack/react-router');
+vi.mock("@tanstack/react-router", async () => {
+  const actual = await vi.importActual("@tanstack/react-router");
   return {
     ...actual,
-    createFileRoute: (path: string) => (config: any) => ({
+    createFileRoute: (_path: string) => (config: any) => ({
       ...config,
-      useParams: () => ({ projectId: 'test-project-123' }),
+      useParams: () => ({ projectId: "test-project-123" }),
       options: config,
     }),
   };
 });
 
-describe('Build Route Integration', () => {
+describe("Build Route Integration", () => {
   beforeEach(() => {
     // Clear localStorage before each test
-    if (typeof localStorage !== 'undefined' && localStorage.clear) {
+    if (typeof localStorage !== "undefined" && localStorage.clear) {
       localStorage.clear();
     }
 
@@ -30,9 +30,9 @@ describe('Build Route Integration', () => {
     vi.resetModules();
   });
 
-  it('renders PlanningMachineProvider with correct projectId', async () => {
+  it("renders PlanningMachineProvider with correct projectId", async () => {
     // Import after mocks are set up
-    const { Route } = await import('./$projectId.build');
+    const { Route } = await import("./$projectId.build");
     const Component = (Route as any).options.component as React.ComponentType;
 
     const { container } = render(<Component />);
@@ -42,28 +42,32 @@ describe('Build Route Integration', () => {
     expect(container).toBeDefined();
   });
 
-  it('does not render old InterviewThread component', async () => {
-    const { Route } = await import('./$projectId.build');
+  it("does not render old InterviewThread component", async () => {
+    const { Route } = await import("./$projectId.build");
     const Component = (Route as any).options.component as React.ComponentType;
 
     const { container } = render(<Component />);
 
     // Old InterviewThread should not be present
-    expect(container.querySelector('[data-testid="interview-thread"]')).toBeNull();
+    expect(
+      container.querySelector('[data-testid="interview-thread"]'),
+    ).toBeNull();
   });
 
-  it('does not render old ProjectIntake component', async () => {
-    const { Route } = await import('./$projectId.build');
+  it("does not render old ProjectIntake component", async () => {
+    const { Route } = await import("./$projectId.build");
     const Component = (Route as any).options.component as React.ComponentType;
 
     const { container } = render(<Component />);
 
     // Old ProjectIntake wrapper should not be present
-    expect(container.querySelector('[data-testid="project-intake"]')).toBeNull();
+    expect(
+      container.querySelector('[data-testid="project-intake"]'),
+    ).toBeNull();
   });
 
-  it('provides StepContainer access to planning machine', async () => {
-    const { Route } = await import('./$projectId.build');
+  it("provides StepContainer access to planning machine", async () => {
+    const { Route } = await import("./$projectId.build");
     const Component = (Route as any).options.component as React.ComponentType;
 
     const { container } = render(<Component />);

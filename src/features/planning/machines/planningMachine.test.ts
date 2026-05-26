@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createActor } from "xstate";
-import { PlanningStateBuilder } from "../../../../tests/fixtures/builders/PlanningStateBuilder";
 import { planningMachine } from "./planningMachine";
 
 // Mock global fetch for API calls
@@ -26,7 +25,7 @@ beforeEach(() => {
 
   // Default mock for fetch (interview API)
   (global.fetch as any).mockImplementation(
-    async (url: string, options: any) => {
+    async (_url: string, options: any) => {
       const body = JSON.parse(options.body);
       const { stepNumber } = body;
 

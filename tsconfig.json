@@ -11,5 +11,13 @@
     "skipLibCheck": true,
     "ignoreDeprecations": "6.0"
   },
-  "exclude": ["_ref", "node_modules"]
+  "include": ["app", "src", "vitest.shims.d.ts"],
+  "exclude": [
+    "_ref",
+    "node_modules",
+    "scripts",
+    "src/**/*.test.*",
+    "src/**/*.stories.*",
+    "src/**/*.skip.*"
+  ]
 }

@@ -14,38 +14,38 @@
  * This test validates the correct behavior and proposes fix.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createActor } from 'xstate';
-import { planningMachine } from './planningMachine';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createActor } from "xstate";
+import { planningMachine } from "./planningMachine";
 
 // Mock the generateArtifact actor to avoid API calls
-vi.mock('xstate', async () => {
-  const actual = await vi.importActual('xstate');
+vi.mock("xstate", async () => {
+  const actual = await vi.importActual("xstate");
   return {
     ...actual,
   };
 });
 
-describe('BUG-006: Cannot proceed past step 1', () => {
+describe("BUG-006: Cannot proceed past step 1", () => {
   beforeEach(() => {
     // Mock fetch for artifact generation
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      headers: new Map([['content-type', 'application/json']]),
+      headers: new Map([["content-type", "application/json"]]),
       json: async () => ({
-        type: 'gap-analysis',
-        title: 'Gap Analysis',
-        content: 'Mock artifact content',
+        type: "gap-analysis",
+        title: "Gap Analysis",
+        content: "Mock artifact content",
         metadata: {},
       }),
     });
   });
 
-  it('reproduces the bug: Next button is disabled on step 1 before form submission', () => {
+  it("reproduces the bug: Next button is disabled on step 1 before form submission", () => {
     const actor = createActor(planningMachine, {
       input: {
-        entryPath: 'new-project' as const,
-        projectId: '6PXfKZQD',
+        entryPath: "new-project" as const,
+        projectId: "6PXfKZQD",
       },
     });
 
@@ -55,28 +55,31 @@ describe('BUG-006: Cannot proceed past step 1', () => {
 
     // Initial state should be step 1, collecting mode
     expect(snapshot.context.currentStepNumber).toBe(1);
-    expect(snapshot.value).toEqual({ step1_gapAnalysis: 'collecting' });
+    expect(snapshot.value).toEqual({ step1_gapAnalysis: "collecting" });
 
     // Key bug: completedSteps does NOT include step 1 yet
     expect(snapshot.context.completedSteps).not.toContain(1);
 
     // This is what Navigation.tsx checks:
     // canGoNext = currentStepNumber < TOTAL_STEPS && completedSteps.includes(currentStepNumber)
-    const canGoNext = snapshot.context.currentStepNumber < 10 &&
-                     snapshot.context.completedSteps.includes(snapshot.context.currentStepNumber);
+    const canGoNext =
+      snapshot.context.currentStepNumber < 10 &&
+      snapshot.context.completedSteps.includes(
+        snapshot.context.currentStepNumber,
+      );
 
     // BUG CONFIRMED: Next button would be disabled
     expect(canGoNext).toBe(false);
 
     // The machine also doesn't accept NEXT event in this state
-    expect(snapshot.can({ type: 'NEXT' })).toBe(false);
+    expect(snapshot.can({ type: "NEXT" })).toBe(false);
   });
 
-  it('correct workflow: Form submission stores responses and triggers artifact generation', async () => {
+  it("correct workflow: Form submission stores responses and triggers artifact generation", async () => {
     const actor = createActor(planningMachine, {
       input: {
-        entryPath: 'new-project' as const,
-        projectId: '6PXfKZQD',
+        entryPath: "new-project" as const,
+        projectId: "6PXfKZQD",
       },
     });
 
@@ -84,26 +87,28 @@ describe('BUG-006: Cannot proceed past step 1', () => {
 
     // User fills form and clicks Submit button (not Next button)
     actor.send({
-      type: 'SUBMIT_FORM',
+      type: "SUBMIT_FORM",
       stepNumber: 1,
       responses: {
-        existingRequirements: 'No',
-        projectDescription: 'I want to build a simple html page that when i click anywhere in the page the background fades to a new random color.',
+        existingRequirements: "No",
+        projectDescription:
+          "I want to build a simple html page that when i click anywhere in the page the background fades to a new random color.",
       },
     });
 
     // Wait a tick for state to update to submitting
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     const submitting = actor.getSnapshot();
 
     // Should be in submitting state
-    expect(submitting.value).toEqual({ step1_gapAnalysis: 'submitting' });
+    expect(submitting.value).toEqual({ step1_gapAnalysis: "submitting" });
 
     // Responses should be stored
     expect(submitting.context.step1Responses).toEqual({
-      existingRequirements: 'No',
-      projectDescription: 'I want to build a simple html page that when i click anywhere in the page the background fades to a new random color.',
+      existingRequirements: "No",
+      projectDescription:
+        "I want to build a simple html page that when i click anywhere in the page the background fades to a new random color.",
     });
 
     // Note: In real app, artifact generation would complete and move to step 2
@@ -111,35 +116,35 @@ describe('BUG-006: Cannot proceed past step 1', () => {
     // The important validation is that SUBMIT_FORM event is accepted and responses are stored
   });
 
-  it('validates the form question structure matches user expectations', () => {
+  it("validates the form question structure matches user expectations", () => {
     // The form has these questions (from FormStep.tsx):
     const STEP1_QUESTIONS = [
       {
-        id: 'existingRequirements',
-        label: 'Do you have existing requirements?',
-        type: 'text', // <-- PROBLEM: This is a yes/no question but type is 'text'
+        id: "existingRequirements",
+        label: "Do you have existing requirements?",
+        type: "text", // <-- PROBLEM: This is a yes/no question but type is 'text'
       },
       {
-        id: 'projectDescription',
-        label: 'What are you building?',
-        type: 'textarea',
+        id: "projectDescription",
+        label: "What are you building?",
+        type: "textarea",
       },
     ];
 
     // User expects 'existingRequirements' to be a boolean/select
     // but it's actually a text field
-    expect(STEP1_QUESTIONS[0].type).toBe('text'); // This is the mismatch
+    expect(STEP1_QUESTIONS[0].type).toBe("text"); // This is the mismatch
 
     // RECOMMENDATION: Change to:
     // type: 'select',
     // options: ['Yes', 'No']
   });
 
-  it('validates form validation logic', () => {
+  it("validates form validation logic", () => {
     const actor = createActor(planningMachine, {
       input: {
-        entryPath: 'new-project' as const,
-        projectId: '6PXfKZQD',
+        entryPath: "new-project" as const,
+        projectId: "6PXfKZQD",
       },
     });
 

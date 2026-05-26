@@ -65,8 +65,12 @@ function parseMarkdownOptions(text: string): StepOption[] {
     const [, number, titlePart] = prefixMatch;
 
     // Extract title and check for (Recommended)
-    const recommendedMatch = titlePart.match(/^(.+?)\s*\((?:Recommended|recommended)\)\s*$/);
-    const title = recommendedMatch ? recommendedMatch[1].trim() : titlePart.trim();
+    const recommendedMatch = titlePart.match(
+      /^(.+?)\s*\((?:Recommended|recommended)\)\s*$/,
+    );
+    const title = recommendedMatch
+      ? recommendedMatch[1].trim()
+      : titlePart.trim();
     const isRecommended = !!recommendedMatch;
 
     // Skip "Type your own" options
@@ -91,7 +95,9 @@ function parseMarkdownOptions(text: string): StepOption[] {
  * Please select an option: 1. **Title** (Recommended) - Description 2. **Another** - Description
  */
 function parseInlineOptions(text: string): StepOption[] {
-  const inlineMatch = text.match(/Please select.*?:\s*([\d\.][\s\S]+?)(?:\*\*Type your own answer|$)/i);
+  const inlineMatch = text.match(
+    /Please select.*?:\s*([\d.][\s\S]+?)(?:\*\*Type your own answer|$)/i,
+  );
   if (!inlineMatch) {
     return [];
   }
@@ -121,8 +127,10 @@ function parseInlineOptions(text: string): StepOption[] {
     const [, number, titlePart] = prefixMatch;
 
     // Remove bold markers and extract (Recommended)
-    let cleanTitle = titlePart.replace(/\*\*/g, "").trim();
-    const recommendedMatch = cleanTitle.match(/^(.+?)\s*\((?:Recommended|recommended)\)\s*$/);
+    const cleanTitle = titlePart.replace(/\*\*/g, "").trim();
+    const recommendedMatch = cleanTitle.match(
+      /^(.+?)\s*\((?:Recommended|recommended)\)\s*$/,
+    );
     const title = recommendedMatch ? recommendedMatch[1].trim() : cleanTitle;
     const isRecommended = !!recommendedMatch;
 
@@ -155,8 +163,8 @@ function parseFallbackOptions(text: string): StepOption[] {
   // Look for any numbered list pattern with dash separator
   const optionRegex = /(\d+)\.\s+([^-\n]+?)\s*-\s*([^\n]+?)(?=\s+\d+\.|$)/g;
 
-  let match;
-  while ((match = optionRegex.exec(text)) !== null) {
+  let match: RegExpExecArray | null = optionRegex.exec(text);
+  while (match !== null) {
     const [, number, title, body] = match;
 
     // Skip "Type your own" options
@@ -170,6 +178,8 @@ function parseFallbackOptions(text: string): StepOption[] {
       body: body.trim(),
       recommended: false, // Can't reliably detect (Recommended) in fallback mode
     });
+
+    match = optionRegex.exec(text);
   }
 
   return options;

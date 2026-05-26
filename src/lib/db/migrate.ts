@@ -1,7 +1,7 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type Database from "better-sqlite3";
-import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
 
 // ES module compatible __dirname replacement
 const __filename = fileURLToPath(import.meta.url);

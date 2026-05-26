@@ -4,7 +4,7 @@
  * Shows examples from all 10 stages in a continuous chat conversation
  */
 
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { WorkflowChat } from "./WorkflowChat";
 
 const meta = {

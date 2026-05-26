@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 
 // Ensure localStorage is available in jsdom environment
 // jsdom should provide this, but we'll ensure it's set up correctly
-if (typeof global !== 'undefined' && !global.localStorage) {
+if (typeof global !== "undefined" && !global.localStorage) {
   class LocalStorageMock {
     private store: Record<string, string> = {};
 
@@ -32,7 +32,7 @@ if (typeof global !== 'undefined' && !global.localStorage) {
     }
   }
 
-  Object.defineProperty(global, 'localStorage', {
+  Object.defineProperty(global, "localStorage", {
     value: new LocalStorageMock(),
     writable: true,
     configurable: true,

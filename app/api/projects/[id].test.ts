@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
-  createProject,
-  updateCurrentStep,
   _resetStore,
+  createProject,
   initStore,
+  updateCurrentStep,
 } from "@/features/projects/store";
 
 function validateUpdateProjectStep(data: unknown) {
@@ -31,9 +31,7 @@ describe("PUT /api/projects/[id] validator", () => {
   });
 
   it("throws on missing currentStep", () => {
-    expect(() => validateUpdateProjectStep({})).toThrow(
-      "currentStep required",
-    );
+    expect(() => validateUpdateProjectStep({})).toThrow("currentStep required");
   });
 
   it("throws on non-number currentStep", () => {
@@ -50,7 +48,10 @@ describe("PUT /api/projects/[id] (store delegate)", () => {
   });
 
   it("updates currentStep for valid project", () => {
-    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+    const project = createProject({
+      name: "Test Project",
+      entryPath: "scratch",
+    });
     const initialTimestamp = project.lastTouchedAt;
 
     const updated = updateCurrentStep(project.id, 2);
@@ -61,7 +62,10 @@ describe("PUT /api/projects/[id] (store delegate)", () => {
   });
 
   it("throws on invalid step number (zero)", () => {
-    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+    const project = createProject({
+      name: "Test Project",
+      entryPath: "scratch",
+    });
 
     expect(() => updateCurrentStep(project.id, 0)).toThrow(
       "Invalid step number: 0",
@@ -69,7 +73,10 @@ describe("PUT /api/projects/[id] (store delegate)", () => {
   });
 
   it("throws on invalid step number (negative)", () => {
-    const project = createProject({ name: "Test Project", entryPath: "scratch" });
+    const project = createProject({
+      name: "Test Project",
+      entryPath: "scratch",
+    });
 
     expect(() => updateCurrentStep(project.id, -1)).toThrow("Invalid step");
   });

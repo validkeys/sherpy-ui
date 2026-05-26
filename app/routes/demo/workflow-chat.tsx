@@ -4,14 +4,12 @@
  */
 
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 import { Header } from "@/components/header/Header";
 import { AppLayout } from "@/components/layouts";
 import {
   SpectrumStepper,
   type Stage,
 } from "@/components/spectrum-stepper/SpectrumStepper";
-import type { WorkflowChatProps } from "@/components/workflow-chat";
 import { WorkflowChat } from "@/components/workflow-chat";
 
 export const Route = createFileRoute("/demo/workflow-chat")({

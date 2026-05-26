@@ -5,7 +5,7 @@ import {
   $submitAnswer,
   $submitAnswerAndComplete,
   $updateStepOptions,
-} from "./server";
+} from "./infrastructure/server-functions";
 import type { StepOption } from "./types";
 
 export function stepStateQueryKey(projectId: string) {
@@ -22,10 +22,15 @@ export function useStepState(projectId: string) {
 export function useSubmitAnswer(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { stepNumber: number; question: string; answer: string }) =>
-      $submitAnswer({ data: { projectId, ...vars } }),
+    mutationFn: (vars: {
+      stepNumber: number;
+      question: string;
+      answer: string;
+    }) => $submitAnswer({ data: { projectId, ...vars } }),
     onSuccess: async () => {
-      console.log("[useSubmitAnswer] Answer submitted, invalidating queries...");
+      console.log(
+        "[useSubmitAnswer] Answer submitted, invalidating queries...",
+      );
       await qc.invalidateQueries({ queryKey: stepStateQueryKey(projectId) });
       console.log("[useSubmitAnswer] Queries invalidated and refetched");
     },
@@ -55,10 +60,15 @@ export function useCompleteStep(projectId: string) {
 export function useSubmitAnswerAndComplete(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { stepNumber: number; question: string; answer: string }) =>
-      $submitAnswerAndComplete({ data: { projectId, ...vars } }),
+    mutationFn: (vars: {
+      stepNumber: number;
+      question: string;
+      answer: string;
+    }) => $submitAnswerAndComplete({ data: { projectId, ...vars } }),
     onSuccess: async () => {
-      console.log("[useSubmitAnswerAndComplete] Answer submitted and step completed");
+      console.log(
+        "[useSubmitAnswerAndComplete] Answer submitted and step completed",
+      );
       await qc.invalidateQueries({ queryKey: stepStateQueryKey(projectId) });
     },
     onError: (err) =>

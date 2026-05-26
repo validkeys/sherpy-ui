@@ -3,8 +3,10 @@
  * Displays step progress and provides Back/Next navigation controls
  */
 
-import React from 'react';
-import { useSelector, usePlanningMachine } from '../machines/PlanningMachineContext';
+import {
+  usePlanningMachine,
+  useSelector,
+} from "../machines/PlanningMachineContext";
 
 const TOTAL_STEPS = 10;
 
@@ -12,22 +14,26 @@ export function Navigation() {
   const actor = usePlanningMachine();
 
   // Primitive selectors to avoid unnecessary re-renders
-  const currentStepNumber = useSelector((state) => state.context.currentStepNumber);
+  const currentStepNumber = useSelector(
+    (state) => state.context.currentStepNumber,
+  );
   const completedSteps = useSelector((state) => state.context.completedSteps);
 
   // Determine if navigation buttons should be enabled
   const canGoBack = currentStepNumber > 1;
-  const canGoNext = currentStepNumber < TOTAL_STEPS && completedSteps.includes(currentStepNumber);
+  const canGoNext =
+    currentStepNumber < TOTAL_STEPS &&
+    completedSteps.includes(currentStepNumber);
 
   const handleBack = () => {
     if (canGoBack) {
-      actor.send({ type: 'BACK' });
+      actor.send({ type: "BACK" });
     }
   };
 
   const handleNext = () => {
     if (canGoNext) {
-      actor.send({ type: 'NEXT' });
+      actor.send({ type: "NEXT" });
     }
   };
 

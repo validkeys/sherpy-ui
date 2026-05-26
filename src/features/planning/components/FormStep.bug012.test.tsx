@@ -14,28 +14,28 @@
  * Expected to FAIL before fix is applied.
  */
 
-import React, { StrictMode } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { FormStep } from './FormStep';
-import { PlanningMachineProvider } from '../machines/PlanningMachineContext';
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
+import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
+import { FormStep } from "./FormStep";
 
-describe('BUG-012: FormStep StrictMode Compatibility', () => {
+describe("BUG-012: FormStep StrictMode Compatibility", () => {
   // Clean up localStorage before each test to ensure clean state
   beforeEach(() => {
-    if (typeof localStorage !== 'undefined' && localStorage.clear) {
+    if (typeof localStorage !== "undefined" && localStorage.clear) {
       localStorage.clear();
     }
     // Clear global actor reference if it exists
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       (window as any).__planningActor = undefined;
     }
-    if (typeof global !== 'undefined') {
+    if (typeof global !== "undefined") {
       (global as any).__planningActor = undefined;
     }
   });
 
   afterEach(() => {
-    if (typeof localStorage !== 'undefined' && localStorage.clear) {
+    if (typeof localStorage !== "undefined" && localStorage.clear) {
       localStorage.clear();
     }
   });
@@ -53,15 +53,15 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
    * - step1Responses remains empty
    * - Test times out waiting for responses
    */
-  it('should send events to active actor after StrictMode remount', async () => {
-    const projectId = 'test-strictmode-actor-ref';
+  it("should send events to active actor after StrictMode remount", async () => {
+    const projectId = "test-strictmode-actor-ref";
     const storageKey = `planning-machine-${projectId}`;
 
     // Render in StrictMode (triggers double-mount behavior)
     render(
       <StrictMode>
         <PlanningMachineProvider
-          input={{ projectId, entryPath: 'new-project' }}
+          input={{ projectId, entryPath: "new-project" }}
           storageKey={storageKey}
         >
           <FormStep
@@ -70,7 +70,7 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
             status="collecting"
           />
         </PlanningMachineProvider>
-      </StrictMode>
+      </StrictMode>,
     );
 
     // StrictMode has already caused mount → unmount → remount
@@ -83,17 +83,21 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
     const textarea1 = screen.getByLabelText(/existing requirements/i);
     const textarea2 = screen.getByLabelText(/what are you building/i);
 
-    fireEvent.change(textarea1, { target: { value: 'No existing requirements' } });
-    fireEvent.change(textarea2, { target: { value: 'Healthcare patient portal for BUG-012 test' } });
+    fireEvent.change(textarea1, {
+      target: { value: "No existing requirements" },
+    });
+    fireEvent.change(textarea2, {
+      target: { value: "Healthcare patient portal for BUG-012 test" },
+    });
 
     // Wait for Submit button to become enabled (form validation)
     await waitFor(() => {
-      const submitButton = screen.getByRole('button', { name: /submit/i });
+      const submitButton = screen.getByRole("button", { name: /submit/i });
       expect(submitButton).not.toBeDisabled();
     });
 
     // Click Submit button
-    const submitButton = screen.getByRole('button', { name: /submit/i });
+    const submitButton = screen.getByRole("button", { name: /submit/i });
     fireEvent.click(submitButton);
 
     // CRITICAL ASSERTION: Verify actor received the event and updated context
@@ -104,13 +108,13 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
 
         // Verify actor exists and is active (not stopped)
         expect(actor).toBeDefined();
-        expect(actor.getSnapshot().status).toBe('active');
+        expect(actor.getSnapshot().status).toBe("active");
 
         // Verify step1Responses was populated with form data
         const snapshot = actor.getSnapshot();
         expect(snapshot.context.step1Responses).toEqual({
-          existingRequirements: 'No existing requirements',
-          projectDescription: 'Healthcare patient portal for BUG-012 test',
+          existingRequirements: "No existing requirements",
+          projectDescription: "Healthcare patient portal for BUG-012 test",
         });
 
         // Verify state transitioned from 'collecting' to 'submitting'
@@ -119,24 +123,24 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
         // the event was processed and step1Responses was populated.
         const stateValue = snapshot.value as any;
         expect(stateValue.step1_gapAnalysis).toBeDefined();
-        expect(stateValue.step1_gapAnalysis).toBe('submitting');
+        expect(stateValue.step1_gapAnalysis).toBe("submitting");
       },
       {
         timeout: 2000,
         // Provide helpful error message when this fails
-        onTimeout: (error) => {
+        onTimeout: (_error) => {
           const actor = (window as any).__planningActor;
           if (actor) {
-            console.error('Actor status:', actor.getSnapshot().status);
-            console.error('Actor context:', actor.getSnapshot().context);
-            console.error('Actor state:', actor.getSnapshot().value);
+            console.error("Actor status:", actor.getSnapshot().status);
+            console.error("Actor context:", actor.getSnapshot().context);
+            console.error("Actor state:", actor.getSnapshot().value);
           }
           return new Error(
-            'FormStep did not send SUBMIT_FORM event to actor. ' +
-            'This indicates the stale actor reference bug (BUG-012) is present.'
+            "FormStep did not send SUBMIT_FORM event to actor. " +
+              "This indicates the stale actor reference bug (BUG-012) is present.",
           );
-        }
-      }
+        },
+      },
     );
   });
 
@@ -152,14 +156,14 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
    * - Actor reference remains valid
    * - Form submission works normally
    */
-  it('should work correctly without StrictMode (baseline)', async () => {
-    const projectId = 'test-no-strictmode';
+  it("should work correctly without StrictMode (baseline)", async () => {
+    const projectId = "test-no-strictmode";
     const storageKey = `planning-machine-${projectId}`;
 
     // Render WITHOUT StrictMode
     render(
       <PlanningMachineProvider
-        input={{ projectId, entryPath: 'new-project' }}
+        input={{ projectId, entryPath: "new-project" }}
         storageKey={storageKey}
       >
         <FormStep
@@ -167,29 +171,32 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
           stepName="Gap Analysis"
           status="collecting"
         />
-      </PlanningMachineProvider>
+      </PlanningMachineProvider>,
     );
 
     // Fill form
     const textarea1 = screen.getByLabelText(/existing requirements/i);
     const textarea2 = screen.getByLabelText(/what are you building/i);
 
-    fireEvent.change(textarea1, { target: { value: 'Baseline test' } });
-    fireEvent.change(textarea2, { target: { value: 'No StrictMode test' } });
+    fireEvent.change(textarea1, { target: { value: "Baseline test" } });
+    fireEvent.change(textarea2, { target: { value: "No StrictMode test" } });
 
     // Submit
-    const submitButton = screen.getByRole('button', { name: /submit/i });
+    const submitButton = screen.getByRole("button", { name: /submit/i });
     await waitFor(() => expect(submitButton).not.toBeDisabled());
     fireEvent.click(submitButton);
 
     // Verify submission worked
-    await waitFor(() => {
-      const actor = (window as any).__planningActor;
-      expect(actor.getSnapshot().context.step1Responses).toEqual({
-        existingRequirements: 'Baseline test',
-        projectDescription: 'No StrictMode test',
-      });
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        const actor = (window as any).__planningActor;
+        expect(actor.getSnapshot().context.step1Responses).toEqual({
+          existingRequirements: "Baseline test",
+          projectDescription: "No StrictMode test",
+        });
+      },
+      { timeout: 3000 },
+    );
   });
 
   /**
@@ -204,14 +211,14 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
    * - FormStep may end up with reference to any stopped actor
    * - Submission fails randomly depending on which stopped actor is referenced
    */
-  it('should handle multiple remounts correctly', async () => {
-    const projectId = 'test-multiple-remounts';
+  it("should handle multiple remounts correctly", async () => {
+    const projectId = "test-multiple-remounts";
     const storageKey = `planning-machine-${projectId}`;
 
     const { rerender } = render(
       <StrictMode>
         <PlanningMachineProvider
-          input={{ projectId, entryPath: 'new-project' }}
+          input={{ projectId, entryPath: "new-project" }}
           storageKey={storageKey}
         >
           <FormStep
@@ -220,7 +227,7 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
             status="collecting"
           />
         </PlanningMachineProvider>
-      </StrictMode>
+      </StrictMode>,
     );
 
     // Force additional remounts
@@ -228,7 +235,7 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
       rerender(
         <StrictMode>
           <PlanningMachineProvider
-            input={{ projectId, entryPath: 'new-project' }}
+            input={{ projectId, entryPath: "new-project" }}
             storageKey={storageKey}
           >
             <FormStep
@@ -237,7 +244,7 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
               status="collecting"
             />
           </PlanningMachineProvider>
-        </StrictMode>
+        </StrictMode>,
       );
     }
 
@@ -245,22 +252,27 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
     const textarea1 = screen.getByLabelText(/existing requirements/i);
     const textarea2 = screen.getByLabelText(/what are you building/i);
 
-    fireEvent.change(textarea1, { target: { value: 'Multiple remounts test' } });
-    fireEvent.change(textarea2, { target: { value: 'Should still work' } });
+    fireEvent.change(textarea1, {
+      target: { value: "Multiple remounts test" },
+    });
+    fireEvent.change(textarea2, { target: { value: "Should still work" } });
 
-    const submitButton = screen.getByRole('button', { name: /submit/i });
+    const submitButton = screen.getByRole("button", { name: /submit/i });
     await waitFor(() => expect(submitButton).not.toBeDisabled());
     fireEvent.click(submitButton);
 
     // Verify submission still works after multiple remounts
-    await waitFor(() => {
-      const actor = (window as any).__planningActor;
-      expect(actor.getSnapshot().status).toBe('active');
-      expect(actor.getSnapshot().context.step1Responses).toEqual({
-        existingRequirements: 'Multiple remounts test',
-        projectDescription: 'Should still work',
-      });
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const actor = (window as any).__planningActor;
+        expect(actor.getSnapshot().status).toBe("active");
+        expect(actor.getSnapshot().context.step1Responses).toEqual({
+          existingRequirements: "Multiple remounts test",
+          projectDescription: "Should still work",
+        });
+      },
+      { timeout: 5000 },
+    );
   });
 
   /**
@@ -274,14 +286,14 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
    * - Actor reference in FormStep doesn't update after provider remount
    * - useRef not implemented, so ref stays stale
    */
-  it('should update actor reference when provider remounts', async () => {
-    const projectId = 'test-actor-ref-update';
+  it("should update actor reference when provider remounts", async () => {
+    const projectId = "test-actor-ref-update";
     const storageKey = `planning-machine-${projectId}`;
 
     const { rerender } = render(
       <StrictMode>
         <PlanningMachineProvider
-          input={{ projectId, entryPath: 'new-project' }}
+          input={{ projectId, entryPath: "new-project" }}
           storageKey={storageKey}
         >
           <FormStep
@@ -290,7 +302,7 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
             status="collecting"
           />
         </PlanningMachineProvider>
-      </StrictMode>
+      </StrictMode>,
     );
 
     // Capture first actor ID
@@ -302,7 +314,7 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
       <StrictMode>
         <PlanningMachineProvider
           key="remounted" // Force new instance
-          input={{ projectId, entryPath: 'new-project' }}
+          input={{ projectId, entryPath: "new-project" }}
           storageKey={storageKey}
         >
           <FormStep
@@ -311,7 +323,7 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
             status="collecting"
           />
         </PlanningMachineProvider>
-      </StrictMode>
+      </StrictMode>,
     );
 
     // Wait for new actor to be created
@@ -326,22 +338,25 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
     const textarea1 = screen.getByLabelText(/existing requirements/i);
     const textarea2 = screen.getByLabelText(/what are you building/i);
 
-    fireEvent.change(textarea1, { target: { value: 'After remount' } });
-    fireEvent.change(textarea2, { target: { value: 'New actor test' } });
+    fireEvent.change(textarea1, { target: { value: "After remount" } });
+    fireEvent.change(textarea2, { target: { value: "New actor test" } });
 
-    const submitButton = screen.getByRole('button', { name: /submit/i });
+    const submitButton = screen.getByRole("button", { name: /submit/i });
     await waitFor(() => expect(submitButton).not.toBeDisabled());
     fireEvent.click(submitButton);
 
     // Verify event went to the NEW actor, not the old one
-    await waitFor(() => {
-      const currentActor = (window as any).__planningActor;
-      expect(currentActor.getSnapshot().status).toBe('active');
-      expect(currentActor.getSnapshot().context.step1Responses).toEqual({
-        existingRequirements: 'After remount',
-        projectDescription: 'New actor test',
-      });
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const currentActor = (window as any).__planningActor;
+        expect(currentActor.getSnapshot().status).toBe("active");
+        expect(currentActor.getSnapshot().context.step1Responses).toEqual({
+          existingRequirements: "After remount",
+          projectDescription: "New actor test",
+        });
+      },
+      { timeout: 5000 },
+    );
   });
 });
 
@@ -351,15 +366,15 @@ describe('BUG-012: FormStep StrictMode Compatibility', () => {
  * These tests verify that the PlanningMachineContext properly handles
  * actor lifecycle during development vs production.
  */
-describe('BUG-012: PlanningMachineContext Cleanup Behavior', () => {
+describe("BUG-012: PlanningMachineContext Cleanup Behavior", () => {
   beforeEach(() => {
-    if (typeof localStorage !== 'undefined' && localStorage.clear) {
+    if (typeof localStorage !== "undefined" && localStorage.clear) {
       localStorage.clear();
     }
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       (window as any).__planningActor = undefined;
     }
-    if (typeof global !== 'undefined') {
+    if (typeof global !== "undefined") {
       (global as any).__planningActor = undefined;
     }
   });
@@ -375,48 +390,48 @@ describe('BUG-012: PlanningMachineContext Cleanup Behavior', () => {
    * - Actor is stopped on every unmount
    * - Creates many stopped actors during development
    */
-  it('should not stop actor on unmount in development mode', async () => {
+  it("should not stop actor on unmount in development mode", async () => {
     // Verify we're in development mode for this test
-    expect(process.env.NODE_ENV).toBe('test'); // Jest runs in test mode, similar to dev
+    expect(process.env.NODE_ENV).toBe("test"); // Jest runs in test mode, similar to dev
 
-    const projectId = 'test-dev-cleanup';
+    const projectId = "test-dev-cleanup";
     const storageKey = `planning-machine-${projectId}`;
 
     const { unmount } = render(
       <StrictMode>
         <PlanningMachineProvider
-          input={{ projectId, entryPath: 'new-project' }}
+          input={{ projectId, entryPath: "new-project" }}
           storageKey={storageKey}
         >
           <div>Test content</div>
         </PlanningMachineProvider>
-      </StrictMode>
+      </StrictMode>,
     );
 
     // Capture actor reference before unmount
     const actor = (window as any).__planningActor;
     expect(actor).toBeDefined();
-    expect(actor.getSnapshot().status).toBe('active');
+    expect(actor.getSnapshot().status).toBe("active");
 
-    const actorId = actor.id;
+    const _actorId = actor.id;
 
     // Unmount component (triggers cleanup)
     unmount();
 
     // AFTER FIX: In development, actor should still be active
     // BEFORE FIX: Actor would be stopped
-    expect(actor.getSnapshot().status).toBe('active');
+    expect(actor.getSnapshot().status).toBe("active");
 
     // Actor should still be able to receive events (not stopped)
     // We check that the actor CAN process a valid event for its current state
     // In this case, the actor is in step1_gapAnalysis.collecting state
     // which accepts SUBMIT_FORM events
     const currentState = actor.getSnapshot().value as any;
-    expect(currentState.step1_gapAnalysis).toBe('collecting');
+    expect(currentState.step1_gapAnalysis).toBe("collecting");
     const canReceiveEvents = actor.getSnapshot().can({
-      type: 'SUBMIT_FORM',
+      type: "SUBMIT_FORM",
       stepNumber: 1,
-      responses: {}
+      responses: {},
     });
     expect(canReceiveEvents).toBe(true); // Active actors can receive events
   });

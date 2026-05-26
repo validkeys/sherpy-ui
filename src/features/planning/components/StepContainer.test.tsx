@@ -3,54 +3,54 @@
  * Tests the routing logic for all 10 steps
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { StepContainer } from './StepContainer';
-import { PlanningMachineProvider } from '../machines/PlanningMachineContext';
+import { render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
+import { StepContainer } from "./StepContainer";
 
-describe('StepContainer', () => {
+describe("StepContainer", () => {
   const defaultInput = {
-    projectId: 'test-project',
-    entryPath: 'new-project' as const,
+    projectId: "test-project",
+    entryPath: "new-project" as const,
   };
 
-  describe('Component rendering', () => {
-    it('renders StepContainer without errors', () => {
+  describe("Component rendering", () => {
+    it("renders StepContainer without errors", () => {
       const { container } = render(
         <PlanningMachineProvider input={defaultInput}>
           <StepContainer />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
       expect(container).toBeDefined();
     });
 
-    it('renders step1_gapAnalysis on initial load', () => {
+    it("renders step1_gapAnalysis on initial load", () => {
       const { container } = render(
         <PlanningMachineProvider input={defaultInput}>
           <StepContainer />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
       // Machine now starts in step1_gapAnalysis (BUG-001 fix)
       // Should render form step, not null
-      expect(container.querySelector('.form-step')).not.toBeNull();
+      expect(container.querySelector(".form-step")).not.toBeNull();
     });
   });
 
-  describe('Unknown step handling', () => {
-    it('renders step1 on initial load (no longer starts in idle)', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  describe("Unknown step handling", () => {
+    it("renders step1 on initial load (no longer starts in idle)", () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       const { container } = render(
         <PlanningMachineProvider input={defaultInput}>
           <StepContainer />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
       // After BUG-001 fix: machine starts in step1_gapAnalysis, not idle
       // Should render form step
-      expect(container.querySelector('.form-step')).not.toBeNull();
+      expect(container.querySelector(".form-step")).not.toBeNull();
 
       // Should NOT log warning (step1 is valid)
       expect(consoleSpy).not.toHaveBeenCalled();
@@ -59,24 +59,24 @@ describe('StepContainer', () => {
     });
   });
 
-  describe('Integration with context', () => {
-    it('uses useSelector to access state', () => {
+  describe("Integration with context", () => {
+    it("uses useSelector to access state", () => {
       // Renders without throwing errors
       render(
         <PlanningMachineProvider input={defaultInput}>
           <StepContainer />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
       // No errors should be thrown
       expect(true).toBe(true);
     });
 
-    it('handles provider correctly', () => {
+    it("handles provider correctly", () => {
       const { container } = render(
         <PlanningMachineProvider input={defaultInput}>
           <StepContainer />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
       expect(container).toBeDefined();

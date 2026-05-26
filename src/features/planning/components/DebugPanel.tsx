@@ -364,10 +364,12 @@ function DOMFormValues() {
       setValues({
         existingRequirements: field1?.value || "(field not found)",
         projectDescription: field2?.value || "(field not found)",
-        submitButtonText: document.querySelector('button[type="submit"]')
-          ?.textContent,
-        submitDisabled: document.querySelector('button[type="submit"]')
-          ?.disabled,
+        submitButtonText: document.querySelector<HTMLButtonElement>(
+          'button[type="submit"]',
+        )?.textContent,
+        submitDisabled: document.querySelector<HTMLButtonElement>(
+          'button[type="submit"]',
+        )?.disabled,
       });
     }, 500);
 

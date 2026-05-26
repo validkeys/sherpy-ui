@@ -44,7 +44,11 @@ describe("ProjectIntake", () => {
           name: "Step 1",
           status: "complete",
           question: "Question for step 1?",
-          answer: { question: "Question for step 1?", value: "scratch", submittedAt: "2026-01-01T00:00:00Z" },
+          answer: {
+            question: "Question for step 1?",
+            value: "scratch",
+            submittedAt: "2026-01-01T00:00:00Z",
+          },
         },
         ...Array.from({ length: 9 }, (_, i) => ({
           stepNumber: i + 2,

@@ -4,7 +4,7 @@ import type { DBProject } from "@/lib/db/types";
 import type { CreateProjectInput, Project } from "./types";
 
 const counterRef = { value: 42 };
-let lastTimestamp = "";
+let _lastTimestamp = "";
 
 function initializeCounter(): void {
   const stmt = db.prepare(`
@@ -34,7 +34,7 @@ function getNewTimestamp(previousTimestamp?: string): string {
     date.setMilliseconds(date.getMilliseconds() + 1);
     timestamp = date.toISOString();
   }
-  lastTimestamp = timestamp;
+  _lastTimestamp = timestamp;
   return timestamp;
 }
 

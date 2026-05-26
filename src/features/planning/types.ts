@@ -1,4 +1,4 @@
-export type StepStatus = "complete" | "now" | "pending";
+export type StepStatus = "complete" | "now" | "pending" | "skipped";
 
 export interface StepAnswer {
   question: string; // The question that was answered

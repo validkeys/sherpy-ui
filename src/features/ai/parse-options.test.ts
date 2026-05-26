@@ -58,7 +58,9 @@ Select one.`;
       const options = parseOptions(text);
 
       expect(options).toHaveLength(2);
-      expect(options.find((o) => o.title.toLowerCase().includes("type your own"))).toBeUndefined();
+      expect(
+        options.find((o) => o.title.toLowerCase().includes("type your own")),
+      ).toBeUndefined();
     });
 
     it("should handle multi-line option bodies in markdown format", () => {
@@ -73,8 +75,12 @@ Select one.`;
       const options = parseOptions(text);
 
       expect(options).toHaveLength(2);
-      expect(options[0].body).toBe("Multiple independent services, better scaling but higher complexity");
-      expect(options[1].body).toBe("Event-driven, scales automatically, but vendor lock-in");
+      expect(options[0].body).toBe(
+        "Multiple independent services, better scaling but higher complexity",
+      );
+      expect(options[1].body).toBe(
+        "Event-driven, scales automatically, but vendor lock-in",
+      );
     });
   });
 
@@ -207,7 +213,9 @@ Select one.`;
       const options = parseOptions(text);
 
       expect(options).toHaveLength(2);
-      expect(options.find((o) => o.title.toLowerCase().includes("type your own"))).toBeUndefined();
+      expect(
+        options.find((o) => o.title.toLowerCase().includes("type your own")),
+      ).toBeUndefined();
     });
   });
 
@@ -259,7 +267,9 @@ Select one.`;
 
       // Should only parse the structured **Options:** section, not the echoed text
       expect(options).toHaveLength(2);
-      expect(options[0].body).toBe("Single deployable unit, simpler to develop and deploy initially");
+      expect(options[0].body).toBe(
+        "Single deployable unit, simpler to develop and deploy initially",
+      );
     });
 
     it("should handle AI response without **Options:** header", () => {

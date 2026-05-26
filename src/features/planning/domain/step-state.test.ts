@@ -7,7 +7,6 @@ import {
   getStepSummary,
   isStepAccessible,
 } from "./step-state";
-import type { StepNumber } from "./types";
 
 describe("Domain: step-state queries", () => {
   // Test fixtures

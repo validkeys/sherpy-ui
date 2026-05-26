@@ -8,7 +8,9 @@ export function ArtifactCard({ stepName, content }: ArtifactCardProps) {
     <div className="border border-border-2 rounded-lg p-4 bg-bg-2">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-fg-3">✓ Generated Artifact</span>
+          <span className="text-xs font-mono text-fg-3">
+            ✓ Generated Artifact
+          </span>
           <span className="text-xs font-mono text-fg-2">{stepName}</span>
         </div>
         <button

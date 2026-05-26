@@ -5,7 +5,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "./index";
 import {
-  _clearInterviewAnswers,
   deleteInterviewAnswers,
   getInterviewAnswers,
   saveInterviewAnswer,

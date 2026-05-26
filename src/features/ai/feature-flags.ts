@@ -50,5 +50,8 @@ export function getFeatureFlags(): FeatureFlags {
  */
 export function isStructuredOutputEnabled(stepNumber: number): boolean {
   const flags = getFeatureFlags();
-  return flags.useStructuredOutput && flags.structuredOutputSteps.includes(stepNumber);
+  return (
+    flags.useStructuredOutput &&
+    flags.structuredOutputSteps.includes(stepNumber)
+  );
 }

@@ -15,8 +15,6 @@ interface ProjectIntakeProps {
  *
  * This component is kept for backward compatibility but just renders children.
  */
-export function ProjectIntake({
-  children,
-}: ProjectIntakeProps) {
+export function ProjectIntake({ children }: ProjectIntakeProps) {
   return <>{children}</>;
 }

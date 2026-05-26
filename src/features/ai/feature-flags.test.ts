@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  type FeatureFlags,
   getFeatureFlags,
   isStructuredOutputEnabled,
-  type FeatureFlags,
 } from "./feature-flags";
 
 describe("Feature Flags", () => {
@@ -61,7 +61,9 @@ describe("Feature Flags", () => {
 
       const flags = getFeatureFlags();
 
-      expect(flags.structuredOutputSteps).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      expect(flags.structuredOutputSteps).toEqual([
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+      ]);
     });
 
     it("should remain disabled when USE_STRUCTURED_OUTPUT=false", () => {
