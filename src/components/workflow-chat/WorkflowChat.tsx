@@ -104,9 +104,12 @@ function StageDivider({
   stageColor: string;
 }) {
   return (
-    <div className="flex items-center gap-3 my-8 px-8">
+    <div
+      className="sticky top-0 flex items-center gap-3 my-8 px-8 bg-page/95 backdrop-blur-sm"
+      style={{ zIndex: stageNumber }}
+    >
       <div className="flex-1 h-px bg-border-1" />
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border-1">
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border-1 shadow-sm">
         <div
           className="w-2 h-2 rounded-full"
           style={{ backgroundColor: stageColor }}
