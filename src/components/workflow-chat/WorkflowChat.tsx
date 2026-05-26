@@ -86,8 +86,9 @@ interface Artifact {
   name: string;
   stage: number;
   stageName: string;
-  content: string;
-  createdAt: string;
+  content?: string;
+  createdAt?: string;
+  status: "pending" | "created";
 }
 
 // ============================================================================
@@ -410,36 +411,43 @@ function ArtifactsList({ artifacts }: { artifacts: Artifact[] }) {
 
   return (
     <>
-      <div className="flex flex-col gap-2 p-4">
-        {artifacts.length === 0 ? (
-          <div className="text-center py-12 text-fg-4">
-            <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No artifacts generated yet</p>
-          </div>
-        ) : (
-          artifacts.map((artifact) => (
+      <div className="flex flex-col gap-1.5 p-4">
+        {artifacts.map((artifact) => {
+          const isCreated = artifact.status === "created";
+          const canOpen = isCreated && artifact.content;
+
+          return (
             <button
               key={artifact.id}
               type="button"
-              onClick={() => setSelectedArtifact(artifact)}
-              className="flex flex-col gap-1.5 p-3 border border-border-1 rounded-md bg-surface hover:border-fg-1 transition-colors text-left"
+              onClick={() => canOpen && setSelectedArtifact(artifact)}
+              disabled={!canOpen}
+              className={`flex flex-col gap-1 p-2.5 border rounded-sm text-left transition-colors ${
+                isCreated
+                  ? "border-border-1 bg-surface hover:border-fg-1 cursor-pointer"
+                  : "border-border-1 bg-sunken cursor-default opacity-50"
+              }`}
             >
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-fg-3" />
-                <span className="text-sm font-medium text-fg-1">
+                <FileText
+                  className={`w-3 h-3 ${isCreated ? "text-fg-3" : "text-fg-4"}`}
+                />
+                <span
+                  className={`font-mono text-[11px] tracking-[0.04em] ${
+                    isCreated ? "text-fg-1" : "text-fg-4"
+                  }`}
+                >
                   {artifact.name}
                 </span>
               </div>
-              <div className="font-mono text-[10px] text-fg-4 flex items-center gap-2">
+              <div className="font-mono text-[10px] text-fg-4 flex items-center gap-1.5 pl-5">
                 <span>
                   Stage {artifact.stage} · {artifact.stageName}
                 </span>
-                <span>·</span>
-                <span>{artifact.createdAt}</span>
               </div>
             </button>
-          ))
-        )}
+          );
+        })}
       </div>
 
       <ArtifactDialog
@@ -467,8 +475,21 @@ export function WorkflowChat({
   mode = "chat",
 }: WorkflowChatProps) {
   return (
-    <div className="flex flex-col h-full bg-page">
-      {mode === "chat" ? (
+    <div className="flex h-full bg-page">
+      {/* Left Column: Artifacts (1/3) */}
+      <div className="w-1/3 border-r border-border-1 flex flex-col">
+        <div className="px-8 pt-6 pb-3">
+          <div className="font-mono text-[11px] text-fg-3 tracking-[0.04em]">
+            artifacts
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <ArtifactsList artifacts={artifacts} />
+        </div>
+      </div>
+
+      {/* Right Column: Chat (2/3) */}
+      <div className="w-2/3 flex flex-col">
         <div className="flex-1 min-h-0 relative">
           <div className="absolute inset-0 overflow-y-auto pb-32">
             <div className="flex flex-col gap-7 py-8">
@@ -479,11 +500,7 @@ export function WorkflowChat({
           </div>
           <ChatComposer />
         </div>
-      ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <ArtifactsList artifacts={artifacts} />
-        </div>
-      )}
+      </div>
     </div>
   );
 }

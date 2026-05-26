@@ -356,61 +356,102 @@ const SAMPLE_MESSAGES = [
 const SAMPLE_ARTIFACTS = [
   {
     id: "artifact-1",
+    name: "gap-analysis.yaml",
+    stage: 1,
+    stageName: "Gap Analysis",
+    status: "created" as const,
+    content: "# Gap Analysis\n\n...",
+    createdAt: "2 hours ago",
+  },
+  {
+    id: "artifact-2",
     name: "business-requirements.yaml",
     stage: 2,
     stageName: "Business Requirements",
+    status: "created" as const,
     content: SAMPLE_MESSAGES.find((m) => m.id === "msg-10")
       ?.artifactContent as string,
     createdAt: "1 hour ago",
   },
   {
-    id: "artifact-2",
+    id: "artifact-3",
     name: "technical-requirements.yaml",
     stage: 3,
     stageName: "Technical Requirements",
+    status: "created" as const,
     content: SAMPLE_MESSAGES.find((m) => m.id === "msg-14")
       ?.artifactContent as string,
     createdAt: "55 min ago",
   },
   {
-    id: "artifact-3",
+    id: "artifact-4",
     name: "qa-test-plan.yaml",
     stage: 4,
     stageName: "QA Test Plan",
+    status: "created" as const,
     content: SAMPLE_MESSAGES.find((m) => m.id === "msg-16")
       ?.artifactContent as string,
     createdAt: "50 min ago",
   },
+  {
+    id: "artifact-5",
+    name: "implementation-plan.yaml",
+    stage: 5,
+    stageName: "Implementation Planner",
+    status: "pending" as const,
+  },
+  {
+    id: "artifact-6",
+    name: "developer-summary.yaml",
+    stage: 6,
+    stageName: "Developer Summary",
+    status: "pending" as const,
+  },
+  {
+    id: "artifact-7",
+    name: "architecture-decisions.yaml",
+    stage: 7,
+    stageName: "Architecture Decisions",
+    status: "pending" as const,
+  },
+  {
+    id: "artifact-8",
+    name: "delivery-timeline.yaml",
+    stage: 8,
+    stageName: "Delivery Timeline",
+    status: "pending" as const,
+  },
+  {
+    id: "artifact-9",
+    name: "executive-summary.yaml",
+    stage: 9,
+    stageName: "Executive Summary",
+    status: "pending" as const,
+  },
 ];
 
 function WorkflowChatDemo() {
-  const [mode, setMode] = useState<"chat" | "artifacts">("chat");
-
   return (
     <AppLayout>
       <div className="flex flex-col h-screen">
-        {/* Header with breadcrumb, stage info, and mode toggle */}
+        {/* Header with breadcrumb, stage info */}
         <Header
           breadcrumb={[{ label: "Demo Project" }, { label: "run-01" }]}
           stageNum={5}
           stageTotal={10}
           stageName="Implementation Planner"
-          mode={mode === "chat" ? "build" : "review"}
+          mode="build"
           artifactCount={SAMPLE_ARTIFACTS.length}
-          onModeChange={(newMode) =>
-            setMode(newMode === "build" ? "chat" : "artifacts")
-          }
         />
 
         {/* Spectrum Stepper */}
         <SpectrumStepper stages={DEMO_STAGES} activeIndex={4} />
 
-        {/* Chat or Artifacts */}
+        {/* Two-Column Layout: Artifacts + Chat */}
         <div className="flex-1 min-h-0">
           <WorkflowChat
             messages={SAMPLE_MESSAGES}
             artifacts={SAMPLE_ARTIFACTS}
-            mode={mode}
           />
         </div>
       </div>
