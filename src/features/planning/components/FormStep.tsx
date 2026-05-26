@@ -105,6 +105,7 @@ export function FormStep({ stepKey, stepName, status }: Props) {
   const [formData, setFormData] = useState<Record<string, string>>(
     existingResponses || {},
   );
+  const [isLocallySubmitting, setIsLocallySubmitting] = useState(false);
 
   // Sync form data when existing responses change (e.g., loaded from localStorage)
   useEffect(() => {
@@ -113,7 +114,40 @@ export function FormStep({ stepKey, stepName, status }: Props) {
     }
   }, [existingResponses]);
 
-  const isLoading = status === "submitting" || status === "generatingArtifact";
+  useEffect(() => {
+    if (isLocallySubmitting) return;
+
+    const syncDOMValues = () => {
+      setFormData((current) => {
+        let changed = false;
+        const next = { ...current };
+
+        questions.forEach((question) => {
+          const element = document.getElementById(question.id) as
+            | HTMLInputElement
+            | HTMLTextAreaElement
+            | HTMLSelectElement
+            | null;
+          const domValue = element?.value;
+
+          if (domValue?.trim() && next[question.id] !== domValue) {
+            next[question.id] = domValue;
+            changed = true;
+          }
+        });
+
+        return changed ? next : current;
+      });
+    };
+
+    const interval = window.setInterval(syncDOMValues, 5);
+    return () => window.clearInterval(interval);
+  }, [questions, isLocallySubmitting]);
+
+  const isLoading =
+    status === "submitting" ||
+    status === "generatingArtifact" ||
+    isLocallySubmitting;
 
   const handleChange = (id: string, value: string) => {
     console.log("[FormStep] Field changed:", { id, value });
@@ -127,7 +161,7 @@ export function FormStep({ stepKey, stepName, status }: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // DEFENSIVE FIX FOR BUG-010: Read actual DOM values if React state is empty
+    // DEFENSIVE FIX FOR BUG-010: Read actual DOM values at submit time
     // This handles cases where form values exist in DOM but React onChange didn't fire:
     // - Browser autofill
     // - Programmatic value setting (testing tools, automation)
@@ -140,13 +174,14 @@ export function FormStep({ stepKey, stepName, status }: Props) {
       const element = document.getElementById(q.id) as
         | HTMLInputElement
         | HTMLTextAreaElement;
-      if (element?.value?.trim()) {
-        if (!actualFormData[q.id] || actualFormData[q.id].trim().length === 0) {
+      const domValue = element?.value;
+      if (domValue?.trim()) {
+        if (actualFormData[q.id] !== domValue) {
           console.log(
-            "[FormStep] 🔧 BUG-010 FIX: Recovering value from DOM for field:",
+            "[FormStep] 🔧 BUG-010 FIX: Using current DOM value for field:",
             q.id,
           );
-          actualFormData[q.id] = element.value;
+          actualFormData[q.id] = domValue;
           recoveredFromDOM = true;
         }
       }
@@ -181,6 +216,8 @@ export function FormStep({ stepKey, stepName, status }: Props) {
       );
       return; // Block submission
     }
+
+    setIsLocallySubmitting(true);
 
     console.log("[FormStep] ===== SUBMIT CLICKED =====");
     console.log("[FormStep] Form data:", actualFormData);
