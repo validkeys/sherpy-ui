@@ -27,9 +27,10 @@ import type { Message } from "./types";
 
 interface ChatMessageProps {
   message: Message;
+  onArtifactClick?: (artifactId: string) => void;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, onArtifactClick }: ChatMessageProps) {
   if (message.type === "divider") {
     return (
       <StageDivider
@@ -124,7 +125,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
             <ArtifactPill
               name={message.artifactName}
               onClick={() => {
-                // Will be handled by parent
+                if (onArtifactClick && message.artifactId) {
+                  onArtifactClick(message.artifactId);
+                }
               }}
             />
           </>

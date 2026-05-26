@@ -21,6 +21,8 @@
  * - mode: Legacy prop, ignored (kept for backwards compat)
  */
 
+import { useState } from "react";
+import { ArtifactDialog } from "./ArtifactDialog";
 import { ArtifactsList } from "./ArtifactsList";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessage } from "./ChatMessage";
@@ -37,6 +39,17 @@ export function WorkflowChat({
   artifacts,
   mode = "chat",
 }: WorkflowChatProps) {
+  const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(
+    null,
+  );
+
+  const handleArtifactClick = (artifactId: string) => {
+    const artifact = artifacts.find((a) => a.id === artifactId);
+    if (artifact && artifact.status === "created") {
+      setSelectedArtifact(artifact);
+    }
+  };
+
   return (
     <div className="flex h-full bg-page">
       {/* Left Column: Artifacts (1/3) */}
@@ -57,13 +70,24 @@ export function WorkflowChat({
           <div className="absolute inset-0 overflow-y-auto pb-32">
             <div className="flex flex-col gap-7 py-8">
               {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  onArtifactClick={handleArtifactClick}
+                />
               ))}
             </div>
           </div>
           <ChatComposer />
         </div>
       </div>
+
+      {/* Artifact Dialog */}
+      <ArtifactDialog
+        artifact={selectedArtifact}
+        open={!!selectedArtifact}
+        onOpenChange={(open) => !open && setSelectedArtifact(null)}
+      />
     </div>
   );
 }
