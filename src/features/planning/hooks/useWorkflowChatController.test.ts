@@ -20,7 +20,20 @@ describe("createWorkflowChatActions", () => {
     });
   });
 
-  it("maps selected options only when they answer the active question", () => {
+  it("does not submit empty Step 2 answers", () => {
+    const actor = { send: vi.fn() };
+    const actions = createWorkflowChatActions({
+      actor,
+      currentStepNumber: 2,
+      currentQuestion: "What problem are you solving?",
+    });
+
+    actions.onSubmitMessage?.("   ");
+
+    expect(actor.send).not.toHaveBeenCalled();
+  });
+
+  it("keeps Step 3 view-only until Phase 5", () => {
     const actor = { send: vi.fn() };
     const actions = createWorkflowChatActions({
       actor,
@@ -28,19 +41,31 @@ describe("createWorkflowChatActions", () => {
       currentQuestion: "Which database?",
     });
 
-    actions.onSelectOption?.("Old question", "SQLite", 0);
-    actions.onSelectOption?.("Which database?", "Postgres", 1);
+    expect(actions.onSubmitMessage).toBeUndefined();
+    expect(actions.onSelectOption).toBeUndefined();
+  });
+
+  it("maps selected Step 2 options only when they answer the active question", () => {
+    const actor = { send: vi.fn() };
+    const actions = createWorkflowChatActions({
+      actor,
+      currentStepNumber: 2,
+      currentQuestion: "Which planning problem?",
+    });
+
+    actions.onSelectOption?.("Old question", "Slow reviews", 0);
+    actions.onSelectOption?.("Which planning problem?", "Manual planning", 1);
 
     expect(actor.send).toHaveBeenCalledTimes(1);
     expect(actor.send).toHaveBeenCalledWith({
       type: "SUBMIT_ANSWER",
-      stepNumber: 3,
-      question: "Which database?",
-      answer: "Postgres",
+      stepNumber: 2,
+      question: "Which planning problem?",
+      answer: "Manual planning",
     });
   });
 
-  it("maps form submissions to SUBMIT_FORM events for form steps", () => {
+  it("keeps form steps view-only until Phase 6", () => {
     const actor = { send: vi.fn() };
     const actions = createWorkflowChatActions({
       actor,
@@ -48,19 +73,7 @@ describe("createWorkflowChatActions", () => {
       currentQuestion: null,
     });
 
-    actions.onSubmitForm?.("Tell me how this should be implemented:", {
-      deploymentStrategy: " Cloud ",
-      techStack: " React ",
-    });
-
-    expect(actor.send).toHaveBeenCalledWith({
-      type: "SUBMIT_FORM",
-      stepNumber: 5,
-      responses: {
-        deploymentStrategy: "Cloud",
-        techStack: "React",
-      },
-    });
+    expect(actions.onSubmitForm).toBeUndefined();
   });
 
   it("omits interactive handlers when the current step has no supported input", () => {

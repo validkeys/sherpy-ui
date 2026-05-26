@@ -359,7 +359,7 @@ async function saveState(key: string, snapshot: SnapshotType): Promise<void> {
     // XState v5 requires a complete snapshot with status, children, historyValue, tags, etc.
     // Restoring from a partial snapshot causes the actor to enter an error state,
     // which silently ignores all events (including SUBMIT_FORM).
-    const persistedSnapshot = snapshot.toJSON();
+    const persistedSnapshot = toPlainSnapshot(snapshot.toJSON());
 
     // 1. Save to localStorage (synchronous cache)
     localStorage.setItem(key, JSON.stringify(persistedSnapshot));
@@ -381,6 +381,10 @@ async function saveState(key: string, snapshot: SnapshotType): Promise<void> {
   } catch (error) {
     console.error("[PlanningMachineContext] Failed to save state:", error);
   }
+}
+
+function toPlainSnapshot(snapshot: unknown): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(snapshot)) as Record<string, unknown>;
 }
 
 /**

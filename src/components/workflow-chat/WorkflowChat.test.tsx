@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Artifact, Message } from "./types";
 import { WorkflowChat } from "./WorkflowChat";
 
@@ -38,6 +38,27 @@ describe("WorkflowChat", () => {
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
     expect(screen.getByRole("radio", { name: "First" })).toBeDisabled();
     expect(screen.getByRole("radio", { name: "Second" })).toBeDisabled();
+    expect(screen.getByPlaceholderText("View only")).toBeDisabled();
+  });
+
+  it("submits through the composer and clears the message after submit", async () => {
+    const user = userEvent.setup();
+    const onSubmitMessage = vi.fn();
+
+    render(
+      <WorkflowChat
+        messages={[]}
+        artifacts={[]}
+        onSubmitMessage={onSubmitMessage}
+      />,
+    );
+
+    const composer = screen.getByLabelText("Message");
+    await user.type(composer, "Phase 4 answer");
+    await user.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(onSubmitMessage).toHaveBeenCalledWith("Phase 4 answer");
+    expect(composer).toHaveValue("");
   });
 
   it("defines a stacked mobile layout and desktop two-column layout", () => {

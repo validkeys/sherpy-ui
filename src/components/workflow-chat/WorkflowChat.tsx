@@ -74,6 +74,9 @@ export function WorkflowChat({
   };
 
   const isComposerDisabled = disabled || !onSubmitMessage;
+  const composerPlaceholder = onSubmitMessage
+    ? "Type your message..."
+    : "View only";
 
   return (
     <div
@@ -126,6 +129,7 @@ export function WorkflowChat({
             onSubmit={handleSubmitMessage}
             disabled={isComposerDisabled}
             isSubmitting={isSubmitting}
+            placeholder={composerPlaceholder}
           />
         </div>
       </div>

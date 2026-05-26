@@ -39,6 +39,69 @@ function logServerAction(action: string, data: Record<string, unknown>): void {
 }
 
 /**
+ * Server function: Persist one interview answer without changing workflow state.
+ *
+ * Used by the legacy XState machine while it remains the workflow owner.
+ */
+export const $saveInterviewAnswer = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null) {
+      throw new Error("invalid input: expected object");
+    }
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId) {
+      throw new Error("projectId required");
+    }
+    const stepNumber = d.stepNumber;
+    if (stepNumber !== 2 && stepNumber !== 3) {
+      throw new Error("stepNumber must be 2 or 3");
+    }
+    if (typeof d.question !== "string") {
+      throw new Error("question required");
+    }
+    if (typeof d.answer !== "string") {
+      throw new Error("answer required");
+    }
+    return {
+      projectId: d.projectId,
+      stepNumber,
+      question: d.question,
+      answer: d.answer,
+    };
+  })
+  .handler(
+    async ({
+      data,
+    }: {
+      data: {
+        projectId: string;
+        stepNumber: number;
+        question: string;
+        answer: string;
+      };
+    }) => {
+      logServerAction("saveInterviewAnswer.start", {
+        projectId: data.projectId,
+        stepNumber: data.stepNumber,
+      });
+
+      await saveInterviewAnswer(
+        data.projectId,
+        data.stepNumber as 2 | 3,
+        data.question,
+        data.answer,
+      );
+
+      logServerAction("saveInterviewAnswer.success", {
+        projectId: data.projectId,
+        stepNumber: data.stepNumber,
+      });
+
+      return { success: true };
+    },
+  );
+
+/**
  * Server function: Submit an interview answer (Steps 2 & 3)
  *
  * Flow:

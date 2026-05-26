@@ -60,43 +60,28 @@ export function createWorkflowChatActions({
   currentStepNumber,
   currentQuestion,
 }: WorkflowChatControllerInput): WorkflowChatActions {
-  const interviewStepNumber = getInterviewStepNumber(currentStepNumber);
-  const formStepNumber = getFormStepNumber(currentStepNumber);
+  const isStep2Interview = currentStepNumber === 2;
 
   return {
     onSubmitMessage:
-      interviewStepNumber && currentQuestion
+      isStep2Interview && currentQuestion
         ? (message) => {
-            submitInterviewAnswer(
-              actor,
-              interviewStepNumber,
-              currentQuestion,
-              message,
-            );
+            submitInterviewAnswer(actor, currentQuestion, message);
           }
         : undefined,
     onSelectOption:
-      interviewStepNumber && currentQuestion
+      isStep2Interview && currentQuestion
         ? (question, option) => {
             if (question !== currentQuestion) return;
-            submitInterviewAnswer(actor, interviewStepNumber, question, option);
+            submitInterviewAnswer(actor, question, option);
           }
         : undefined,
-    onSubmitForm: formStepNumber
-      ? (_question, values) => {
-          actor.send({
-            type: "SUBMIT_FORM",
-            stepNumber: formStepNumber,
-            responses: trimFormValues(values),
-          });
-        }
-      : undefined,
+    onSubmitForm: undefined,
   };
 }
 
 function submitInterviewAnswer(
   actor: WorkflowChatActor,
-  stepNumber: 2 | 3,
   question: string,
   answer: string,
 ) {
@@ -105,24 +90,8 @@ function submitInterviewAnswer(
 
   actor.send({
     type: "SUBMIT_ANSWER",
-    stepNumber,
+    stepNumber: 2,
     question,
     answer: trimmedAnswer,
   });
-}
-
-function getInterviewStepNumber(stepNumber: number): 2 | 3 | null {
-  return stepNumber === 2 || stepNumber === 3 ? stepNumber : null;
-}
-
-function getFormStepNumber(stepNumber: number): 1 | 5 | null {
-  return stepNumber === 1 || stepNumber === 5 ? stepNumber : null;
-}
-
-function trimFormValues(
-  values: Record<string, string>,
-): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(values).map(([key, value]) => [key, value.trim()]),
-  );
 }

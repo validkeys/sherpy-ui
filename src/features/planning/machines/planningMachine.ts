@@ -28,9 +28,13 @@ function persistInterviewAnswerToDatabase(
   answer: string,
 ): void {
   // Use server function to persist (prevents bundling issues - BUG-017)
-  import("../server.db")
-    .then(({ saveInterviewAnswer }) => {
-      saveInterviewAnswer(projectId, stepNumber, question, answer);
+  import("../infrastructure/server-functions")
+    .then(({ $saveInterviewAnswer }) => {
+      return $saveInterviewAnswer({
+        data: { projectId, stepNumber, question, answer },
+      });
+    })
+    .then(() => {
       console.log(
         `[persistInterviewAnswer] ✅ Saved: Step ${stepNumber}, Q: "${question.slice(0, 50)}..."`,
       );
