@@ -16,6 +16,10 @@ export const Route = createFileRoute("/project/$projectId/build")({
 
 function BuildComponent() {
   const { projectId } = Route.useParams();
+  const useNewUi =
+    USE_NEW_UI ||
+    (typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("workflowChat") === "1");
 
   return (
     <PlanningMachineProvider
@@ -24,7 +28,7 @@ function BuildComponent() {
     >
       <InspectorLogger />
       <Navigation />
-      {USE_NEW_UI ? <WorkflowChatContent /> : <StepContainer />}
+      {useNewUi ? <WorkflowChatContent /> : <StepContainer />}
       <DebugPanel />
     </PlanningMachineProvider>
   );

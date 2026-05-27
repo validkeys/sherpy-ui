@@ -5,7 +5,7 @@
 **Branch:** `feature/workflow-chat-integration`  
 **Date:** 2026-05-26
 
-**Current Status:** Phases 0-3 are complete. Phase 4 Step 2 interactive WorkflowChat wiring is code complete and passed focused tests; Playwright MCP input validation is still required. `USE_NEW_UI = false` remains the default.
+**Current Status:** Phases 0-3 are complete. Phase 4 Step 2 interactive WorkflowChat wiring is code complete and Playwright runtime validation passed for React composer input/state updates. Artifact completion validation is blocked by invalid local AI/AWS credentials. `USE_NEW_UI = false` remains the default.
 
 **Latest Completed Commit:** `dcfdc8e Remediate workflow chat adapter states`
 
@@ -336,7 +336,7 @@ This project uses TDD for every behavior change.
 
 **Why Step 2?** Interview steps are simplest - just Q&A, no forms, no complex validation.
 
-**Status:** Code complete pending Playwright MCP input validation. Step 2 is interactive in WorkflowChat when `USE_NEW_UI = true`; Step 3 and form steps remain view-only until their phases.
+**Status:** Code complete. Step 2 is interactive in WorkflowChat when `USE_NEW_UI = true`; Step 3 and form steps remain view-only until their phases. Playwright runtime validation passed for composer fill/click and XState updates; artifact completion is blocked by invalid local AI/AWS credentials.
 
 **Files Changed:**
 - `src/features/planning/hooks/useWorkflowChatController.ts`
@@ -355,11 +355,13 @@ This project uses TDD for every behavior change.
 - ✅ Machine context focused tests passed with Phase 4 suite: 32 passing, 4 skipped
 - ✅ `pnpm typecheck` passed
 - ⚠️ Focused Biome check has pre-existing `noExplicitAny` warnings in touched shared files; no errors
-- ⏳ Playwright MCP Step 2 composer input validation still required
+- ✅ Playwright runtime Step 2 composer input validation passed (MCP-specific tools were unavailable in this session)
+- ⚠️ Artifact generation after 10 answers failed because the local AI/AWS security token is invalid
 - ✅ agent-browser visual smoke passed for seeded Step 2 render path
 - ✅ Console after baseline clear had no errors
 - ✅ Page errors after baseline clear: none
 - ✅ Screenshot captured: `.tmp-docs/screenshots/workflow-chat-phase-4-step2-after-answer.png`
+- ✅ Screenshot captured: `.tmp-docs/screenshots/workflow-chat-phase-4-playwright-step2-validation.png`
 - 📄 QA record: `.tmp-docs/workflow-chat-phase-4-qa-test.md`
 
 **Browser QA Fixes:**
@@ -391,13 +393,19 @@ This project uses TDD for every behavior change.
 **Input Validation (Playwright MCP):**
 - [x] Seed project to Step 2 using the approved seed path below
 - [x] Set `USE_NEW_UI = true`, reload page
-- [ ] Answer question via new ChatComposer using Playwright MCP fill/click
-- [ ] Verify answer appears in message history
-- [ ] Verify machine context updates (check DebugPanel)
+- [x] Answer question via new ChatComposer using Playwright fill/click
+- [x] Verify answer appears in message history
+- [x] Verify machine context updates (check DebugPanel)
 - [x] Set `USE_NEW_UI = false` before finishing
-- [ ] Answer 3-5 questions via new UI, verify artifact generation triggers
+- [x] Answer 3-5 questions via new UI
+- [x] Answer 10 questions via new UI and verify `step2Answers` reaches 10
 - [x] Take screenshot after answer
 - [ ] Verify artifact status changes from pending → created
+
+**Input Validation Notes:**
+- MCP-specific Playwright tools were not available in this session; validation used the repo's installed Playwright runtime directly.
+- Expanded DebugPanel overlaps the composer submit button at the validation viewport. Validation minimized DebugPanel before send-button clicks and re-opened it for final context verification.
+- Artifact generation was invoked after the 10th answer but failed with `The security token included in the request is invalid`, so artifact pending → created status remains unverified until local credentials are fixed or artifact generation is mocked for browser QA.
 
 **End-of-Phase Visual E2E (agent-browser):**
 - [x] Navigate to the seeded Step 2 workflow
@@ -408,13 +416,13 @@ This project uses TDD for every behavior change.
 - [x] Capture a final visual smoke screenshot
 
 **Validation:**
-- ⏳ Browser-level React input validation still needs Playwright MCP
+- ✅ Browser-level React input validation passed with Playwright runtime
 - ✅ Focused component/controller tests verify ChatComposer submission wiring
 - ✅ agent-browser diagnostic confirmed the seeded visual path and DebugPanel can reflect an answer
 - ✅ Message history builds correctly
 - ⚠️ Old/new comparison was covered in Phase 3; Phase 4 kept the default flag restored to old UI
-- ⏳ Multi-answer artifact generation remains for Phase 5/9 continuous-flow validation
-- ✅ No console errors
+- ⚠️ Multi-answer artifact generation reached 10 answers but artifact creation failed because local AI/AWS credentials are invalid
+- ⚠️ Console error only for the credential failure; page errors: none
 - ⏳ User sign-off
 
 ---
@@ -776,5 +784,6 @@ Rules:
 3. ✅ Complete Phase 1: Data Layer adapters
 4. ✅ Complete Phase 2: Hook Layer
 5. ✅ Complete Phase 3: flagged render QA and console-error triage
-6. 🔄 Complete Phase 4 Playwright MCP input validation
-7. ⏳ Start Phase 5: interactive Step 3 WorkflowChat wiring
+6. ✅ Complete Phase 4 Playwright composer input validation
+7. 🔄 Resolve or explicitly defer Phase 4 artifact-generation credential blocker
+8. ⏳ Start Phase 5: interactive Step 3 WorkflowChat wiring

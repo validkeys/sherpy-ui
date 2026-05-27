@@ -12,7 +12,13 @@ import type { planningMachine } from "../machines/planningMachine";
 
 export function DebugPanel() {
   const actor = usePlanningMachine();
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return (
+      new URLSearchParams(window.location.search).get("debugPanel") !==
+      "collapsed"
+    );
+  });
   const [eventHistory, setEventHistory] = useState<string[]>([]);
   const [captureStatus, setCaptureStatus] = useState<string>("");
 
