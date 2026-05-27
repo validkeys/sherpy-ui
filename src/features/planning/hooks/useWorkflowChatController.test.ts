@@ -95,7 +95,30 @@ describe("createWorkflowChatActions", () => {
     });
   });
 
-  it("keeps form steps view-only until Phase 6", () => {
+  it("maps Step 1 form submissions to SUBMIT_FORM events", () => {
+    const actor = { send: vi.fn() };
+    const actions = createWorkflowChatActions({
+      actor,
+      currentStepNumber: 1,
+      currentQuestion: null,
+    });
+
+    actions.onSubmitForm?.("First, let's understand your starting point:", {
+      existingRequirements: "No",
+      projectDescription: "Workflow planning assistant",
+    });
+
+    expect(actor.send).toHaveBeenCalledWith({
+      type: "SUBMIT_FORM",
+      stepNumber: 1,
+      responses: {
+        existingRequirements: "No",
+        projectDescription: "Workflow planning assistant",
+      },
+    });
+  });
+
+  it("maps Step 5 form submissions to SUBMIT_FORM events", () => {
     const actor = { send: vi.fn() };
     const actions = createWorkflowChatActions({
       actor,
@@ -103,7 +126,19 @@ describe("createWorkflowChatActions", () => {
       currentQuestion: null,
     });
 
-    expect(actions.onSubmitForm).toBeUndefined();
+    actions.onSubmitForm?.("Tell me how this should be implemented:", {
+      deploymentStrategy: "Existing frontend pipeline",
+      techStack: "React, XState, TanStack Start, TypeScript",
+    });
+
+    expect(actor.send).toHaveBeenCalledWith({
+      type: "SUBMIT_FORM",
+      stepNumber: 5,
+      responses: {
+        deploymentStrategy: "Existing frontend pipeline",
+        techStack: "React, XState, TanStack Start, TypeScript",
+      },
+    });
   });
 
   it("omits interactive handlers when the current step has no supported input", () => {

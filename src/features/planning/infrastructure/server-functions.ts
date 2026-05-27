@@ -23,6 +23,7 @@ import type { StepNumber } from "../domain/types";
 import type { ProjectStepState, StepOption } from "../types";
 import {
   loadPlanningState,
+  saveFormResponse,
   saveInterviewAnswer,
   savePlanningState,
 } from "./repository";
@@ -93,6 +94,70 @@ export const $saveInterviewAnswer = createServerFn({ method: "POST" })
       );
 
       logServerAction("saveInterviewAnswer.success", {
+        projectId: data.projectId,
+        stepNumber: data.stepNumber,
+      });
+
+      return { success: true };
+    },
+  );
+
+/**
+ * Server function: Persist form responses without changing workflow state.
+ *
+ * Used by the legacy XState machine while it remains the workflow owner.
+ */
+export const $saveFormResponses = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null) {
+      throw new Error("invalid input: expected object");
+    }
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId) {
+      throw new Error("projectId required");
+    }
+    const stepNumber = d.stepNumber;
+    if (stepNumber !== 1 && stepNumber !== 5) {
+      throw new Error("stepNumber must be 1 or 5");
+    }
+    if (typeof d.responses !== "object" || d.responses === null) {
+      throw new Error("responses required");
+    }
+
+    return {
+      projectId: d.projectId,
+      stepNumber,
+      responses: d.responses as Record<string, string>,
+    };
+  })
+  .handler(
+    async ({
+      data,
+    }: {
+      data: {
+        projectId: string;
+        stepNumber: 1 | 5;
+        responses: Record<string, string>;
+      };
+    }) => {
+      logServerAction("saveFormResponses.start", {
+        projectId: data.projectId,
+        stepNumber: data.stepNumber,
+        responseCount: Object.keys(data.responses).length,
+      });
+
+      await Promise.all(
+        Object.entries(data.responses).map(([fieldName, fieldValue]) =>
+          saveFormResponse(
+            data.projectId,
+            data.stepNumber,
+            fieldName,
+            fieldValue,
+          ),
+        ),
+      );
+
+      logServerAction("saveFormResponses.success", {
         projectId: data.projectId,
         stepNumber: data.stepNumber,
       });

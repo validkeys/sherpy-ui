@@ -50,6 +50,31 @@ function persistInterviewAnswerToDatabase(
     });
 }
 
+function persistFormResponsesToDatabase(
+  projectId: string,
+  stepNumber: 1 | 5,
+  responses: Record<string, string>,
+): void {
+  import("../infrastructure/server-functions")
+    .then(({ $saveFormResponses }) => {
+      return $saveFormResponses({
+        data: { projectId, stepNumber, responses },
+      });
+    })
+    .then(() => {
+      console.log(
+        `[persistFormResponses] ✅ Saved: Step ${stepNumber}, ${Object.keys(responses).length} responses`,
+      );
+    })
+    .catch((error) => {
+      console.error(`[persistFormResponses] ❌ Failed to persist responses:`, {
+        projectId,
+        stepNumber,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+}
+
 // ─────────────────────────────────────────────────────────────
 // REAL API ACTORS
 // ─────────────────────────────────────────────────────────────
@@ -174,24 +199,13 @@ const generateArtifact = fromPromise<
 
   console.log("[generateArtifact] Extracted answers:", answers);
 
-  // Persist form responses to database (steps 1, 5, 7 only)
+  // Persist form responses to database (steps 1 and 5)
   if (input.stepNumber === 1 && input.accumulatedContext.step1Responses) {
     const responses = input.accumulatedContext.step1Responses as Record<
       string,
       string
     >;
-    try {
-      const { saveFormResponse } = await import("../server.db");
-      for (const [fieldName, fieldValue] of Object.entries(responses)) {
-        saveFormResponse(input.projectId, 1, fieldName, fieldValue);
-      }
-      console.log("[generateArtifact] Persisted step 1 form responses");
-    } catch (error) {
-      console.error(
-        "[generateArtifact] Failed to persist step 1 form responses:",
-        error,
-      );
-    }
+    persistFormResponsesToDatabase(input.projectId, 1, responses);
   } else if (
     input.stepNumber === 5 &&
     input.accumulatedContext.step5Responses
@@ -200,18 +214,7 @@ const generateArtifact = fromPromise<
       string,
       string
     >;
-    try {
-      const { saveFormResponse } = await import("../server.db");
-      for (const [fieldName, fieldValue] of Object.entries(responses)) {
-        saveFormResponse(input.projectId, 5, fieldName, fieldValue);
-      }
-      console.log("[generateArtifact] Persisted step 5 form responses");
-    } catch (error) {
-      console.error(
-        "[generateArtifact] Failed to persist step 5 form responses:",
-        error,
-      );
-    }
+    persistFormResponsesToDatabase(input.projectId, 5, responses);
   }
 
   try {
