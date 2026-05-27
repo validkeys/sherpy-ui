@@ -60,20 +60,26 @@ export function createWorkflowChatActions({
   currentStepNumber,
   currentQuestion,
 }: WorkflowChatControllerInput): WorkflowChatActions {
-  const isStep2Interview = currentStepNumber === 2;
+  const isInteractiveInterview =
+    currentStepNumber === 2 || currentStepNumber === 3;
 
   return {
     onSubmitMessage:
-      isStep2Interview && currentQuestion
+      isInteractiveInterview && currentQuestion
         ? (message) => {
-            submitInterviewAnswer(actor, currentQuestion, message);
+            submitInterviewAnswer(
+              actor,
+              currentStepNumber,
+              currentQuestion,
+              message,
+            );
           }
         : undefined,
     onSelectOption:
-      isStep2Interview && currentQuestion
+      isInteractiveInterview && currentQuestion
         ? (question, option) => {
             if (question !== currentQuestion) return;
-            submitInterviewAnswer(actor, question, option);
+            submitInterviewAnswer(actor, currentStepNumber, question, option);
           }
         : undefined,
     onSubmitForm: undefined,
@@ -82,6 +88,7 @@ export function createWorkflowChatActions({
 
 function submitInterviewAnswer(
   actor: WorkflowChatActor,
+  stepNumber: 2 | 3,
   question: string,
   answer: string,
 ) {
@@ -90,7 +97,7 @@ function submitInterviewAnswer(
 
   actor.send({
     type: "SUBMIT_ANSWER",
-    stepNumber: 2,
+    stepNumber,
     question,
     answer: trimmedAnswer,
   });
