@@ -101,6 +101,7 @@ export type PlanningEvent =
   | { type: "STEP_SIGNAL_COMPLETE"; stepNumber: number }
   | { type: "EDIT_ARTIFACT"; stepNumber: number; content: string }
   | { type: "APPROVE_ARTIFACT"; stepNumber: number }
+  | { type: "RESUME_AUTOMATED_STEP"; stepNumber: number }
   | { type: "RETRY"; stepNumber: number }
   | { type: "RESET_PROJECT" }
   | { type: "NEXT" }

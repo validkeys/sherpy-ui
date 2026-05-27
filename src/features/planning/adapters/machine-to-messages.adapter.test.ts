@@ -140,18 +140,24 @@ describe("adaptMachineSnapshotToMessages", () => {
     });
   });
 
-  it("shows artifact loading while an automated step generates content", () => {
+  it.each([
+    [4, { step4_styleAnchors: "generating" }, "Style Anchors Collection"],
+    [6, { step6_definitionOfDone: "generating" }, "Implementation Plan Review"],
+    [8, { step8_deliveryTimeline: "generating" }, "Delivery Timeline"],
+    [9, { step9_qaTestPlan: "generating" }, "QA Test Plan"],
+    [10, { step10_summaries: "generating" }, "Generate Summaries"],
+  ] as const)("shows artifact loading while automated step %s generates content", (stepNumber, stateValue, stepName) => {
     expect(
       adaptMachineSnapshotToMessages({
-        context: createContext({ currentStepNumber: 4 }),
-        stateValue: { step4_styleAnchors: "generating" },
+        context: createContext({ currentStepNumber: stepNumber }),
+        stateValue,
       }),
     ).toContainEqual({
       type: "loading",
-      id: "step-4-loading-artifact",
+      id: `step-${stepNumber}-loading-artifact`,
       role: "assistant",
       timestamp: "2026-05-26T10:15:00.000Z",
-      content: "Generating Style Anchors Collection...",
+      content: `Generating ${stepName}...`,
     });
   });
 

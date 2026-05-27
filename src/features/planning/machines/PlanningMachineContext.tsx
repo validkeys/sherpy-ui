@@ -110,6 +110,18 @@ export function PlanningMachineProvider({
       actor.getSnapshot().status,
     );
 
+    const restoredAutomatedStep = getRestoredAutomatedStep(actor.getSnapshot());
+    if (restoredAutomatedStep) {
+      console.log(
+        "[PlanningMachineProvider] Resuming automated generation for step:",
+        restoredAutomatedStep,
+      );
+      actor.send({
+        type: "RESUME_AUTOMATED_STEP",
+        stepNumber: restoredAutomatedStep,
+      });
+    }
+
     // Sync from database to localStorage cache (background, non-blocking)
     // This ensures cache is up-to-date if state was modified on another device
     const projectId = input.projectId;
@@ -337,6 +349,31 @@ export function usePlanningMachine() {
 export function useSelector<T>(selector: (snapshot: SnapshotType) => T): T {
   const actor = usePlanningMachine();
   return useXStateSelector(actor, selector);
+}
+
+function getRestoredAutomatedStep(snapshot: SnapshotType): number | null {
+  const stateValue = snapshot.value;
+  if (typeof stateValue !== "object" || stateValue === null) return null;
+
+  const automatedStates: Array<[string, number]> = [
+    ["step4_styleAnchors", 4],
+    ["step6_definitionOfDone", 6],
+    ["step8_deliveryTimeline", 8],
+    ["step9_qaTestPlan", 9],
+    ["step10_summaries", 10],
+  ];
+
+  for (const [stateName, stepNumber] of automatedStates) {
+    if (
+      stateName in stateValue &&
+      stateValue[stateName as keyof typeof stateValue] === "generating" &&
+      !snapshot.context.artifacts[stepNumber]
+    ) {
+      return stepNumber;
+    }
+  }
+
+  return null;
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -136,7 +136,7 @@ export const $saveFormResponses = createServerFn({ method: "POST" })
     }: {
       data: {
         projectId: string;
-        stepNumber: 1 | 5;
+        stepNumber: number;
         responses: Record<string, string>;
       };
     }) => {
@@ -150,7 +150,7 @@ export const $saveFormResponses = createServerFn({ method: "POST" })
         Object.entries(data.responses).map(([fieldName, fieldValue]) =>
           saveFormResponse(
             data.projectId,
-            data.stepNumber,
+            data.stepNumber as 1 | 5,
             fieldName,
             fieldValue,
           ),

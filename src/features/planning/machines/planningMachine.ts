@@ -531,6 +531,33 @@ export const planningMachine = setup({
         }),
       },
     ],
+    RESUME_AUTOMATED_STEP: [
+      {
+        guard: ({ event }) =>
+          event.type === "RESUME_AUTOMATED_STEP" && event.stepNumber === 4,
+        target: ".step4_styleAnchors",
+      },
+      {
+        guard: ({ event }) =>
+          event.type === "RESUME_AUTOMATED_STEP" && event.stepNumber === 6,
+        target: ".step6_definitionOfDone",
+      },
+      {
+        guard: ({ event }) =>
+          event.type === "RESUME_AUTOMATED_STEP" && event.stepNumber === 8,
+        target: ".step8_deliveryTimeline",
+      },
+      {
+        guard: ({ event }) =>
+          event.type === "RESUME_AUTOMATED_STEP" && event.stepNumber === 9,
+        target: ".step9_qaTestPlan",
+      },
+      {
+        guard: ({ event }) =>
+          event.type === "RESUME_AUTOMATED_STEP" && event.stepNumber === 10,
+        target: ".step10_summaries",
+      },
+    ],
   },
 
   states: {
