@@ -20,6 +20,11 @@ import React, {
   useEffect,
 } from "react";
 import { createActor, type SnapshotFrom } from "xstate";
+import {
+  trackCacheHit,
+  trackError,
+  trackSyncLatency,
+} from "../infrastructure/metrics";
 import { $loadPlanningState } from "../infrastructure/server-functions";
 import { planningMachine } from "./planningMachine";
 import type { PlanningInput } from "./types";
@@ -78,9 +83,19 @@ export function PlanningMachineProvider({
     queryKey: ["planningState", projectId],
     queryFn: async () => {
       console.log("[PlanningMachineProvider] Fetching from database");
-      const snapshot = await $loadPlanningState({ data: { projectId } });
-      console.log("[PlanningMachineProvider] Database fetch complete");
-      return snapshot;
+      try {
+        const snapshot = await trackSyncLatency(
+          "load_planning_state",
+          async () => {
+            return await $loadPlanningState({ data: { projectId } });
+          },
+        );
+        console.log("[PlanningMachineProvider] Database fetch complete");
+        return snapshot;
+      } catch (error) {
+        trackError("load_planning_state", error, { projectId });
+        throw error;
+      }
     },
     staleTime: 30000, // Consider fresh for 30 seconds (reduce DB load)
     gcTime: 5 * 60 * 1000, // Keep in memory for 5 minutes (better offline support)
@@ -98,6 +113,7 @@ export function PlanningMachineProvider({
     // Prefer database over cache
     if (dbSnapshot) {
       console.log("[PlanningMachineProvider] Using database snapshot");
+      trackCacheHit(projectId, false); // Database fetch = cache miss
       return dbSnapshot;
     }
 
@@ -106,6 +122,7 @@ export function PlanningMachineProvider({
       console.log(
         "[PlanningMachineProvider] Using cached snapshot while loading",
       );
+      trackCacheHit(projectId, true); // Using cache
       return cachedSnapshot;
     }
 
@@ -115,6 +132,8 @@ export function PlanningMachineProvider({
         "[PlanningMachineProvider] Database error, falling back to cache:",
         dbError,
       );
+      trackCacheHit(projectId, true); // Using cache (error fallback)
+      trackError("load_planning_state_fallback", dbError, { projectId });
       return cachedSnapshot;
     }
 
@@ -122,6 +141,7 @@ export function PlanningMachineProvider({
     console.log(
       "[PlanningMachineProvider] No snapshot available, creating fresh",
     );
+    trackCacheHit(projectId, false); // No cache available
     return null;
   }, [dbSnapshot, cachedSnapshot, isLoadingDb, dbError, projectId]);
 
