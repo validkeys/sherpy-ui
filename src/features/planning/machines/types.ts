@@ -105,7 +105,15 @@ export type PlanningEvent =
   | { type: "RETRY"; stepNumber: number }
   | { type: "RESET_PROJECT" }
   | { type: "NEXT" }
-  | { type: "BACK" };
+  | { type: "BACK" }
+  | {
+      type: "RESTORE_SNAPSHOT";
+      snapshot: {
+        context: PlanningContext;
+        // biome-ignore lint/suspicious/noExplicitAny: XState snapshot value can be any state value
+        value?: any;
+      };
+    };
 
 /**
  * Input required to initialize the planning machine

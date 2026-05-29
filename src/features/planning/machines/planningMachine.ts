@@ -135,6 +135,7 @@ const fetchQuestion = fromPromise<
       return {
         question: parsed.question,
         options:
+          // biome-ignore lint/suspicious/noExplicitAny: API response structure is dynamic
           parsed.options?.map((opt: any) => opt.title || opt) || undefined,
       };
     } catch (err) {
@@ -558,6 +559,46 @@ export const planningMachine = setup({
         target: ".step10_summaries",
       },
     ],
+    // State synchronization - hot-reload actor from database snapshot
+    RESTORE_SNAPSHOT: {
+      actions: assign(({ context, event }) => {
+        // Type guard to ensure we have the right event
+        if (!event || event.type !== "RESTORE_SNAPSHOT") return {};
+
+        const dbContext = event.snapshot?.context;
+
+        // Validate database context
+        if (!dbContext?.updatedAt) {
+          console.warn(
+            "[RESTORE_SNAPSHOT] Invalid database snapshot, ignoring",
+          );
+          return {}; // No-op, keep current state
+        }
+
+        // Compare timestamps to determine which state is authoritative
+        const localTime = new Date(context.updatedAt).getTime();
+        const dbTime = new Date(dbContext.updatedAt).getTime();
+
+        // CRITICAL: Preserve local changes if local is newer
+        // This protects optimistic updates that haven't synced yet
+        if (localTime > dbTime) {
+          console.log(
+            "[RESTORE_SNAPSHOT] Keeping local changes (newer than DB)",
+          );
+          return {}; // No-op, local is authoritative
+        }
+
+        // Database is newer - apply DB snapshot
+        console.log(
+          "[RESTORE_SNAPSHOT] Applying database snapshot (newer than local)",
+        );
+        return {
+          ...dbContext,
+          // Preserve any transient UI state that doesn't persist to DB
+          // (Add fields here if needed based on requirements)
+        };
+      }),
+    },
   },
 
   states: {
