@@ -13,13 +13,17 @@
 # Used to derive the Docker container name (kdev-<name>).
 # Defaults to the current directory name if omitted.
 name: sherpy-ui
-
-# --- Base image --------------------------------------------------------------
-# Node.js version for the base image tag (validkeys/kdev-base:node-<version>).
-# The base image includes: Node.js, pnpm, Neovim, Zsh, Zellij, fzf, gh CLI,
-# Claude Code, and a network firewall.
-image:
-  node: "25"
+# --- Runtime versions --------------------------------------------------------
+# Preferred runtime versions for this project.
+# Node.js precedence: runtime.node, then legacy image.node, then "25".
+# Go precedence: runtime.go, then the base image's bundled Go version.
+runtime:
+  node: "24"
+  go: "1.26.3"
+# --- Base image compatibility ------------------------------------------------
+# Legacy Node.js config. Prefer runtime.node for new projects.
+# image:
+#   node: "25"
 
 # --- Environment variables ----------------------------------------------------
 # Key-value pairs injected as container environment variables.
@@ -30,7 +34,6 @@ env:
   SHERPY_UI_PORT: 5180
   PLAYWRIGHT_MCP_EXECUTABLE_PATH: "/usr/bin/chromium"
   # MY_API_KEY: "from-your-dotenv"
-
 # --- Environment from host ----------------------------------------------------
 # Variable names whose values are read from the host shell at container start.
 # Only variables that are actually set in the host environment are passed through.
@@ -45,6 +48,16 @@ envFromHost:
   - CLAUDE_SHOW_GIT_BRANCH
   - CLAUDE_STATUS_FORMAT
   - CLAUDE_STTAUSLINE_TEMPLATE
+# - AWS_ACCESS_KEY_ID
+# - AWS_SECRET_ACCESS_KEY
+# - AWS_SESSION_TOKEN
+# - AWS_REGION
+# - ANTHROPIC_BASE_URL
+# GitHub CLI — fine-grained PAT with minimal required permissions.
+# Create at: https://github.com/settings/tokens?type=beta
+# Prefer a fine-grained PAT scoped to a single repo over a classic token.
+# - GH_TOKEN
+
 # --- Environment from macOS Keychain -------------------------------------------
 # Fetches secrets from the host macOS Keychain at container start time.
 # Each entry maps a keychain item (service + account) to a container env var.
@@ -55,30 +68,33 @@ envFromKeychain:
   - env: GH_TOKEN
     service: "kdev:container"
     account: "sherpy-ui"
-  # - env: API_KEY
-  #   service: "my-api"
-  #   account: "default"
+# - env: DATABASE_URL
+#   service: "myapp-postgres"
+#   account: "production"
+# - env: API_KEY
+#   service: "my-api"
+#   account: "default"
 
 # --- Port forwarding ----------------------------------------------------------
 # Host-to-container port mappings (1:1). Only listed ports are accessible
 # from the host.
 ports:
   - 5180
-  - 6006
+  # - 6006
   # - 5432
+# - 3000
+# - 5432
 
 # --- Services ------------------------------------------------------------------
 # Optional services installed into the container image at build time.
 # Enabled services are baked into the Docker image — toggle the boolean
-# and run Generating .sandbox/ from templates...
-Building image: kdev-container:latest
-Build complete: kdev-container:latest to apply changes.
+# and run `kdev build` to apply changes.
 #
 # Available services:
 #
 #   ollama: true
 #     Installs the Ollama binary (via official install script).  The
-#     entrypoint starts  on localhost:11434 automatically.
+#     entrypoint starts `ollama serve` on localhost:11434 automatically.
 #     Models are shared with the host via the ~/.ollama bind mount.
 #     Adds registry.ollama.com to the firewall for model pulls.
 #
@@ -98,6 +114,9 @@ services:
   # ollama: true
   chromium: true
   # postgresql-client: true
+# ollama: true
+# chromium: true
+# postgresql-client: true
 
 # --- Host port forwarding -----------------------------------------------------
 # Ports on localhost that reach services on the Docker host.
@@ -108,6 +127,8 @@ hostPorts:
   - 5436 # langfuse postgres
   # - 5432   # postgres
   # - 6379   # redis
+# - 5432   # postgres
+# - 6379   # redis
 
 # --- Additional volume mounts -------------------------------------------------
 # Docker mount specs appended to the default set. Defaults already include:
@@ -133,7 +154,6 @@ mounts:
   # Use this if you want gh to use your full host session (all repos/orgs).
   # For tighter scope, prefer GH_TOKEN in envFromHost above instead.
   # - "source=${HOME}/.config/gh,target=/home/node/.config/gh,type=bind,readonly=true"
-
 # --- Agent Skills ------------------------------------------------------------
 # Skill sources installed into the container image at build time via
 # `npx skills add <source> --all -g -y`.  Supports GitHub shorthand
@@ -141,6 +161,8 @@ mounts:
 skills:
   - vercel-labs/agent-skills
   # - https://github.com/owner/repo
+# - vercel-labs/agent-skills
+# - https://github.com/owner/repo
 
 # --- Network firewall ---------------------------------------------------------
 # The container blocks ALL outbound traffic by default. These domains are
@@ -164,8 +186,13 @@ firewall:
     - "fonts.googleapis.com"
     - "cdn.playwright.dev"
     - "playwright.download.prss.microsoft.com"
+    - "api.openai.com"
+    - "auth.openai.com"
+    - "chatgpt.com"
+    - "openai.com"
     # - "cdn.example.com"
-
+  # - "api.myapp.com"
+  # - "cdn.example.com"
 # --- Claude Code settings -----------------------------------------------------
 # Path to a JSON file with Claude Code permission rules. Copied into the
 # container on every start. If empty, the default base settings are used
@@ -175,13 +202,15 @@ firewall:
 claude:
   settings: ""
   # settings: ".claude-settings.json"
-
 # --- Lifecycle hooks ----------------------------------------------------------
 # postCreateCommand — Runs once after the container is first created.
-#   Default: initializes the network firewall.
-#   Chain with install steps: "sudo /usr/local/bin/init-firewall.sh && pnpm install"
+#   Use for one-time setup like dependency installs.
 #
 # postStartCommand — Runs on every container start (including restarts).
-#   Default: copies Claude settings + hooks into the persistent config volume.
+#   Default: initializes the network firewall and copies Claude settings + hooks
+#   into the persistent config volume.
 postCreateCommand: "sudo /usr/local/bin/init-firewall.sh"
 postStartCommand: ""
+x-legacy:
+  Building image: kdev-container:latest
+  Build complete: kdev-container:latest to apply changes.

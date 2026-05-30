@@ -3,8 +3,6 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { SnapshotFrom } from "xstate";
-import { planningMachine } from "../machines/planningMachine";
 import {
   createDefaultStepState,
   snapshotToStepState,

@@ -12,7 +12,13 @@ import type { planningMachine } from "../machines/planningMachine";
 
 export function DebugPanel() {
   const actor = usePlanningMachine();
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return (
+      new URLSearchParams(window.location.search).get("debugPanel") !==
+      "collapsed"
+    );
+  });
   const [eventHistory, setEventHistory] = useState<string[]>([]);
   const [captureStatus, setCaptureStatus] = useState<string>("");
 
@@ -364,10 +370,12 @@ function DOMFormValues() {
       setValues({
         existingRequirements: field1?.value || "(field not found)",
         projectDescription: field2?.value || "(field not found)",
-        submitButtonText: document.querySelector('button[type="submit"]')
-          ?.textContent,
-        submitDisabled: document.querySelector('button[type="submit"]')
-          ?.disabled,
+        submitButtonText: document.querySelector<HTMLButtonElement>(
+          'button[type="submit"]',
+        )?.textContent,
+        submitDisabled: document.querySelector<HTMLButtonElement>(
+          'button[type="submit"]',
+        )?.disabled,
       });
     }, 500);
 

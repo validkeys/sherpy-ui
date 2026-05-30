@@ -18,6 +18,20 @@ vi.mock("../server", () => ({
   $loadPlanningState: vi.fn().mockResolvedValue(null),
 }));
 
+// Mock React Query's useQuery hook to avoid needing QueryClientProvider
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...(actual as object),
+    useQuery: vi.fn(() => ({
+      data: null,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    })),
+  };
+});
+
 describe("PlanningMachineContext", () => {
   const defaultInput = {
     projectId: "test-project-123",

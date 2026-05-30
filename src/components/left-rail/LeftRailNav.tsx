@@ -1,5 +1,5 @@
-import { FolderOpen, Plus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { FolderOpen, Plus } from "lucide-react";
 import { useProjects } from "@/features/projects/hooks";
 import { cn } from "@/lib/utils";
 

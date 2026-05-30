@@ -177,7 +177,8 @@ describe("streamQuestion", () => {
       await streamQuestion(messages, 1); // stepNumber = 1
 
       // Verify response_format was added to body
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
+      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
+        .calls[0];
       const command = callArgs[0] as InvokeModelWithResponseStreamCommand;
       const body = JSON.parse(command.input.body as string);
 
@@ -214,7 +215,8 @@ describe("streamQuestion", () => {
       await streamQuestion(messages, 1);
 
       // Verify response_format was NOT added
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
+      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
+        .calls[0];
       const command = callArgs[0] as InvokeModelWithResponseStreamCommand;
       const body = JSON.parse(command.input.body as string);
 
@@ -251,7 +253,8 @@ describe("streamQuestion", () => {
       await streamQuestion(messages, 4); // Step 4 has no schema
 
       // Verify response_format was NOT added (schema unavailable)
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
+      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
+        .calls[0];
       const command = callArgs[0] as InvokeModelWithResponseStreamCommand;
       const body = JSON.parse(command.input.body as string);
 

@@ -1,8 +1,17 @@
 /**
  * React Context Provider for Planning Machine
- * XState v5 pattern with localStorage persistence
+ * XState v5 pattern with database-first initialization (React Query)
+ *
+ * ARCHITECTURE (State Sync Fix - Issue #15):
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 1. Optimistic render from localStorage cache (instant, no loading state)
+ * 2. Database query via React Query (background, authoritative)
+ * 3. Hot-reload actor when database snapshot differs from cache
+ * 4. Graceful error handling and offline support
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  */
 
+import { useQuery } from "@tanstack/react-query";
 import { useSelector as useXStateSelector } from "@xstate/react";
 import React, {
   createContext,
@@ -12,9 +21,11 @@ import React, {
 } from "react";
 import { createActor, type SnapshotFrom } from "xstate";
 import {
-  $loadPlanningState,
-  $savePlanningState,
-} from "../infrastructure/server-functions";
+  trackCacheHit,
+  trackError,
+  trackSyncLatency,
+} from "../infrastructure/metrics";
+import { $loadPlanningState } from "../infrastructure/server-functions";
 import { planningMachine } from "./planningMachine";
 import type { PlanningInput } from "./types";
 
@@ -51,95 +62,131 @@ export function PlanningMachineProvider({
   input,
   storageKey = "planning-machine-state",
 }: PlanningMachineProviderProps) {
-  // ============================================================================
-  // BUG-013 FIX: Ensure single actor instance survives StrictMode remounts
-  // ============================================================================
-  // HYBRID PERSISTENCE STRATEGY:
-  // - localStorage: synchronous cache for instant restoration on mount
-  // - Database: async primary storage, synced in background
-  // This allows synchronous initialization (no loading states) while moving
-  // to database persistence. localStorage acts as a read-through cache.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally empty deps - actor should be created once per component lifetime (BUG-013 fix)
-  const actor = React.useMemo(() => {
-    // Try to restore from localStorage cache (synchronous)
-    const persistedState = loadStateSync(storageKey);
+  const projectId = input.projectId;
 
-    if (
-      persistedState &&
-      persistedState.context.projectId === input.projectId
-    ) {
-      // Restore from cached state
+  // ============================================================================
+  // STEP 1: Optimistic read from cache (synchronous, instant)
+  // ============================================================================
+  const cachedSnapshot = React.useMemo(
+    () => loadStateSync(storageKey),
+    [storageKey],
+  );
+
+  // ============================================================================
+  // STEP 2: Query database for authoritative state (async, background)
+  // ============================================================================
+  const {
+    data: dbSnapshot,
+    isLoading: isLoadingDb,
+    error: dbError,
+  } = useQuery({
+    queryKey: ["planningState", projectId],
+    queryFn: async () => {
+      console.log("[PlanningMachineProvider] Fetching from database");
+      try {
+        const snapshot = await trackSyncLatency(
+          "load_planning_state",
+          async () => {
+            return await $loadPlanningState({ data: { projectId } });
+          },
+        );
+        console.log("[PlanningMachineProvider] Database fetch complete");
+        return snapshot;
+      } catch (error) {
+        trackError("load_planning_state", error, { projectId });
+        throw error;
+      }
+    },
+    staleTime: 30000, // Consider fresh for 30 seconds (reduce DB load)
+    gcTime: 5 * 60 * 1000, // Keep in memory for 5 minutes (better offline support)
+    refetchOnMount: false, // Don't refetch if cache is fresh
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
+
+  // ============================================================================
+  // STEP 3: Determine authoritative snapshot
+  // ============================================================================
+  const authoritativeSnapshot = React.useMemo(() => {
+    // Prefer database over cache
+    if (dbSnapshot) {
+      console.log("[PlanningMachineProvider] Using database snapshot");
+      trackCacheHit(projectId, false); // Database fetch = cache miss
+      return dbSnapshot;
+    }
+
+    // Fallback to cache while loading
+    if (isLoadingDb && cachedSnapshot?.context?.projectId === projectId) {
+      console.log(
+        "[PlanningMachineProvider] Using cached snapshot while loading",
+      );
+      trackCacheHit(projectId, true); // Using cache
+      return cachedSnapshot;
+    }
+
+    // If database errored but we have cache, use cache
+    if (dbError && cachedSnapshot?.context?.projectId === projectId) {
+      console.warn(
+        "[PlanningMachineProvider] Database error, falling back to cache:",
+        dbError,
+      );
+      trackCacheHit(projectId, true); // Using cache (error fallback)
+      trackError("load_planning_state_fallback", dbError, { projectId });
+      return cachedSnapshot;
+    }
+
+    // Last resort: null (will create fresh actor)
+    console.log(
+      "[PlanningMachineProvider] No snapshot available, creating fresh",
+    );
+    trackCacheHit(projectId, false); // No cache available
+    return null;
+  }, [dbSnapshot, cachedSnapshot, isLoadingDb, dbError, projectId]);
+
+  // ============================================================================
+  // STEP 4: Create actor with authoritative state
+  // ============================================================================
+  const actor = React.useMemo(() => {
+    if (authoritativeSnapshot) {
+      console.log(
+        "[PlanningMachineProvider] Creating actor from snapshot:",
+        authoritativeSnapshot.context?.currentStepNumber,
+      );
       return createActor(planningMachine, {
         input,
-        snapshot: persistedState,
+        snapshot: authoritativeSnapshot as SnapshotType,
       });
     }
 
-    // Create new actor with input
+    console.log("[PlanningMachineProvider] Creating fresh actor");
     return createActor(planningMachine, { input });
-  }, []); // Empty deps: only create once per component lifetime
+  }, [authoritativeSnapshot, input]);
 
-  // Start actor and manage lifecycle
+  // ============================================================================
+  // STEP 5: Start actor and setup subscriptions
+  // ============================================================================
   useEffect(() => {
-    console.log(
-      "[PlanningMachineProvider] Starting actor, current status:",
-      actor.getSnapshot().status,
-    );
+    console.log("[PlanningMachineProvider] Starting actor");
 
-    // ============================================================================
-    // BUG-012 FIX: Only start if not already started
-    // ============================================================================
-    // PROBLEM: React StrictMode causes mount → unmount → remount. If we blindly
-    // call actor.start() on the remount, XState might have issues.
-    //
-    // SOLUTION: Try to start the actor. XState v5 actors can be started multiple
-    // times safely - the second start() call is a no-op. We just need to ensure
-    // we don't stop the actor in development mode (handled in cleanup below).
     try {
       actor.start();
-      console.log("[PlanningMachineProvider] Actor started successfully");
     } catch (error) {
-      console.warn(
-        "[PlanningMachineProvider] Actor start failed (may already be started):",
-        error,
-      );
+      console.warn("[PlanningMachineProvider] Actor start failed:", error);
     }
 
-    console.log(
-      "[PlanningMachineProvider] After start check, status:",
-      actor.getSnapshot().status,
-    );
-
-    // Sync from database to localStorage cache (background, non-blocking)
-    // This ensures cache is up-to-date if state was modified on another device
-    const projectId = input.projectId;
-    syncFromDatabase(projectId, storageKey, actor).catch((error) => {
-      console.error("[PlanningMachineProvider] Database sync failed:", error);
-    });
-
-    // Expose actor globally for debugging
-    if (typeof window !== "undefined") {
-      // biome-ignore lint/suspicious/noExplicitAny: window augmentation for debugging
-      (window as any).__planningActor = actor;
-      console.log(
-        "[PlanningMachineProvider] Actor exposed at window.__planningActor",
-      );
+    // Resume automated steps if needed
+    const restoredAutomatedStep = getRestoredAutomatedStep(actor.getSnapshot());
+    if (restoredAutomatedStep) {
+      actor.send({
+        type: "RESUME_AUTOMATED_STEP",
+        stepNumber: restoredAutomatedStep,
+      });
     }
-
-    // Subscribe for debugging logs
-    const debugSubscription = actor.subscribe((snapshot) => {
-      console.log("[PlanningMachineProvider] State changed:", snapshot.value);
-      console.log(
-        "[PlanningMachineProvider] Actor status:",
-        actor.getSnapshot().status,
-      );
-    });
 
     // Subscribe for localStorage persistence
     const persistSubscription = actor.subscribe((snapshot) => {
-      // Only persist stable states, not transient invoke states
-      // Transient states like 'submitting', 'generating', etc. should not be persisted
-      // as they represent in-progress async operations that can't be resumed
       // biome-ignore lint/suspicious/noExplicitAny: XState v5 snapshot.value typing is complex
       const stateValue = snapshot.value as any;
       const isTransientState =
@@ -154,154 +201,87 @@ export function PlanningMachineProvider({
       }
     });
 
-    // CRITICAL: XState v5 subscriptions only fire on state changes AFTER subscription.
-    // We must explicitly persist the initial state to ensure localStorage is created.
-    // This fixes BUG-009: XState machine not initializing - no localStorage created.
+    // Persist initial state
     saveState(storageKey, actor.getSnapshot());
 
-    // ============================================================================
-    // TASK 3.4: Cross-tab and cross-device sync logic
-    // ============================================================================
-    // Handle storage events from other tabs (same device)
-    // When another tab updates localStorage, sync the actor state
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key !== storageKey || !event.newValue) return;
-
-      console.log(
-        "[PlanningMachineProvider] Storage event detected from another tab",
-      );
-      try {
-        const newSnapshot = JSON.parse(event.newValue);
-
-        // Validate snapshot structure before applying
-        if (
-          newSnapshot &&
-          typeof newSnapshot === "object" &&
-          newSnapshot.status === "active" &&
-          newSnapshot.context?.projectId === projectId
-        ) {
-          console.log(
-            "[PlanningMachineProvider] Syncing actor from other tab's update",
-          );
-          // Restore actor to the new snapshot state
-          const _newActor = createActor(planningMachine, {
-            input,
-            snapshot: newSnapshot as SnapshotType,
-          });
-
-          // Copy actor logic would be complex, instead we'll sync to database
-          // and let the visibility handler pick it up on next focus
-          $savePlanningState({
-            data: { projectId, snapshot: newSnapshot },
-          }).catch((error) => {
-            console.error(
-              "[PlanningMachineProvider] Failed to sync cross-tab update to DB:",
-              error,
-            );
-          });
-        }
-      } catch (error) {
-        console.error(
-          "[PlanningMachineProvider] Failed to handle storage event:",
-          error,
-        );
-      }
-    };
-
-    // Handle visibility changes (tab becomes visible)
-    // Sync from database when user returns to tab (catches cross-device updates)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        console.log(
-          "[PlanningMachineProvider] Tab became visible, syncing from database",
-        );
-        syncFromDatabase(projectId, storageKey, actor).catch((error) => {
-          console.error(
-            "[PlanningMachineProvider] Visibility sync failed:",
-            error,
-          );
-        });
-      }
-    };
-
-    // Periodic sync from database (every 30 seconds)
-    // Catches updates from other devices that might have been missed
-    const syncInterval = setInterval(() => {
-      console.log("[PlanningMachineProvider] Periodic sync check");
-      syncFromDatabase(projectId, storageKey, actor).catch((error) => {
-        console.error("[PlanningMachineProvider] Periodic sync failed:", error);
-      });
-    }, 30000); // 30 seconds
-
-    // Register event listeners
+    // Expose actor for debugging
     if (typeof window !== "undefined") {
-      window.addEventListener("storage", handleStorageChange);
-      document.addEventListener("visibilitychange", handleVisibilityChange);
+      // biome-ignore lint/suspicious/noExplicitAny: window augmentation for debugging
+      (window as any).__planningActor = actor;
     }
 
+    // Cleanup
     return () => {
-      console.log("[PlanningMachineProvider] Cleaning up actor");
-      console.log(
-        "[PlanningMachineProvider] Actor status before cleanup:",
-        actor.getSnapshot().status,
-      );
-      console.log("[PlanningMachineProvider] Actor ID:", actor.id);
-      console.log(
-        "[PlanningMachineProvider] Environment:",
-        process.env.NODE_ENV,
-      );
-
-      // CRITICAL: Unsubscribe BEFORE stopping actor
-      // This prevents the stop event from triggering a save with status: 'stopped'
       persistSubscription.unsubscribe();
-      debugSubscription.unsubscribe();
 
-      // Clean up sync event listeners and interval
-      if (typeof window !== "undefined") {
-        window.removeEventListener("storage", handleStorageChange);
-        document.removeEventListener(
-          "visibilitychange",
-          handleVisibilityChange,
-        );
-      }
-      clearInterval(syncInterval);
-
-      // ============================================================================
-      // BUG-012 FIX: Don't stop actor in development/test mode
-      // ============================================================================
-      // PROBLEM: React StrictMode intentionally unmounts and remounts components
-      // to detect side effects. When we stop the actor on the first unmount,
-      // components from the first mount (like FormStep) still have references to
-      // that stopped actor. When they try to send events, the stopped actor
-      // silently ignores them.
-      //
-      // SOLUTION: In development and test modes (where StrictMode runs), don't
-      // stop the actor on unmount. Let it continue running. The actor will be
-      // reused by the remounted component. In production (no StrictMode), we
-      // DO want to stop the actor on real unmounts to prevent memory leaks.
-      //
-      // WHY THIS WORKS: StrictMode only runs in development and test, not production.
-      // In development, unmounts are often "fake" (StrictMode testing for side effects).
-      // In production, unmounts are real (user navigating away), so we should clean up.
       if (process.env.NODE_ENV === "production") {
-        console.log(
-          "[PlanningMachineProvider] Production mode: stopping actor",
-        );
         actor.stop();
-      } else {
-        console.log(
-          "[PlanningMachineProvider] ✅ Development/test mode: skipping actor.stop() for StrictMode compatibility",
-        );
-        console.log(
-          "[PlanningMachineProvider] Actor will continue running:",
-          actor.id,
-        );
-        console.log(
-          "[PlanningMachineProvider] This prevents BUG-012 (stale actor references after StrictMode remount)",
-        );
       }
     };
-  }, [actor, storageKey, input.projectId, input]);
+  }, [actor, storageKey]);
+
+  // ============================================================================
+  // STEP 6: Hot-reload actor when database data arrives
+  // ============================================================================
+  useEffect(() => {
+    if (!dbSnapshot || !actor) return;
+
+    const currentSnapshot = actor.getSnapshot();
+
+    // Check if database state is different from current actor state
+    if (snapshotsEqual(currentSnapshot, dbSnapshot)) {
+      console.log(
+        "[PlanningMachineProvider] Database snapshot matches current state",
+      );
+      return;
+    }
+
+    console.log(
+      "[PlanningMachineProvider] Database snapshot differs, hot-reloading actor",
+    );
+
+    // Send RESTORE event to machine
+    actor.send({ type: "RESTORE_SNAPSHOT", snapshot: dbSnapshot });
+  }, [dbSnapshot, actor]);
+
+  // ============================================================================
+  // STEP 7: Loading and error states
+  // ============================================================================
+
+  // Show loading spinner ONLY if no authoritative state available
+  if (!authoritativeSnapshot && isLoadingDb) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4" />
+          <p className="text-gray-600">Loading workflow state...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error boundary if database fails AND no authoritative state available
+  if (dbError && !authoritativeSnapshot) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md">
+          <h2 className="text-xl font-semibold text-red-600 mb-2">
+            Failed to load workflow state
+          </h2>
+          <p className="text-gray-600 mb-4">
+            {dbError instanceof Error ? dbError.message : "Unknown error"}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <PlanningMachineContext.Provider value={{ actor }}>
@@ -339,53 +319,89 @@ export function useSelector<T>(selector: (snapshot: SnapshotType) => T): T {
   return useXStateSelector(actor, selector);
 }
 
+function getRestoredAutomatedStep(snapshot: SnapshotType): number | null {
+  const stateValue = snapshot.value;
+  if (typeof stateValue !== "object" || stateValue === null) return null;
+
+  const automatedStates: Array<[string, number]> = [
+    ["step4_styleAnchors", 4],
+    ["step6_definitionOfDone", 6],
+    ["step8_deliveryTimeline", 8],
+    ["step9_qaTestPlan", 9],
+    ["step10_summaries", 10],
+  ];
+
+  for (const [stateName, stepNumber] of automatedStates) {
+    if (
+      stateName in stateValue &&
+      stateValue[stateName as keyof typeof stateValue] === "generating" &&
+      !snapshot.context.artifacts[stepNumber]
+    ) {
+      return stepNumber;
+    }
+  }
+
+  return null;
+}
+
 // ─────────────────────────────────────────────────────────────
-// PERSISTENCE HELPERS (HYBRID STRATEGY)
+// UTILITY: Snapshot comparison
 // ─────────────────────────────────────────────────────────────
-// Strategy: localStorage as sync cache, database as async primary storage
-// - Read: Check localStorage first (fast, synchronous)
-// - Write: Update both localStorage (sync) and database (async background)
-// - Benefits: No loading states, no SSR issues, database durability
 
 /**
- * Save state to both localStorage (sync cache) and database (async primary)
+ * Compare two snapshots for equality (deep comparison)
+ * Used to prevent unnecessary hot-reloads when database snapshot matches current state
  */
-async function saveState(key: string, snapshot: SnapshotType): Promise<void> {
+function snapshotsEqual(
+  a: SnapshotType,
+  // biome-ignore lint/suspicious/noExplicitAny: database snapshot may have different structure
+  b: any,
+): boolean {
+  if (!a || !b) return false;
+
+  // Quick check: same timestamp means same snapshot (high confidence)
+  if (a.context.updatedAt === b.context?.updatedAt) {
+    return true;
+  }
+
+  // Fallback: deep comparison of context
+  // (State value can differ due to transient states like "submitting")
+  try {
+    return JSON.stringify(a.context) === JSON.stringify(b.context);
+  } catch (error) {
+    // JSON.stringify can fail on circular refs, functions, etc.
+    console.warn("[snapshotsEqual] JSON comparison failed:", error);
+    return false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// PERSISTENCE HELPERS
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Save state to localStorage cache
+ * Database persistence is handled by server-side snapshot saves
+ */
+function saveState(key: string, snapshot: SnapshotType): void {
   // Skip during SSR
   if (typeof window === "undefined") return;
 
   try {
-    // BUG-011 FIX: Use snapshot.toJSON() instead of manually picking fields
-    // XState v5 requires a complete snapshot with status, children, historyValue, tags, etc.
-    // Restoring from a partial snapshot causes the actor to enter an error state,
-    // which silently ignores all events (including SUBMIT_FORM).
-    const persistedSnapshot = snapshot.toJSON();
-
-    // 1. Save to localStorage (synchronous cache)
+    const persistedSnapshot = toPlainSnapshot(snapshot.toJSON());
     localStorage.setItem(key, JSON.stringify(persistedSnapshot));
-
-    // 2. Save to database (async background sync)
-    // Extract projectId from context for database storage
-    const projectId = snapshot.context.projectId as string;
-
-    // Fire-and-forget database sync (don't await to avoid blocking)
-    $savePlanningState({
-      data: { projectId, snapshot: persistedSnapshot },
-    }).catch((error) => {
-      console.error(
-        "[PlanningMachineContext] Background database sync failed:",
-        error,
-      );
-      // localStorage save succeeded, so UX is not impacted
-    });
   } catch (error) {
     console.error("[PlanningMachineContext] Failed to save state:", error);
   }
 }
 
+function toPlainSnapshot(snapshot: unknown): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(snapshot)) as Record<string, unknown>;
+}
+
 /**
  * Load state synchronously from localStorage cache
- * Database serves as backup/sync layer, loaded on page load
+ * Database serves as single source of truth, loaded via React Query
  */
 function loadStateSync(key: string): SnapshotType | null {
   // Skip during SSR
@@ -397,9 +413,7 @@ function loadStateSync(key: string): SnapshotType | null {
 
     const parsed = JSON.parse(stored);
 
-    // BUG-011 FIX: Validate that we have a complete XState v5 snapshot
-    // A complete snapshot must include: status, value, context, children, historyValue, tags
-    // Partial snapshots (e.g., only {value, context}) will cause restoration to fail
+    // Validate that we have a complete XState v5 snapshot
     if (
       !parsed ||
       typeof parsed !== "object" ||
@@ -424,10 +438,7 @@ function loadStateSync(key: string): SnapshotType | null {
       );
     }
 
-    // BUG-011 FIX: Defensive reset of status to 'active'
-    // This handles any existing corrupted snapshots in localStorage that have status: 'stopped'.
-    // Should not happen with proper cleanup ordering, but provides defense-in-depth.
-    // XState v5 respects the snapshot's status field, so we must ensure it's 'active' for restoration.
+    // Defensive reset of status to 'active'
     if (parsed.status !== "active") {
       console.warn(
         "[PlanningMachineContext] Restoring snapshot with non-active status:",
@@ -437,8 +448,6 @@ function loadStateSync(key: string): SnapshotType | null {
       parsed.status = "active";
     }
 
-    // Cast to SnapshotType - safe because we validated the structure above
-    // and XState will properly reconstruct the snapshot during createActor
     return parsed as unknown as SnapshotType;
   } catch (error) {
     // Auto-recover by clearing corrupted/outdated state
@@ -455,115 +464,5 @@ function loadStateSync(key: string): SnapshotType | null {
       );
     }
     return null; // Start with fresh state
-  }
-}
-
-/**
- * Load state from database and sync with actor if database is newer
- * This runs in background on mount and during sync events to ensure cache is current
- *
- * Conflict resolution strategy:
- * - Compare updated_at timestamps to determine which is newer
- * - If database is newer: update actor and localStorage cache
- * - If local is newer: keep local state (already synced to DB via saveState)
- * - If timestamps equal: no action needed
- */
-async function syncFromDatabase(
-  projectId: string,
-  key: string,
-  _actor: ActorType,
-): Promise<void> {
-  // Skip during SSR
-  if (typeof window === "undefined") return;
-
-  try {
-    const dbSnapshot = await $loadPlanningState({ data: { projectId } });
-    if (!dbSnapshot) {
-      console.log("[PlanningMachineContext] No database snapshot found");
-      return;
-    }
-
-    // Get current localStorage state for comparison
-    const localStorageState = localStorage.getItem(key);
-    const localSnapshot = localStorageState
-      ? JSON.parse(localStorageState)
-      : null;
-
-    // Determine if database snapshot is newer than local
-    // If we have both, compare updatedAt timestamps
-    let shouldSync = true;
-
-    if (localSnapshot?.context?.updatedAt && dbSnapshot.context?.updatedAt) {
-      const localTime = new Date(localSnapshot.context.updatedAt).getTime();
-      const dbTime = new Date(dbSnapshot.context.updatedAt).getTime();
-
-      if (localTime >= dbTime) {
-        console.log(
-          "[PlanningMachineContext] Local state is current (local:",
-          localSnapshot.context.updatedAt,
-          "db:",
-          dbSnapshot.context.updatedAt,
-          ")",
-        );
-        shouldSync = false;
-      } else {
-        console.log(
-          "[PlanningMachineContext] Database state is newer (local:",
-          localSnapshot.context.updatedAt,
-          "db:",
-          dbSnapshot.context.updatedAt,
-          ")",
-        );
-      }
-    }
-
-    if (!shouldSync) return;
-
-    // Validate database snapshot structure
-    if (
-      !dbSnapshot ||
-      typeof dbSnapshot !== "object" ||
-      !dbSnapshot.status ||
-      !dbSnapshot.value ||
-      !dbSnapshot.context
-    ) {
-      console.warn(
-        "[PlanningMachineContext] Invalid database snapshot structure, skipping sync",
-      );
-      return;
-    }
-
-    // Ensure status is active for restoration
-    if (dbSnapshot.status !== "active") {
-      console.warn(
-        "[PlanningMachineContext] Database snapshot has non-active status:",
-        dbSnapshot.status,
-        "- forcing to active",
-      );
-      dbSnapshot.status = "active";
-    }
-
-    // Update localStorage cache with database state
-    localStorage.setItem(key, JSON.stringify(dbSnapshot));
-
-    // Restore actor to database snapshot state
-    // Note: We can't directly "update" a running actor, so we send a special
-    // RESTORE event that the machine would need to handle, OR we accept that
-    // the page refresh will pick up the new state.
-    // For now, we just update localStorage and log that a refresh may be needed.
-    console.log(
-      "[PlanningMachineContext] ✅ Synced state from database to localStorage cache",
-    );
-    console.log(
-      "[PlanningMachineContext] ℹ️  Note: Actor state will update on next page load or component remount",
-    );
-
-    // TODO: Consider implementing a RESTORE_SNAPSHOT event in the machine
-    // to allow hot-swapping the actor state without page refresh
-  } catch (error) {
-    console.error(
-      "[PlanningMachineContext] Failed to sync from database:",
-      error,
-    );
   }
 }

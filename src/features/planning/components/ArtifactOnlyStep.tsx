@@ -3,8 +3,11 @@
  * Allows reviewing and editing the generated artifact before approval
  */
 
-import React, { useState, useEffect } from 'react';
-import { usePlanningMachine, useSelector } from '../machines/PlanningMachineContext';
+import { useEffect, useState } from "react";
+import {
+  usePlanningMachine,
+  useSelector,
+} from "../machines/PlanningMachineContext";
 
 type Props = {
   stepKey: string;
@@ -20,7 +23,7 @@ export function ArtifactOnlyStep({ stepKey, stepName }: Props) {
   const existingEdits = useSelector((state) => state.context.step7Edits);
   const error = useSelector((state) => state.context.error);
 
-  const [editedContent, setEditedContent] = useState('');
+  const [editedContent, setEditedContent] = useState("");
   const [isEditing, setIsEditing] = useState(false);
 
   // Initialize edited content
@@ -34,7 +37,7 @@ export function ArtifactOnlyStep({ stepKey, stepName }: Props) {
 
   const handleSaveEdit = () => {
     actor.send({
-      type: 'EDIT_ARTIFACT',
+      type: "EDIT_ARTIFACT",
       stepNumber,
       content: editedContent,
     });
@@ -43,14 +46,14 @@ export function ArtifactOnlyStep({ stepKey, stepName }: Props) {
 
   const handleApprove = () => {
     actor.send({
-      type: 'APPROVE_ARTIFACT',
+      type: "APPROVE_ARTIFACT",
       stepNumber,
     });
   };
 
   const handleRetry = () => {
     actor.send({
-      type: 'RETRY',
+      type: "RETRY",
       stepNumber,
     });
   };
@@ -75,7 +78,9 @@ export function ArtifactOnlyStep({ stepKey, stepName }: Props) {
       {error && (
         <div className="error-message">
           <p>{error}</p>
-          <button onClick={handleRetry}>Retry</button>
+          <button type="button" onClick={handleRetry}>
+            Retry
+          </button>
         </div>
       )}
 
@@ -96,16 +101,26 @@ export function ArtifactOnlyStep({ stepKey, stepName }: Props) {
             className="artifact-editor"
           />
           <div className="edit-actions">
-            <button onClick={handleSaveEdit}>Save Changes</button>
-            <button onClick={() => setIsEditing(false)}>Cancel</button>
+            <button type="button" onClick={handleSaveEdit}>
+              Save Changes
+            </button>
+            <button type="button" onClick={() => setIsEditing(false)}>
+              Cancel
+            </button>
           </div>
         </div>
       ) : (
         <div className="view-mode">
           <pre className="artifact-content">{displayContent}</pre>
           <div className="actions">
-            <button onClick={() => setIsEditing(true)}>Edit</button>
-            <button onClick={handleApprove} className="approve-button">
+            <button type="button" onClick={() => setIsEditing(true)}>
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={handleApprove}
+              className="approve-button"
+            >
               Approve & Continue
             </button>
           </div>

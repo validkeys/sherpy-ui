@@ -3,8 +3,7 @@
  * Displays loading state during AI generation and artifact preview when complete
  */
 
-import React from 'react';
-import { useSelector } from '../machines/PlanningMachineContext';
+import { useSelector } from "../machines/PlanningMachineContext";
 
 type Props = {
   stepKey: string;
@@ -23,7 +22,9 @@ export function AutomatedStep({ stepKey, stepName }: Props) {
   const stepNumber = STEP_NUMBERS[stepKey];
 
   // MUST call hooks before any early returns (Rules of Hooks)
-  const artifact = useSelector((state) => state.context.artifacts[stepNumber || 0]);
+  const artifact = useSelector(
+    (state) => state.context.artifacts[stepNumber || 0],
+  );
   const currentState = useSelector((state) => state.value);
 
   if (!stepNumber) {
@@ -32,9 +33,12 @@ export function AutomatedStep({ stepKey, stepName }: Props) {
   }
 
   // Determine if this step is currently generating
-  const isGenerating = typeof currentState === 'object' && currentState !== null
-    ? Object.keys(currentState).some((key) => key.includes('generatingArtifact'))
-    : false;
+  const isGenerating =
+    typeof currentState === "object" && currentState !== null
+      ? Object.keys(currentState).some((key) =>
+          key.includes("generatingArtifact"),
+        )
+      : false;
 
   return (
     <div className="automated-step">

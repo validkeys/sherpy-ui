@@ -21,6 +21,10 @@ import {
   savePlanningState as dbSavePlanningState,
 } from "../server.db";
 
+function isFormStepNumber(stepNumber: number): stepNumber is 1 | 5 | 7 {
+  return stepNumber === 1 || stepNumber === 5 || stepNumber === 7;
+}
+
 /**
  * Save complete planning state for a project
  */
@@ -37,7 +41,10 @@ export async function savePlanningState(
 export async function loadPlanningState(
   projectId: string,
 ): Promise<Record<string, unknown> | null> {
-  return await dbLoadPlanningState(projectId);
+  return (await dbLoadPlanningState(projectId)) as Record<
+    string,
+    unknown
+  > | null;
 }
 
 /**
@@ -71,8 +78,13 @@ export async function saveInterviewAnswer(
  */
 export async function getInterviewAnswers(
   projectId: string,
+  stepNumber: 2 | 3,
 ): Promise<Array<{ stepNumber: number; question: string; answer: string }>> {
-  return await dbGetInterviewAnswers(projectId);
+  return (await dbGetInterviewAnswers(projectId, stepNumber)).map((answer) => ({
+    stepNumber: answer.step_number,
+    question: answer.question,
+    answer: answer.answer,
+  }));
 }
 
 /**
@@ -84,6 +96,10 @@ export async function saveFormResponse(
   questionId: string,
   response: string,
 ): Promise<void> {
+  if (!isFormStepNumber(stepNumber)) {
+    throw new Error(`Invalid form step number: ${stepNumber}`);
+  }
+
   await dbSaveFormResponse(projectId, stepNumber, questionId, response);
 }
 
@@ -94,7 +110,14 @@ export async function getFormResponses(
   projectId: string,
   stepNumber: number,
 ): Promise<Array<{ questionId: string; response: string }>> {
-  return await dbGetFormResponses(projectId, stepNumber);
+  if (!isFormStepNumber(stepNumber)) {
+    throw new Error(`Invalid form step number: ${stepNumber}`);
+  }
+
+  return (await dbGetFormResponses(projectId, stepNumber)).map((response) => ({
+    questionId: response.field_name,
+    response: response.field_value,
+  }));
 }
 
 /**
@@ -102,9 +125,15 @@ export async function getFormResponses(
  */
 export async function getArtifact(
   projectId: string,
-  slug: string,
+  stepNumber: number,
 ): Promise<{ slug: string; content: string } | null> {
-  return await dbGetArtifact(projectId, slug);
+  const artifact = await dbGetArtifact(projectId, stepNumber);
+  if (!artifact) return null;
+
+  return {
+    slug: `step-${artifact.step_number}`,
+    content: artifact.content,
+  };
 }
 
 /**
@@ -113,5 +142,8 @@ export async function getArtifact(
 export async function getArtifacts(
   projectId: string,
 ): Promise<Array<{ slug: string; content: string }>> {
-  return await dbGetArtifacts(projectId);
+  return (await dbGetArtifacts(projectId)).map((artifact) => ({
+    slug: `step-${artifact.step_number}`,
+    content: artifact.content,
+  }));
 }

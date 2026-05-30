@@ -20,9 +20,10 @@ import {
   submitStepAnswer,
 } from "../domain/step-commands";
 import type { StepNumber } from "../domain/types";
-import type { ProjectStepState } from "../types";
+import type { ProjectStepState, StepOption } from "../types";
 import {
   loadPlanningState,
+  saveFormResponse,
   saveInterviewAnswer,
   savePlanningState,
 } from "./repository";
@@ -37,6 +38,133 @@ function logServerAction(action: string, data: Record<string, unknown>): void {
     ...data,
   });
 }
+
+/**
+ * Server function: Persist one interview answer without changing workflow state.
+ *
+ * Used by the legacy XState machine while it remains the workflow owner.
+ */
+export const $saveInterviewAnswer = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null) {
+      throw new Error("invalid input: expected object");
+    }
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId) {
+      throw new Error("projectId required");
+    }
+    const stepNumber = d.stepNumber;
+    if (stepNumber !== 2 && stepNumber !== 3) {
+      throw new Error("stepNumber must be 2 or 3");
+    }
+    if (typeof d.question !== "string") {
+      throw new Error("question required");
+    }
+    if (typeof d.answer !== "string") {
+      throw new Error("answer required");
+    }
+    return {
+      projectId: d.projectId,
+      stepNumber,
+      question: d.question,
+      answer: d.answer,
+    };
+  })
+  .handler(
+    async ({
+      data,
+    }: {
+      data: {
+        projectId: string;
+        stepNumber: number;
+        question: string;
+        answer: string;
+      };
+    }) => {
+      logServerAction("saveInterviewAnswer.start", {
+        projectId: data.projectId,
+        stepNumber: data.stepNumber,
+      });
+
+      await saveInterviewAnswer(
+        data.projectId,
+        data.stepNumber as 2 | 3,
+        data.question,
+        data.answer,
+      );
+
+      logServerAction("saveInterviewAnswer.success", {
+        projectId: data.projectId,
+        stepNumber: data.stepNumber,
+      });
+
+      return { success: true };
+    },
+  );
+
+/**
+ * Server function: Persist form responses without changing workflow state.
+ *
+ * Used by the legacy XState machine while it remains the workflow owner.
+ */
+export const $saveFormResponses = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null) {
+      throw new Error("invalid input: expected object");
+    }
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId) {
+      throw new Error("projectId required");
+    }
+    const stepNumber = d.stepNumber;
+    if (stepNumber !== 1 && stepNumber !== 5) {
+      throw new Error("stepNumber must be 1 or 5");
+    }
+    if (typeof d.responses !== "object" || d.responses === null) {
+      throw new Error("responses required");
+    }
+
+    return {
+      projectId: d.projectId,
+      stepNumber,
+      responses: d.responses as Record<string, string>,
+    };
+  })
+  .handler(
+    async ({
+      data,
+    }: {
+      data: {
+        projectId: string;
+        stepNumber: number;
+        responses: Record<string, string>;
+      };
+    }) => {
+      logServerAction("saveFormResponses.start", {
+        projectId: data.projectId,
+        stepNumber: data.stepNumber,
+        responseCount: Object.keys(data.responses).length,
+      });
+
+      await Promise.all(
+        Object.entries(data.responses).map(([fieldName, fieldValue]) =>
+          saveFormResponse(
+            data.projectId,
+            data.stepNumber as 1 | 5,
+            fieldName,
+            fieldValue,
+          ),
+        ),
+      );
+
+      logServerAction("saveFormResponses.success", {
+        projectId: data.projectId,
+        stepNumber: data.stepNumber,
+      });
+
+      return { success: true };
+    },
+  );
 
 /**
  * Server function: Submit an interview answer (Steps 2 & 3)
@@ -146,6 +274,103 @@ export const $submitAnswer = createServerFn({ method: "POST" })
   );
 
 /**
+ * Server function: Submit an answer and complete the current step.
+ */
+export const $submitAnswerAndComplete = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null) {
+      throw new Error("invalid input: expected object");
+    }
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string") {
+      throw new Error("projectId required");
+    }
+    if (typeof d.stepNumber !== "number") {
+      throw new Error("stepNumber required");
+    }
+    if (typeof d.question !== "string") {
+      throw new Error("question required");
+    }
+    if (typeof d.answer !== "string") {
+      throw new Error("answer required");
+    }
+    return {
+      projectId: d.projectId,
+      stepNumber: d.stepNumber as StepNumber,
+      question: d.question,
+      answer: d.answer,
+    };
+  })
+  .handler(
+    async ({
+      data,
+    }: {
+      data: {
+        projectId: string;
+        stepNumber: StepNumber;
+        question: string;
+        answer: string;
+      };
+    }) => {
+      logServerAction("submitAnswerAndComplete.start", {
+        projectId: data.projectId,
+        stepNumber: data.stepNumber,
+      });
+
+      try {
+        const currentState = (await loadPlanningState(
+          data.projectId,
+        )) as ProjectStepState | null;
+        if (!currentState) {
+          throw new Error("Project not found");
+        }
+
+        const answeredState = submitStepAnswer(
+          currentState,
+          data.stepNumber,
+          data.question,
+          data.answer,
+        );
+        const newState = completeStep(answeredState, data.stepNumber);
+
+        if (data.stepNumber === 2 || data.stepNumber === 3) {
+          await Promise.all([
+            savePlanningState(
+              data.projectId,
+              newState as unknown as Record<string, unknown>,
+            ),
+            saveInterviewAnswer(
+              data.projectId,
+              data.stepNumber,
+              data.question,
+              data.answer,
+            ),
+          ]);
+        } else {
+          await savePlanningState(
+            data.projectId,
+            newState as unknown as Record<string, unknown>,
+          );
+        }
+
+        logServerAction("submitAnswerAndComplete.success", {
+          projectId: data.projectId,
+          stepNumber: data.stepNumber,
+        });
+
+        return newState;
+      } catch (error) {
+        logServerAction("submitAnswerAndComplete.error", {
+          projectId: data.projectId,
+          stepNumber: data.stepNumber,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+        throw error;
+      }
+    },
+  );
+
+/**
  * Server function: Mark a step as complete
  *
  * Flow:
@@ -208,6 +433,84 @@ export const $completeStep = createServerFn({ method: "POST" })
         return newState;
       } catch (error) {
         logServerAction("completeStep.error", {
+          projectId: data.projectId,
+          stepNumber: data.stepNumber,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+        throw error;
+      }
+    },
+  );
+
+/**
+ * Server function: Replace options for a step.
+ */
+export const $updateStepOptions = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null) {
+      throw new Error("invalid input: expected object");
+    }
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string") {
+      throw new Error("projectId required");
+    }
+    if (typeof d.stepNumber !== "number") {
+      throw new Error("stepNumber required");
+    }
+    if (!Array.isArray(d.options)) {
+      throw new Error("options required");
+    }
+    return {
+      projectId: d.projectId,
+      stepNumber: d.stepNumber as StepNumber,
+      options: d.options as StepOption[],
+    };
+  })
+  .handler(
+    async ({
+      data,
+    }: {
+      data: {
+        projectId: string;
+        stepNumber: StepNumber;
+        options: StepOption[];
+      };
+    }) => {
+      logServerAction("updateStepOptions.start", {
+        projectId: data.projectId,
+        stepNumber: data.stepNumber,
+      });
+
+      try {
+        const currentState = (await loadPlanningState(
+          data.projectId,
+        )) as ProjectStepState | null;
+        if (!currentState) {
+          throw new Error("Project not found");
+        }
+
+        const newState: ProjectStepState = {
+          ...currentState,
+          steps: currentState.steps.map((step) =>
+            step.stepNumber === data.stepNumber
+              ? { ...step, options: data.options }
+              : step,
+          ),
+        };
+
+        await savePlanningState(
+          data.projectId,
+          newState as unknown as Record<string, unknown>,
+        );
+
+        logServerAction("updateStepOptions.success", {
+          projectId: data.projectId,
+          stepNumber: data.stepNumber,
+        });
+
+        return newState;
+      } catch (error) {
+        logServerAction("updateStepOptions.error", {
           projectId: data.projectId,
           stepNumber: data.stepNumber,
           error: error instanceof Error ? error.message : "Unknown error",

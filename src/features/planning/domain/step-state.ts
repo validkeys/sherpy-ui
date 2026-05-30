@@ -24,7 +24,7 @@ import type {
  */
 export function getStepSummary(
   step: PlanningStep,
-  currentStep: number,
+  _currentStep: number,
 ): StepSummary {
   return {
     stepNumber: step.stepNumber as StepNumber,

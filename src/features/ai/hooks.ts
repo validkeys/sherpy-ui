@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { parseOptions } from "./parse-options";
-import { isStructuredOutputEnabled } from "./feature-flags";
 import type { InterviewQuestionResponse } from "../planning/response-schemas";
 import type { StepOption } from "../planning/types";
+import { isStructuredOutputEnabled } from "./feature-flags";
+import { parseOptions } from "./parse-options";
 
 interface UseStreamingQuestionParams {
   projectId: string;
@@ -10,7 +10,14 @@ interface UseStreamingQuestionParams {
   previousAnswers: string[];
   enabled: boolean;
   refetchTrigger?: number; // Increment to force refetch
-  onOptionsReady?: (options: Array<{ letter: string; title: string; body: string; recommended?: boolean }>) => void;
+  onOptionsReady?: (
+    options: Array<{
+      letter: string;
+      title: string;
+      body: string;
+      recommended?: boolean;
+    }>,
+  ) => void;
 }
 
 interface UseStreamingQuestionResult {
@@ -96,7 +103,8 @@ export function useStreamingQuestion(
           if (isStructuredOutputEnabled(currentParams.stepNumber)) {
             // JSON mode: parse structured response
             try {
-              const parsed: InterviewQuestionResponse = JSON.parse(accumulatedText);
+              const parsed: InterviewQuestionResponse =
+                JSON.parse(accumulatedText);
               setText(parsed.question); // Clean question text only
               setOptions(parsed.options);
               setIsComplete(parsed.isComplete ?? false);
@@ -106,7 +114,10 @@ export function useStreamingQuestion(
                 currentParams.onOptionsReady(parsed.options);
               }
             } catch (err) {
-              console.error("[useStreamingQuestion] Failed to parse JSON response:", err);
+              console.error(
+                "[useStreamingQuestion] Failed to parse JSON response:",
+                err,
+              );
               setError(new Error("Invalid JSON response from AI"));
             }
           } else {
@@ -145,7 +156,7 @@ export function useStreamingQuestion(
   useEffect(() => {
     if (!params.enabled) return;
     fetchQuestion();
-  }, [params.projectId, params.stepNumber, params.enabled, params.refetchTrigger, fetchQuestion]);
+  }, [params.enabled, fetchQuestion]);
 
   return { text, loading, error, isComplete, options, refetch: fetchQuestion };
 }

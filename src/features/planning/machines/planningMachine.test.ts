@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createActor } from "xstate";
-import { PlanningStateBuilder } from "../../../../tests/fixtures/builders/PlanningStateBuilder";
 import { planningMachine } from "./planningMachine";
 
 // Mock global fetch for API calls
@@ -25,8 +24,10 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   // Default mock for fetch (interview API)
+  // biome-ignore lint/suspicious/noExplicitAny: mocking global fetch
   (global.fetch as any).mockImplementation(
-    async (url: string, options: any) => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock fetch options
+    async (_url: string, options: any) => {
       const body = JSON.parse(options.body);
       const { stepNumber } = body;
 
@@ -1398,5 +1399,183 @@ describe("Full Workflow (Steps 1-10)", () => {
     expect(
       Object.keys(snapshot.context.artifacts).length,
     ).toBeGreaterThanOrEqual(8);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// RESTORE_SNAPSHOT Event Tests (State Sync Fix - Issue #15)
+// ─────────────────────────────────────────────────────────────
+
+describe("RESTORE_SNAPSHOT event", () => {
+  it("merges database state into current context", () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: "test", entryPath: "new-project" },
+    });
+    actor.start();
+
+    // Simulate database snapshot with Step 2 data
+    const dbSnapshot = {
+      context: {
+        projectId: "test",
+        entryPath: "new-project" as const,
+        startedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        currentStepNumber: 2,
+        step1Responses: {},
+        step2Answers: [
+          {
+            question: "Question 1",
+            value: "Answer 1",
+            timestamp: new Date().toISOString(),
+          },
+          {
+            question: "Question 2",
+            value: "Answer 2",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        step2CurrentQuestion: null,
+        step2CurrentOptions: null,
+        step3Answers: [],
+        step3CurrentQuestion: null,
+        step3CurrentOptions: null,
+        step5Responses: {},
+        step7Edits: null,
+        artifacts: {},
+        completedSteps: [],
+        error: null,
+      },
+    };
+
+    actor.send({ type: "RESTORE_SNAPSHOT", snapshot: dbSnapshot });
+
+    expect(actor.getSnapshot().context.currentStepNumber).toBe(2);
+    expect(actor.getSnapshot().context.step2Answers).toHaveLength(2);
+  });
+
+  it("preserves local changes if newer than database", () => {
+    // Arrange - Create actor with Step 2 state (recent timestamp)
+    const now = new Date();
+    const _localTimestamp = now.toISOString();
+
+    const actor = createActor(planningMachine, {
+      input: { projectId: "test", entryPath: "new-project" },
+    });
+    actor.start();
+
+    // Simulate local state with recent timestamp
+    const currentContext = actor.getSnapshot().context;
+    actor.send({ type: "START_PLANNING" });
+
+    // Simulate stale database snapshot arriving (older timestamp)
+    const oldTimestamp = new Date(now.getTime() - 60000).toISOString(); // 1 min old
+    const staleDbSnapshot = {
+      context: {
+        ...currentContext,
+        currentStepNumber: 1, // Stale state
+        updatedAt: oldTimestamp,
+      },
+    };
+
+    const beforeSnapshot = actor.getSnapshot();
+    const beforeStepNumber = beforeSnapshot.context.currentStepNumber;
+
+    // Act - Send RESTORE_SNAPSHOT with stale data
+    actor.send({ type: "RESTORE_SNAPSHOT", snapshot: staleDbSnapshot });
+
+    // Assert - Local changes should be preserved (no-op)
+    const afterSnapshot = actor.getSnapshot();
+    expect(afterSnapshot.context.currentStepNumber).toBe(beforeStepNumber);
+  });
+
+  it("accepts database changes when database is newer", () => {
+    // Arrange - Create actor with old local state
+    const oldTimestamp = new Date(Date.now() - 60000).toISOString(); // 1 min old
+
+    const actor = createActor(planningMachine, {
+      input: { projectId: "test", entryPath: "new-project" },
+    });
+    actor.start();
+
+    // Override timestamp to simulate old local state
+    const currentSnapshot = actor.getSnapshot();
+    currentSnapshot.context.updatedAt = oldTimestamp;
+
+    // Simulate fresh database snapshot (cross-device edit)
+    const freshDbSnapshot = {
+      context: {
+        ...currentSnapshot.context,
+        currentStepNumber: 3,
+        step3Answers: [
+          {
+            question: "Question 1",
+            value: "Answer 1",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        updatedAt: new Date().toISOString(), // Fresh timestamp
+      },
+    };
+
+    // Act
+    actor.send({ type: "RESTORE_SNAPSHOT", snapshot: freshDbSnapshot });
+
+    // Assert - DB changes should be applied
+    const finalSnapshot = actor.getSnapshot();
+    expect(finalSnapshot.context.currentStepNumber).toBe(3);
+    expect(finalSnapshot.context.step3Answers).toHaveLength(1);
+  });
+
+  it("handles equal timestamps gracefully (DB wins as tie-breaker)", () => {
+    // Arrange
+    const timestamp = new Date().toISOString();
+
+    const actor = createActor(planningMachine, {
+      input: { projectId: "test", entryPath: "new-project" },
+    });
+    actor.start();
+
+    // Set local context with specific timestamp
+    const currentSnapshot = actor.getSnapshot();
+    currentSnapshot.context.updatedAt = timestamp;
+    currentSnapshot.context.currentStepNumber = 1;
+
+    const dbSnapshot = {
+      context: {
+        ...currentSnapshot.context,
+        currentStepNumber: 2, // Different value
+        updatedAt: timestamp, // Same timestamp
+      },
+    };
+
+    // Act
+    actor.send({ type: "RESTORE_SNAPSHOT", snapshot: dbSnapshot });
+
+    // Assert - DB wins on equal timestamps (consistent tie-breaker)
+    expect(actor.getSnapshot().context.currentStepNumber).toBe(2);
+  });
+
+  it("handles missing or invalid snapshot gracefully", () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: "test", entryPath: "new-project" },
+    });
+    actor.start();
+
+    const beforeSnapshot = actor.getSnapshot();
+
+    // Send invalid snapshot (should not crash)
+    actor.send({
+      type: "RESTORE_SNAPSHOT",
+      snapshot: {
+        // biome-ignore lint/suspicious/noExplicitAny: testing null snapshot handling
+        context: null as any,
+      },
+    });
+
+    // Should preserve current state
+    const afterSnapshot = actor.getSnapshot();
+    expect(afterSnapshot.context.currentStepNumber).toBe(
+      beforeSnapshot.context.currentStepNumber,
+    );
   });
 });

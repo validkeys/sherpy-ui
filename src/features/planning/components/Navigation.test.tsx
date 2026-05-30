@@ -2,62 +2,65 @@
  * Navigation Component Tests
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { userEvent } from '@testing-library/user-event';
-import { Navigation } from './Navigation';
-import { PlanningMachineProvider } from '../machines/PlanningMachineContext';
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
+import { Navigation } from "./Navigation";
 
-describe('Navigation', () => {
+describe("Navigation", () => {
   const defaultInput = {
-    projectId: 'test-project',
-    entryPath: 'new-project' as const,
+    projectId: "test-project",
+    entryPath: "new-project" as const,
   };
 
-  it('renders step progress', () => {
+  it("renders step progress", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <Navigation />
-      </PlanningMachineProvider>
+      </PlanningMachineProvider>,
     );
 
     expect(screen.getByText(/Step 1 of 10/i)).toBeDefined();
   });
 
-  it('disables Back button on step 1', () => {
+  it("disables Back button on step 1", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <Navigation />
-      </PlanningMachineProvider>
+      </PlanningMachineProvider>,
     );
 
-    const backButton = screen.getByRole('button', { name: /back/i }) as HTMLButtonElement;
+    const backButton = screen.getByRole("button", {
+      name: /back/i,
+    }) as HTMLButtonElement;
     expect(backButton.disabled).toBe(true);
   });
 
-  it('disables Next button when current step not complete', () => {
+  it("disables Next button when current step not complete", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <Navigation />
-      </PlanningMachineProvider>
+      </PlanningMachineProvider>,
     );
 
-    const nextButton = screen.getByRole('button', { name: /next/i }) as HTMLButtonElement;
+    const nextButton = screen.getByRole("button", {
+      name: /next/i,
+    }) as HTMLButtonElement;
     expect(nextButton.disabled).toBe(true);
   });
 
-  it('renders both buttons', () => {
+  it("renders both buttons", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <Navigation />
-      </PlanningMachineProvider>
+      </PlanningMachineProvider>,
     );
 
-    expect(screen.getByRole('button', { name: /back/i })).toBeDefined();
-    expect(screen.getByRole('button', { name: /next/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /back/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /next/i })).toBeDefined();
   });
 
-  it('renders without crashing during SSR when localStorage is undefined (BUG-005)', () => {
+  it("renders without crashing during SSR when localStorage is undefined (BUG-005)", () => {
     // Simulate SSR by making localStorage undefined
     const originalLocalStorage = global.localStorage;
     // @ts-expect-error - Simulating SSR environment
@@ -68,7 +71,7 @@ describe('Navigation', () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <Navigation />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
     }).not.toThrow();
 

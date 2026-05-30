@@ -18,7 +18,12 @@ vi.mock("@/features/ai/hooks", () => ({
 }));
 
 import { useStreamingQuestion } from "@/features/ai/hooks";
-import { useCompleteStep, useStepState, useSubmitAnswer, useUpdateStepOptions } from "../hooks";
+import {
+  useCompleteStep,
+  useStepState,
+  useSubmitAnswer,
+  useUpdateStepOptions,
+} from "../hooks";
 
 const mockMutate = vi.fn();
 
@@ -229,12 +234,14 @@ describe("InterviewThread", () => {
     // Initial render on step 1
     const stepState = makeStepState({ currentStep: 1 });
     const { rerender } = wrap(
-      <InterviewThread stepState={stepState} projectId="p1" />
+      <InterviewThread stepState={stepState} projectId="p1" />,
     );
 
     // Track the initial refetchTrigger value
     const initialCalls = vi.mocked(useStreamingQuestion).mock.calls.length;
-    const initialTrigger = vi.mocked(useStreamingQuestion).mock.calls[initialCalls - 1]?.[0]?.refetchTrigger ?? 0;
+    const initialTrigger =
+      vi.mocked(useStreamingQuestion).mock.calls[initialCalls - 1]?.[0]
+        ?.refetchTrigger ?? 0;
 
     // Update to step 2
     const updatedStepState = makeStepState({
@@ -245,7 +252,11 @@ describe("InterviewThread", () => {
           name: "Step 1",
           status: "complete",
           question: "Question for step 1?",
-          answer: { question: "Question for step 1?", value: "Answer 1", submittedAt: "2026-01-01T00:00:00Z" },
+          answer: {
+            question: "Question for step 1?",
+            value: "Answer 1",
+            submittedAt: "2026-01-01T00:00:00Z",
+          },
         },
         {
           stepNumber: 2,
@@ -265,12 +276,14 @@ describe("InterviewThread", () => {
     rerender(
       <QueryClientProvider client={new QueryClient()}>
         <InterviewThread stepState={updatedStepState} projectId="p1" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     // Verify useStreamingQuestion was called with incremented refetchTrigger
     const finalCalls = vi.mocked(useStreamingQuestion).mock.calls.length;
-    const finalTrigger = vi.mocked(useStreamingQuestion).mock.calls[finalCalls - 1]?.[0]?.refetchTrigger ?? 0;
+    const finalTrigger =
+      vi.mocked(useStreamingQuestion).mock.calls[finalCalls - 1]?.[0]
+        ?.refetchTrigger ?? 0;
 
     expect(finalTrigger).toBeGreaterThan(initialTrigger);
   });
@@ -293,7 +306,7 @@ describe("InterviewThread", () => {
 
     const stepState = makeStepState({ currentStep: 1 });
     const { rerender } = wrap(
-      <InterviewThread stepState={stepState} projectId="p1" />
+      <InterviewThread stepState={stepState} projectId="p1" />,
     );
 
     // Wait for initial effect to trigger completeStep
@@ -311,7 +324,11 @@ describe("InterviewThread", () => {
           name: "Step 1",
           status: "complete",
           question: "Question for step 1?",
-          answer: { question: "Question for step 1?", value: "Answer 1", submittedAt: "2026-01-01T00:00:00Z" },
+          answer: {
+            question: "Question for step 1?",
+            value: "Answer 1",
+            submittedAt: "2026-01-01T00:00:00Z",
+          },
         },
         {
           stepNumber: 2,
@@ -342,7 +359,7 @@ describe("InterviewThread", () => {
     rerender(
       <QueryClientProvider client={new QueryClient()}>
         <InterviewThread stepState={updatedStepState} projectId="p1" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     // BUG: Without the fix, completeStep would be called again with stepNumber=2

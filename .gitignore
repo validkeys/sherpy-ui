@@ -34,6 +34,8 @@ coverage/
 .tmp-docs/
 .playwright-mcp/
 test-results/
+.claude/
+test-report.xml
 
 # Database files
 *.db

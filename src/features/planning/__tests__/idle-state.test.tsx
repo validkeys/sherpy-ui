@@ -13,18 +13,21 @@
  * This test SHOULD FAIL until the bug is fixed.
  */
 
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { StepContainer } from '../components/StepContainer';
-import { PlanningMachineProvider, useSelector } from '../machines/PlanningMachineContext';
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { StepContainer } from "../components/StepContainer";
+import {
+  PlanningMachineProvider,
+  useSelector,
+} from "../machines/PlanningMachineContext";
 
-describe('BUG-001: Idle State Handler Missing', () => {
+describe("BUG-001: Idle State Handler Missing", () => {
   const defaultInput = {
-    projectId: 'test-project',
-    entryPath: 'new-project' as const,
+    projectId: "test-project",
+    entryPath: "new-project" as const,
   };
 
-  it('should render StepContainer when machine is in idle state', () => {
+  it("should render StepContainer when machine is in idle state", () => {
     // This test reproduces the bug:
     // 1. Fresh provider starts machine in 'idle' state
     // 2. StepContainer attempts to render
@@ -34,7 +37,7 @@ describe('BUG-001: Idle State Handler Missing', () => {
     const { container } = render(
       <PlanningMachineProvider input={defaultInput}>
         <StepContainer />
-      </PlanningMachineProvider>
+      </PlanningMachineProvider>,
     );
 
     // Bug expectation: container is empty (renders null)
@@ -47,7 +50,7 @@ describe('BUG-001: Idle State Handler Missing', () => {
     expect(container.firstChild).not.toBeNull();
   });
 
-  it('should show correct initial state for new project workflow', () => {
+  it("should show correct initial state for new project workflow", () => {
     // Create a test component to inspect machine state
     const StateInspector = () => {
       const stateValue = useSelector((state) => state.value);
@@ -58,37 +61,42 @@ describe('BUG-001: Idle State Handler Missing', () => {
       <PlanningMachineProvider input={defaultInput}>
         <StateInspector />
         <StepContainer />
-      </PlanningMachineProvider>
+      </PlanningMachineProvider>,
     );
 
-    const stateDisplay = screen.getByTestId('state-value');
+    const stateDisplay = screen.getByTestId("state-value");
     const currentState = JSON.parse(stateDisplay.textContent || '""');
 
     // Document actual vs expected behavior
-    console.log('Current state:', currentState);
+    console.log("Current state:", currentState);
 
     // Expected: Machine should be ready for user to start planning
     // Actual (bug): Machine is in 'idle', but UI doesn't handle it
 
-    if (currentState === 'idle') {
+    if (currentState === "idle") {
       // Bug present: idle state exists but UI can't render it
-      console.warn('BUG CONFIRMED: Machine in idle state, StepContainer returns null');
+      console.warn(
+        "BUG CONFIRMED: Machine in idle state, StepContainer returns null",
+      );
 
       // This expectation documents the bug
-      expect(currentState).not.toBe('idle'); // Will FAIL until fixed
+      expect(currentState).not.toBe("idle"); // Will FAIL until fixed
     } else {
       // Bug fixed: Machine starts in a renderable state
       // State can be string ('step1_gapAnalysis') or object ({ step1_gapAnalysis: 'collecting' })
-      const stateKey = typeof currentState === 'string' ? currentState : Object.keys(currentState)[0];
+      const stateKey =
+        typeof currentState === "string"
+          ? currentState
+          : Object.keys(currentState)[0];
       expect(stateKey).toMatch(/step\d+_/);
     }
   });
 
-  it('should handle idle state gracefully with helpful message', () => {
+  it("should handle idle state gracefully with helpful message", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <StepContainer />
-      </PlanningMachineProvider>
+      </PlanningMachineProvider>,
     );
 
     // After fix, one of these should be true:
@@ -97,28 +105,29 @@ describe('BUG-001: Idle State Handler Missing', () => {
     // Option C: Auto-transitions to step1
 
     // For now, expect SOME content to be rendered
-    const content = screen.queryByRole('heading');
+    const content = screen.queryByRole("heading");
 
     // This will FAIL while bug exists (no heading found, StepContainer returns null)
     expect(content).not.toBeNull();
   });
 
-  it('should allow user to start planning from initial state', () => {
+  it("should allow user to start planning from initial state", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <StepContainer />
-      </PlanningMachineProvider>
+      </PlanningMachineProvider>,
     );
 
     // Expected: User can see and interact with the planning workflow
     // Actual (bug): Empty screen, no way to proceed
 
     // Look for any interactive element (form, button, etc.)
-    const form = screen.queryByRole('form');
-    const heading = screen.queryByRole('heading');
-    const inputs = screen.queryAllByRole('textbox');
+    const form = screen.queryByRole("form");
+    const heading = screen.queryByRole("heading");
+    const inputs = screen.queryAllByRole("textbox");
 
-    const hasInteractiveContent = form !== null || heading !== null || inputs.length > 0;
+    const hasInteractiveContent =
+      form !== null || heading !== null || inputs.length > 0;
 
     // This will FAIL while bug exists (no interactive content)
     expect(hasInteractiveContent).toBe(true);

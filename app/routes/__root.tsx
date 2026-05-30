@@ -17,13 +17,13 @@ export const Route = createRootRoute({
 function RootComponent() {
   const [queryClient] = useState(() => new QueryClient());
   return (
-    <html lang="en">
+    <html lang="en" className="h-screen overflow-hidden">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <HeadContent />
       </head>
-      <body>
+      <body className="h-screen overflow-hidden">
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <ThemeProvider>

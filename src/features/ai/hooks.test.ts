@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useStreamingQuestion } from "./hooks";
 
 // Mock fetch globally
@@ -54,7 +54,7 @@ describe("useStreamingQuestion", () => {
           previousAnswers: [],
           enabled: true,
           onOptionsReady,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -71,7 +71,7 @@ describe("useStreamingQuestion", () => {
             letter: "2",
             title: "Second Option",
           }),
-        ])
+        ]),
       );
     });
 
@@ -86,7 +86,7 @@ describe("useStreamingQuestion", () => {
           stepNumber: 1,
           previousAnswers: [],
           enabled: true,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -132,7 +132,7 @@ describe("useStreamingQuestion", () => {
           previousAnswers: [],
           enabled: true,
           onOptionsReady,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -176,7 +176,7 @@ describe("useStreamingQuestion", () => {
           stepNumber: 1,
           previousAnswers: [],
           enabled: true,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -196,7 +196,7 @@ describe("useStreamingQuestion", () => {
           stepNumber: 1,
           previousAnswers: [],
           enabled: true,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -211,7 +211,7 @@ describe("useStreamingQuestion", () => {
       const jsonPart3 = '"title":"Option A","body":"Body A"}]}';
 
       mockFetch.mockResolvedValue(
-        createMockStreamResponse([jsonPart1, jsonPart2, jsonPart3])
+        createMockStreamResponse([jsonPart1, jsonPart2, jsonPart3]),
       );
 
       const { result } = renderHook(() =>
@@ -220,7 +220,7 @@ describe("useStreamingQuestion", () => {
           stepNumber: 1,
           previousAnswers: [],
           enabled: true,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -249,7 +249,7 @@ describe("useStreamingQuestion", () => {
           stepNumber: 1,
           previousAnswers: [],
           enabled: true,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -261,7 +261,8 @@ describe("useStreamingQuestion", () => {
     it("should use text mode when flag disabled", async () => {
       process.env.USE_STRUCTURED_OUTPUT = "false";
 
-      const textResponse = "Text mode question\n**Options:**\n1. Option A - Body A";
+      const textResponse =
+        "Text mode question\n**Options:**\n1. Option A - Body A";
 
       mockFetch.mockResolvedValue(createMockStreamResponse([textResponse]));
 
@@ -271,7 +272,7 @@ describe("useStreamingQuestion", () => {
           stepNumber: 1,
           previousAnswers: [],
           enabled: true,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -295,7 +296,7 @@ describe("useStreamingQuestion", () => {
           stepNumber: 3, // Not in enabled list
           previousAnswers: [],
           enabled: true,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -314,7 +315,7 @@ describe("useStreamingQuestion", () => {
           stepNumber: 1,
           previousAnswers: [],
           enabled: true,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -336,7 +337,7 @@ describe("useStreamingQuestion", () => {
           stepNumber: 1,
           previousAnswers: [],
           enabled: true,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -361,7 +362,7 @@ describe("useStreamingQuestion", () => {
           stepNumber: 1,
           previousAnswers: [],
           enabled: true,
-        })
+        }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -371,7 +372,9 @@ describe("useStreamingQuestion", () => {
       result.current.refetch();
 
       // Wait for text to change to the second response
-      await waitFor(() => expect(result.current.text).toBe(response2), { timeout: 2000 });
+      await waitFor(() => expect(result.current.text).toBe(response2), {
+        timeout: 2000,
+      });
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });

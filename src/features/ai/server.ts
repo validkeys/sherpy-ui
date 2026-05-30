@@ -1,4 +1,7 @@
-import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import {
+  InvokeModelCommand,
+  type InvokeModelCommandOutput,
+} from "@aws-sdk/client-bedrock-runtime";
 import { createServerFn } from "@tanstack/react-start";
 import { nanoid } from "nanoid";
 import { BEDROCK_MODEL_ID, bedrockClient } from "@/lib/bedrock";
@@ -22,10 +25,16 @@ import {
 } from "../planning/step-config";
 import { isStructuredOutputEnabled } from "./feature-flags";
 import {
+  assertMockArtifactsAllowed,
+  generateMockArtifactContent,
+  shouldUseMockArtifacts,
+} from "./mock-artifacts";
+import {
   buildArtifactPrompt,
   buildInterviewPrompt,
   buildRefinementPrompt,
 } from "./prompts";
+import { type AIProviderContext, logAIProviderError } from "./provider-errors";
 import { getArtifactName } from "./skills-content";
 
 interface GenerateQuestionOutput {
@@ -38,6 +47,7 @@ export async function generateText(
   messages: Array<{ role: string; content: string }>,
   stepNumber: number,
   traceMetadata?: TraceMetadata,
+  providerContext?: AIProviderContext,
 ): Promise<string> {
   // Create Langfuse trace (no-op if disabled)
   const trace = createTrace({
@@ -94,7 +104,16 @@ export async function generateText(
     body: JSON.stringify(body),
   });
 
-  const res = await bedrockClient.send(cmd);
+  let res: InvokeModelCommandOutput;
+  try {
+    res = await bedrockClient.send(cmd);
+  } catch (error) {
+    throw logAIProviderError(error, {
+      operation: "generateText",
+      stepNumber,
+      ...providerContext,
+    });
+  }
   const result = JSON.parse(new TextDecoder().decode(res.body));
   const output = result.content[0].text as string;
   const latencyMs = Date.now() - startTime;
@@ -196,17 +215,30 @@ export async function generateArtifact(
     throw new Error(`No artifact key mapping for step ${stepNumber}`);
   }
 
-  const messages = buildArtifactPrompt(stepName, stepNumber, answers);
-  const content = await generateText(messages, stepNumber, {
-    name: "generate-artifact",
-    sessionId: projectId,
-    metadata: {
-      stepNumber,
-      stepName,
-      artifactKey,
-      answersCount: answers.length,
-    },
-  });
+  assertMockArtifactsAllowed();
+
+  const content = shouldUseMockArtifacts()
+    ? generateMockArtifactContent(stepNumber, answers)
+    : await generateText(
+        buildArtifactPrompt(stepName, stepNumber, answers),
+        stepNumber,
+        {
+          name: "generate-artifact",
+          sessionId: projectId,
+          metadata: {
+            stepNumber,
+            stepName,
+            artifactKey,
+            answersCount: answers.length,
+          },
+        },
+        {
+          operation: "generateArtifact",
+          projectId,
+          stepNumber,
+          artifactKey,
+        },
+      );
 
   // Determine format from artifact filename
   const artifactName = getArtifactName(stepNumber);
@@ -295,6 +327,11 @@ export const $refineArtifact = createServerFn({ method: "POST" })
           artifactLabel: artifact.label,
           instructionLength: data.instruction.length,
         },
+      },
+      {
+        operation: "refineArtifact",
+        projectId: data.projectId,
+        artifactKey: data.key,
       },
     );
     const updated = { ...artifact, content: refinedContent };

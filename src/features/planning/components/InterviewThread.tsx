@@ -28,7 +28,7 @@ export function InterviewThread({
   // Use the query directly to get fresh data after mutations
   // This ensures we always have the latest state after answer submission
   const { data: freshStepState } = useStepState(projectId);
-  const stepState = freshStepState ?? _stepState;
+  const stepState = (freshStepState ?? _stepState) as ProjectStepState;
   const [inputText, setInputText] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [optimisticAnswer, setOptimisticAnswer] = useState<{
@@ -58,7 +58,6 @@ export function InterviewThread({
     error: streamError,
     isComplete,
     options: streamedOptions,
-    refetch: refetchQuestion,
   } = useStreamingQuestion({
     projectId,
     stepNumber: stepState.currentStep,

@@ -1,8 +1,32 @@
-import { fileURLToPath, URL } from "node:url";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL, URL } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import Database from "better-sqlite3";
 import type { Connect } from "vite";
 import { defineConfig } from "vite";
+
+function openSeedDatabase() {
+  const dbPath =
+    process.env.SHERPY_DB_PATH ||
+    path.join(os.homedir(), ".local/share/sherpy/sherpy.db");
+  const dbDir = path.dirname(dbPath);
+
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+
+  const db = new Database(dbPath);
+  const schema = fs.readFileSync(
+    fileURLToPath(new URL("./src/lib/db/schema.sql", import.meta.url)),
+    "utf-8",
+  );
+  db.exec(schema);
+
+  return db;
+}
 
 export default defineConfig({
   optimizeDeps: {
@@ -56,7 +80,9 @@ export default defineConfig({
 
                 // Import PlanningStateBuilder
                 const { PlanningStateBuilder } = await import(
-                  "./tests/fixtures/builders/PlanningStateBuilder"
+                  pathToFileURL(
+                    `${process.cwd()}/tests/fixtures/builders/PlanningStateBuilder.ts`,
+                  ).href
                 );
 
                 // Build state using PlanningStateBuilder
@@ -94,14 +120,85 @@ export default defineConfig({
                 const storageKey = `planning-machine-${projectId}`;
 
                 // Create XState snapshot format
+                const stateValueByStep = {
+                  1: { step1_gapAnalysis: "collecting" },
+                  2: { step2_businessReqs: "answering" },
+                  3: { step3_techReqs: "answering" },
+                  4: { step4_styleAnchors: "generating" },
+                  5: { step5_implPlanner: "collecting" },
+                  6: { step6_definitionOfDone: "generating" },
+                  7: { step7_archDecisions: "reviewing" },
+                  8: { step8_deliveryTimeline: "generating" },
+                  9: { step9_qaTestPlan: "generating" },
+                  10: { step10_summaries: "generating" },
+                } as const;
+
                 const xstateSnapshot = {
                   status: "active" as const,
-                  value: `step${step}`,
+                  value:
+                    stateValueByStep[step as keyof typeof stateValueByStep],
                   context: state,
                   children: {},
                   historyValue: {},
                   tags: [],
                 };
+
+                const now = new Date().toISOString();
+                const projectNameForDb =
+                  typeof projectName === "string" && projectName.trim()
+                    ? projectName.trim()
+                    : `Seed Step ${step}`;
+
+                const db = openSeedDatabase();
+                try {
+                  db.prepare(
+                    `
+                      INSERT INTO projects (
+                        id,
+                        code,
+                        name,
+                        status,
+                        entry_path,
+                        current_step,
+                        created_at,
+                        last_touched_at
+                      )
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                      ON CONFLICT(id) DO UPDATE SET
+                        name = excluded.name,
+                        status = excluded.status,
+                        entry_path = excluded.entry_path,
+                        current_step = excluded.current_step,
+                        last_touched_at = excluded.last_touched_at
+                    `,
+                  ).run(
+                    projectId,
+                    `SEED-${projectId}`,
+                    projectNameForDb,
+                    "active",
+                    "scratch",
+                    step,
+                    state.startedAt ?? now,
+                    state.updatedAt ?? now,
+                  );
+
+                  db.prepare(
+                    `
+                      INSERT INTO planning_state (
+                        project_id,
+                        xstate_snapshot,
+                        created_at,
+                        updated_at
+                      )
+                      VALUES (?, ?, ?, ?)
+                      ON CONFLICT(project_id) DO UPDATE SET
+                        xstate_snapshot = excluded.xstate_snapshot,
+                        updated_at = excluded.updated_at
+                    `,
+                  ).run(projectId, JSON.stringify(xstateSnapshot), now, now);
+                } finally {
+                  db.close();
+                }
 
                 console.log(
                   `[Seed API] Created test project at step ${step}:`,

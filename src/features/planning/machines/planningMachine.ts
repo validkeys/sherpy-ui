@@ -28,9 +28,13 @@ function persistInterviewAnswerToDatabase(
   answer: string,
 ): void {
   // Use server function to persist (prevents bundling issues - BUG-017)
-  import("../server.db")
-    .then(({ saveInterviewAnswer }) => {
-      saveInterviewAnswer(projectId, stepNumber, question, answer);
+  import("../infrastructure/server-functions")
+    .then(({ $saveInterviewAnswer }) => {
+      return $saveInterviewAnswer({
+        data: { projectId, stepNumber, question, answer },
+      });
+    })
+    .then(() => {
       console.log(
         `[persistInterviewAnswer] ✅ Saved: Step ${stepNumber}, Q: "${question.slice(0, 50)}..."`,
       );
@@ -41,6 +45,31 @@ function persistInterviewAnswerToDatabase(
         projectId,
         stepNumber,
         question: question.slice(0, 50),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+}
+
+function persistFormResponsesToDatabase(
+  projectId: string,
+  stepNumber: 1 | 5,
+  responses: Record<string, string>,
+): void {
+  import("../infrastructure/server-functions")
+    .then(({ $saveFormResponses }) => {
+      return $saveFormResponses({
+        data: { projectId, stepNumber, responses },
+      });
+    })
+    .then(() => {
+      console.log(
+        `[persistFormResponses] ✅ Saved: Step ${stepNumber}, ${Object.keys(responses).length} responses`,
+      );
+    })
+    .catch((error) => {
+      console.error(`[persistFormResponses] ❌ Failed to persist responses:`, {
+        projectId,
+        stepNumber,
         error: error instanceof Error ? error.message : String(error),
       });
     });
@@ -106,6 +135,7 @@ const fetchQuestion = fromPromise<
       return {
         question: parsed.question,
         options:
+          // biome-ignore lint/suspicious/noExplicitAny: API response structure is dynamic
           parsed.options?.map((opt: any) => opt.title || opt) || undefined,
       };
     } catch (err) {
@@ -170,24 +200,13 @@ const generateArtifact = fromPromise<
 
   console.log("[generateArtifact] Extracted answers:", answers);
 
-  // Persist form responses to database (steps 1, 5, 7 only)
+  // Persist form responses to database (steps 1 and 5)
   if (input.stepNumber === 1 && input.accumulatedContext.step1Responses) {
     const responses = input.accumulatedContext.step1Responses as Record<
       string,
       string
     >;
-    try {
-      const { saveFormResponse } = await import("../server.db");
-      for (const [fieldName, fieldValue] of Object.entries(responses)) {
-        saveFormResponse(input.projectId, 1, fieldName, fieldValue);
-      }
-      console.log("[generateArtifact] Persisted step 1 form responses");
-    } catch (error) {
-      console.error(
-        "[generateArtifact] Failed to persist step 1 form responses:",
-        error,
-      );
-    }
+    persistFormResponsesToDatabase(input.projectId, 1, responses);
   } else if (
     input.stepNumber === 5 &&
     input.accumulatedContext.step5Responses
@@ -196,18 +215,7 @@ const generateArtifact = fromPromise<
       string,
       string
     >;
-    try {
-      const { saveFormResponse } = await import("../server.db");
-      for (const [fieldName, fieldValue] of Object.entries(responses)) {
-        saveFormResponse(input.projectId, 5, fieldName, fieldValue);
-      }
-      console.log("[generateArtifact] Persisted step 5 form responses");
-    } catch (error) {
-      console.error(
-        "[generateArtifact] Failed to persist step 5 form responses:",
-        error,
-      );
-    }
+    persistFormResponsesToDatabase(input.projectId, 5, responses);
   }
 
   try {
@@ -524,6 +532,73 @@ export const planningMachine = setup({
         }),
       },
     ],
+    RESUME_AUTOMATED_STEP: [
+      {
+        guard: ({ event }) =>
+          event.type === "RESUME_AUTOMATED_STEP" && event.stepNumber === 4,
+        target: ".step4_styleAnchors",
+      },
+      {
+        guard: ({ event }) =>
+          event.type === "RESUME_AUTOMATED_STEP" && event.stepNumber === 6,
+        target: ".step6_definitionOfDone",
+      },
+      {
+        guard: ({ event }) =>
+          event.type === "RESUME_AUTOMATED_STEP" && event.stepNumber === 8,
+        target: ".step8_deliveryTimeline",
+      },
+      {
+        guard: ({ event }) =>
+          event.type === "RESUME_AUTOMATED_STEP" && event.stepNumber === 9,
+        target: ".step9_qaTestPlan",
+      },
+      {
+        guard: ({ event }) =>
+          event.type === "RESUME_AUTOMATED_STEP" && event.stepNumber === 10,
+        target: ".step10_summaries",
+      },
+    ],
+    // State synchronization - hot-reload actor from database snapshot
+    RESTORE_SNAPSHOT: {
+      actions: assign(({ context, event }) => {
+        // Type guard to ensure we have the right event
+        if (!event || event.type !== "RESTORE_SNAPSHOT") return {};
+
+        const dbContext = event.snapshot?.context;
+
+        // Validate database context
+        if (!dbContext?.updatedAt) {
+          console.warn(
+            "[RESTORE_SNAPSHOT] Invalid database snapshot, ignoring",
+          );
+          return {}; // No-op, keep current state
+        }
+
+        // Compare timestamps to determine which state is authoritative
+        const localTime = new Date(context.updatedAt).getTime();
+        const dbTime = new Date(dbContext.updatedAt).getTime();
+
+        // CRITICAL: Preserve local changes if local is newer
+        // This protects optimistic updates that haven't synced yet
+        if (localTime > dbTime) {
+          console.log(
+            "[RESTORE_SNAPSHOT] Keeping local changes (newer than DB)",
+          );
+          return {}; // No-op, local is authoritative
+        }
+
+        // Database is newer - apply DB snapshot
+        console.log(
+          "[RESTORE_SNAPSHOT] Applying database snapshot (newer than local)",
+        );
+        return {
+          ...dbContext,
+          // Preserve any transient UI state that doesn't persist to DB
+          // (Add fields here if needed based on requirements)
+        };
+      }),
+    },
   },
 
   states: {

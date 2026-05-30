@@ -10,8 +10,8 @@ import {
   flushLangfuse,
   type TraceMetadata,
 } from "../../lib/langfuse-helpers";
-import { isStructuredOutputEnabled } from "./feature-flags";
 import { getStepResponseSchema } from "../planning/step-config";
+import { isStructuredOutputEnabled } from "./feature-flags";
 
 export async function streamQuestion(
   messages: Array<{ role: string; content: string }>,

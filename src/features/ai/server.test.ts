@@ -1,8 +1,10 @@
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as bedrockModule from "@/lib/bedrock";
 import * as artifactStore from "../artifacts/store";
+import { MOCK_ARTIFACT_PROVENANCE } from "./mock-artifacts";
 import { buildArtifactPrompt, buildInterviewPrompt } from "./prompts";
+import type { AIProviderError } from "./provider-errors";
 import { generateArtifact, generateText } from "./server";
 
 // Mock the bedrock client
@@ -10,6 +12,7 @@ vi.mock("@/lib/bedrock", () => ({
   bedrockClient: {
     send: vi.fn(),
   },
+  BEDROCK_REGION: "us-east-1",
   BEDROCK_MODEL_ID: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 }));
 
@@ -105,8 +108,15 @@ describe("buildArtifactPrompt", () => {
 });
 
 describe("generateText", () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   it("returns question text from Bedrock response", async () => {
@@ -162,11 +172,73 @@ describe("generateText", () => {
     expect(body.max_tokens).toBe(512);
     expect(body.messages).toEqual(messages);
   });
+
+  it("normalizes invalid Bedrock credentials", async () => {
+    vi.mocked(bedrockModule.bedrockClient.send).mockRejectedValue({
+      name: "UnrecognizedClientException",
+      message: "The security token included in the request is invalid.",
+      $metadata: {
+        httpStatusCode: 400,
+        requestId: "request-123",
+      },
+    } as never);
+
+    await expect(
+      generateText([{ role: "user", content: "Test" }], 2, undefined, {
+        operation: "generateArtifact",
+        projectId: "project-123",
+        artifactKey: "business-requirements",
+      }),
+    ).rejects.toMatchObject({
+      name: "AIProviderError",
+      code: "AI_PROVIDER_AUTH_INVALID",
+      message:
+        "AI provider credentials are invalid or expired. Refresh AWS credentials and rerun the request.",
+    } satisfies Partial<AIProviderError>);
+
+    expect(console.error).toHaveBeenCalledWith(
+      "[ai-provider]",
+      expect.objectContaining({
+        code: "AI_PROVIDER_AUTH_INVALID",
+        provider: "aws-bedrock",
+        modelId: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        operation: "generateArtifact",
+        projectId: "project-123",
+        stepNumber: 2,
+        artifactKey: "business-requirements",
+        providerErrorName: "UnrecognizedClientException",
+        httpStatusCode: 400,
+        requestId: "request-123",
+      }),
+    );
+  });
+
+  it("normalizes Bedrock access denied errors", async () => {
+    vi.mocked(bedrockModule.bedrockClient.send).mockRejectedValue({
+      name: "AccessDeniedException",
+      message: "User is not authorized to perform bedrock:InvokeModel",
+      $metadata: {
+        httpStatusCode: 403,
+      },
+    } as never);
+
+    await expect(
+      generateText([{ role: "user", content: "Test" }], 2),
+    ).rejects.toMatchObject({
+      code: "AI_PROVIDER_ACCESS_DENIED",
+      message:
+        "AI provider access was denied. Confirm IAM permissions and Bedrock model access.",
+    });
+  });
 });
 
 describe("generateArtifact", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("generates artifact and stores it", async () => {
@@ -222,6 +294,51 @@ target_audience: Product managers`;
 
     expect(result.key).toBe("technical-requirements");
     expect(result.label).toBe("Technical Requirements Interview");
+  });
+
+  it("generates deterministic mock artifacts without calling Bedrock", async () => {
+    vi.stubEnv("USE_MOCK_ARTIFACTS", "true");
+    vi.stubEnv("NODE_ENV", "test");
+
+    const result = await generateArtifact("test-project", 2, [
+      "Engineering leads need delivery planning.",
+      "The outcome is a delivery-ready plan.",
+      "Success means fewer missed dependencies.",
+      "This fourth answer should not appear in the preview.",
+    ]);
+
+    expect(bedrockModule.bedrockClient.send).not.toHaveBeenCalled();
+    expect(result.projectId).toBe("test-project");
+    expect(result.key).toBe("business-requirements");
+    expect(result.label).toBe("Business Requirements Interview");
+    expect(result.format).toBe("yaml");
+    expect(result.status).toBe("ready");
+    expect(result.content).toContain(MOCK_ARTIFACT_PROVENANCE);
+    expect(result.content).toContain("provider: mock");
+    expect(result.content).toContain("answer_count: 4");
+    expect(result.content).toContain(
+      "Engineering leads need delivery planning.",
+    );
+    expect(result.content).toContain("The outcome is a delivery-ready plan.");
+    expect(result.content).toContain(
+      "Success means fewer missed dependencies.",
+    );
+    expect(result.content).not.toContain("This fourth answer");
+    expect(artifactStore.upsertArtifact).toHaveBeenCalledWith(result);
+  });
+
+  it("rejects mock artifacts in production", async () => {
+    vi.stubEnv("USE_MOCK_ARTIFACTS", "true");
+    vi.stubEnv("NODE_ENV", "production");
+
+    await expect(
+      generateArtifact("test-project", 2, ["Test answer"]),
+    ).rejects.toThrow(
+      "USE_MOCK_ARTIFACTS=true is not allowed when NODE_ENV=production",
+    );
+
+    expect(bedrockModule.bedrockClient.send).not.toHaveBeenCalled();
+    expect(artifactStore.upsertArtifact).not.toHaveBeenCalled();
   });
 
   describe("Structured Output Support", () => {

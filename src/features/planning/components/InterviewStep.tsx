@@ -3,9 +3,13 @@
  * Handles Q&A flow with streaming questions and optional multiple-choice
  */
 
-import React, { useState } from 'react';
-import { usePlanningMachine, useSelector } from '../machines/PlanningMachineContext';
-import type { InterviewAnswer } from '../machines/types';
+import type React from "react";
+import { useState } from "react";
+import {
+  usePlanningMachine,
+  useSelector,
+} from "../machines/PlanningMachineContext";
+import type { InterviewAnswer } from "../machines/types";
 
 type Props = {
   stepKey: string;
@@ -15,41 +19,47 @@ type Props = {
 
 export function InterviewStep({ stepKey, stepName, status }: Props) {
   const actor = usePlanningMachine();
-  const stepNumber = stepKey === 'step2_businessReqs' ? 2 : 3;
+  const stepNumber = stepKey === "step2_businessReqs" ? 2 : 3;
 
   // Select step-specific data with primitive selectors
   const answers = useSelector((state) => {
-    return stepNumber === 2 ? state.context.step2Answers : state.context.step3Answers;
+    return stepNumber === 2
+      ? state.context.step2Answers
+      : state.context.step3Answers;
   });
 
   const currentQuestion = useSelector((state) => {
-    return stepNumber === 2 ? state.context.step2CurrentQuestion : state.context.step3CurrentQuestion;
+    return stepNumber === 2
+      ? state.context.step2CurrentQuestion
+      : state.context.step3CurrentQuestion;
   });
 
   const currentOptions = useSelector((state) => {
-    return stepNumber === 2 ? state.context.step2CurrentOptions : state.context.step3CurrentOptions;
+    return stepNumber === 2
+      ? state.context.step2CurrentOptions
+      : state.context.step3CurrentOptions;
   });
 
   const error = useSelector((state) => state.context.error);
 
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
 
-  const isLoading = status === 'asking' || status === 'checkingComplete';
-  const isGenerating = status === 'generatingArtifact';
+  const isLoading = status === "asking" || status === "checkingComplete";
+  const isGenerating = status === "generatingArtifact";
 
   const handleSubmit = (answer: string) => {
     if (!currentQuestion || !answer.trim()) return;
 
     actor.send({
-      type: 'SUBMIT_ANSWER',
+      type: "SUBMIT_ANSWER",
       stepNumber,
       question: currentQuestion,
       answer: answer.trim(),
     });
 
     // Reset local state
-    setInputText('');
+    setInputText("");
     setSelectedOption(null);
   };
 
@@ -78,7 +88,9 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
       <div className="interview-step generating">
         <h2>{stepName}</h2>
         <div className="generating-indicator">
-          <p>Generating {stepName} artifact from {answers.length} answers...</p>
+          <p>
+            Generating {stepName} artifact from {answers.length} answers...
+          </p>
         </div>
       </div>
     );
@@ -92,7 +104,10 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
       {error && (
         <div className="error-message">
           <p>{error}</p>
-          <button onClick={() => actor.send({ type: 'RETRY', stepNumber })}>
+          <button
+            type="button"
+            onClick={() => actor.send({ type: "RETRY", stepNumber })}
+          >
             Retry
           </button>
         </div>
@@ -125,8 +140,10 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
                 <button
                   key={idx}
                   type="button"
-                  className={selectedOption === option ? 'selected' : ''}
-                  onClick={() => setSelectedOption(option === selectedOption ? null : option)}
+                  className={selectedOption === option ? "selected" : ""}
+                  onClick={() =>
+                    setSelectedOption(option === selectedOption ? null : option)
+                  }
                   disabled={isLoading}
                 >
                   {option}
@@ -140,7 +157,7 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
               placeholder={
                 selectedOption
                   ? `Selected: "${selectedOption}" — or type your own answer`
-                  : 'Type your answer...'
+                  : "Type your answer..."
               }
               value={selectedOption || inputText}
               onChange={(e) => {
@@ -148,7 +165,7 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
                 setInputText(e.target.value);
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   handleTextSubmit(e);
                 }
@@ -156,8 +173,11 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
               disabled={isLoading}
               rows={3}
             />
-            <button type="submit" disabled={isLoading || (!selectedOption && !inputText.trim())}>
-              {isLoading ? 'Submitting...' : 'Submit Answer'}
+            <button
+              type="submit"
+              disabled={isLoading || (!selectedOption && !inputText.trim())}
+            >
+              {isLoading ? "Submitting..." : "Submit Answer"}
             </button>
           </form>
         </div>

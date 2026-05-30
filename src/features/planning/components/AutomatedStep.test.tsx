@@ -3,281 +3,334 @@
  * Tests AutomatedStep for steps 4, 6, 8, 9, 10
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { AutomatedStep } from './AutomatedStep';
-import { PlanningMachineProvider } from '../machines/PlanningMachineContext';
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
+import { AutomatedStep } from "./AutomatedStep";
 
-describe('AutomatedStep', () => {
+describe("AutomatedStep", () => {
   const defaultInput = {
-    projectId: 'test-project',
-    entryPath: 'new-project' as const,
+    projectId: "test-project",
+    entryPath: "new-project" as const,
   };
 
-  describe('Step 4 - Style Anchors', () => {
+  describe("Step 4 - Style Anchors", () => {
     const step4Props = {
-      stepKey: 'step4_styleAnchors',
-      stepName: 'Style Anchors',
+      stepKey: "step4_styleAnchors",
+      stepName: "Style Anchors",
     };
 
-    it('renders step name', () => {
+    it("renders step name", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep {...step4Props} />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
-      expect(screen.getByRole('heading', { name: /style anchors/i })).toBeDefined();
+      expect(
+        screen.getByRole("heading", { name: /style anchors/i }),
+      ).toBeDefined();
     });
 
-    it('shows no artifact message initially', () => {
+    it("shows no artifact message initially", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep {...step4Props} />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
       expect(screen.getByText(/no artifact generated yet/i)).toBeDefined();
     });
   });
 
-  describe('Step 6 - Definition of Done', () => {
+  describe("Step 6 - Definition of Done", () => {
     const step6Props = {
-      stepKey: 'step6_definitionOfDone',
-      stepName: 'Definition of Done',
+      stepKey: "step6_definitionOfDone",
+      stepName: "Definition of Done",
     };
 
-    it('renders step name', () => {
+    it("renders step name", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep {...step6Props} />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
-      expect(screen.getByRole('heading', { name: /definition of done/i })).toBeDefined();
+      expect(
+        screen.getByRole("heading", { name: /definition of done/i }),
+      ).toBeDefined();
     });
   });
 
-  describe('Step 8 - Delivery Timeline', () => {
+  describe("Step 8 - Delivery Timeline", () => {
     const step8Props = {
-      stepKey: 'step8_deliveryTimeline',
-      stepName: 'Delivery Timeline',
+      stepKey: "step8_deliveryTimeline",
+      stepName: "Delivery Timeline",
     };
 
-    it('renders step name', () => {
+    it("renders step name", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep {...step8Props} />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
-      expect(screen.getByRole('heading', { name: /delivery timeline/i })).toBeDefined();
+      expect(
+        screen.getByRole("heading", { name: /delivery timeline/i }),
+      ).toBeDefined();
     });
   });
 
-  describe('Step 9 - QA Test Plan', () => {
+  describe("Step 9 - QA Test Plan", () => {
     const step9Props = {
-      stepKey: 'step9_qaTestPlan',
-      stepName: 'QA Test Plan',
+      stepKey: "step9_qaTestPlan",
+      stepName: "QA Test Plan",
     };
 
-    it('renders step name', () => {
+    it("renders step name", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep {...step9Props} />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
-      expect(screen.getByRole('heading', { name: /qa test plan/i })).toBeDefined();
+      expect(
+        screen.getByRole("heading", { name: /qa test plan/i }),
+      ).toBeDefined();
     });
   });
 
-  describe('Step 10 - Summaries', () => {
+  describe("Step 10 - Summaries", () => {
     const step10Props = {
-      stepKey: 'step10_summaries',
-      stepName: 'Summaries',
+      stepKey: "step10_summaries",
+      stepName: "Summaries",
     };
 
-    it('renders step name', () => {
+    it("renders step name", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep {...step10Props} />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
-      expect(screen.getByRole('heading', { name: /summaries/i })).toBeDefined();
+      expect(screen.getByRole("heading", { name: /summaries/i })).toBeDefined();
     });
   });
 
-  describe('Loading state', () => {
-    it('shows spinner during generation', () => {
+  describe("Loading state", () => {
+    it("shows spinner during generation", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
-          <AutomatedStep stepKey="step4_styleAnchors" stepName="Style Anchors" />
-        </PlanningMachineProvider>
+          <AutomatedStep
+            stepKey="step4_styleAnchors"
+            stepName="Style Anchors"
+          />
+        </PlanningMachineProvider>,
       );
 
       // Initial state shows no artifact
       expect(screen.getByText(/no artifact generated yet/i)).toBeDefined();
     });
 
-    it('shows generating message', () => {
+    it("shows generating message", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
-          <AutomatedStep stepKey="step4_styleAnchors" stepName="Style Anchors" />
-        </PlanningMachineProvider>
+          <AutomatedStep
+            stepKey="step4_styleAnchors"
+            stepName="Style Anchors"
+          />
+        </PlanningMachineProvider>,
       );
 
       // Check component renders
-      expect(screen.getByRole('heading', { name: /style anchors/i })).toBeDefined();
+      expect(
+        screen.getByRole("heading", { name: /style anchors/i }),
+      ).toBeDefined();
     });
   });
 
-  describe('Artifact display', () => {
-    it('shows no artifact message when artifact is null', () => {
+  describe("Artifact display", () => {
+    it("shows no artifact message when artifact is null", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
-          <AutomatedStep stepKey="step4_styleAnchors" stepName="Style Anchors" />
-        </PlanningMachineProvider>
+          <AutomatedStep
+            stepKey="step4_styleAnchors"
+            stepName="Style Anchors"
+          />
+        </PlanningMachineProvider>,
       );
 
       expect(screen.getByText(/no artifact generated yet/i)).toBeDefined();
     });
 
-    it('renders without errors for all step keys', () => {
+    it("renders without errors for all step keys", () => {
       const steps = [
-        { key: 'step4_styleAnchors', name: 'Style Anchors' },
-        { key: 'step6_definitionOfDone', name: 'Definition of Done' },
-        { key: 'step8_deliveryTimeline', name: 'Delivery Timeline' },
-        { key: 'step9_qaTestPlan', name: 'QA Test Plan' },
-        { key: 'step10_summaries', name: 'Summaries' },
+        { key: "step4_styleAnchors", name: "Style Anchors" },
+        { key: "step6_definitionOfDone", name: "Definition of Done" },
+        { key: "step8_deliveryTimeline", name: "Delivery Timeline" },
+        { key: "step9_qaTestPlan", name: "QA Test Plan" },
+        { key: "step10_summaries", name: "Summaries" },
       ];
 
       steps.forEach((step) => {
         const { unmount } = render(
           <PlanningMachineProvider input={defaultInput}>
             <AutomatedStep stepKey={step.key} stepName={step.name} />
-          </PlanningMachineProvider>
+          </PlanningMachineProvider>,
         );
 
-        expect(screen.getByRole('heading', { name: new RegExp(step.name, 'i') })).toBeDefined();
+        expect(
+          screen.getByRole("heading", { name: new RegExp(step.name, "i") }),
+        ).toBeDefined();
         unmount();
       });
     });
   });
 
-  describe('Error handling', () => {
-    it('handles invalid stepKey gracefully', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  describe("Error handling", () => {
+    it("handles invalid stepKey gracefully", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       const { container } = render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep stepKey="invalid_step" stepName="Invalid Step" />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
       // Should return null (empty container)
-      expect(container.querySelector('.automated-step')).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith('[AutomatedStep] Invalid stepKey: invalid_step');
+      expect(container.querySelector(".automated-step")).toBeNull();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "[AutomatedStep] Invalid stepKey: invalid_step",
+      );
 
       consoleSpy.mockRestore();
     });
 
-    it('returns null for unknown step keys', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    it("returns null for unknown step keys", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       const { container } = render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep stepKey="step99_unknown" stepName="Unknown" />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
-      expect(container.querySelector('.automated-step')).toBeNull();
+      expect(container.querySelector(".automated-step")).toBeNull();
 
       consoleSpy.mockRestore();
     });
   });
 
-  describe('Step number mapping', () => {
-    it('maps step4_styleAnchors to number 4', () => {
+  describe("Step number mapping", () => {
+    it("maps step4_styleAnchors to number 4", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
-          <AutomatedStep stepKey="step4_styleAnchors" stepName="Style Anchors" />
-        </PlanningMachineProvider>
+          <AutomatedStep
+            stepKey="step4_styleAnchors"
+            stepName="Style Anchors"
+          />
+        </PlanningMachineProvider>,
       );
 
       // Component renders correctly
-      expect(screen.getByRole('heading', { name: /style anchors/i })).toBeDefined();
+      expect(
+        screen.getByRole("heading", { name: /style anchors/i }),
+      ).toBeDefined();
     });
 
-    it('maps step6_definitionOfDone to number 6', () => {
+    it("maps step6_definitionOfDone to number 6", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
-          <AutomatedStep stepKey="step6_definitionOfDone" stepName="Definition of Done" />
-        </PlanningMachineProvider>
+          <AutomatedStep
+            stepKey="step6_definitionOfDone"
+            stepName="Definition of Done"
+          />
+        </PlanningMachineProvider>,
       );
 
-      expect(screen.getByRole('heading', { name: /definition of done/i })).toBeDefined();
+      expect(
+        screen.getByRole("heading", { name: /definition of done/i }),
+      ).toBeDefined();
     });
 
-    it('maps step8_deliveryTimeline to number 8', () => {
+    it("maps step8_deliveryTimeline to number 8", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
-          <AutomatedStep stepKey="step8_deliveryTimeline" stepName="Delivery Timeline" />
-        </PlanningMachineProvider>
+          <AutomatedStep
+            stepKey="step8_deliveryTimeline"
+            stepName="Delivery Timeline"
+          />
+        </PlanningMachineProvider>,
       );
 
-      expect(screen.getByRole('heading', { name: /delivery timeline/i })).toBeDefined();
+      expect(
+        screen.getByRole("heading", { name: /delivery timeline/i }),
+      ).toBeDefined();
     });
 
-    it('maps step9_qaTestPlan to number 9', () => {
+    it("maps step9_qaTestPlan to number 9", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep stepKey="step9_qaTestPlan" stepName="QA Test Plan" />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
-      expect(screen.getByRole('heading', { name: /qa test plan/i })).toBeDefined();
+      expect(
+        screen.getByRole("heading", { name: /qa test plan/i }),
+      ).toBeDefined();
     });
 
-    it('maps step10_summaries to number 10', () => {
+    it("maps step10_summaries to number 10", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep stepKey="step10_summaries" stepName="Summaries" />
-        </PlanningMachineProvider>
+        </PlanningMachineProvider>,
       );
 
-      expect(screen.getByRole('heading', { name: /summaries/i })).toBeDefined();
+      expect(screen.getByRole("heading", { name: /summaries/i })).toBeDefined();
     });
   });
 
-  describe('Component structure', () => {
-    it('renders automated-step container', () => {
+  describe("Component structure", () => {
+    it("renders automated-step container", () => {
       const { container } = render(
         <PlanningMachineProvider input={defaultInput}>
-          <AutomatedStep stepKey="step4_styleAnchors" stepName="Style Anchors" />
-        </PlanningMachineProvider>
+          <AutomatedStep
+            stepKey="step4_styleAnchors"
+            stepName="Style Anchors"
+          />
+        </PlanningMachineProvider>,
       );
 
-      expect(container.querySelector('.automated-step')).toBeDefined();
+      expect(container.querySelector(".automated-step")).toBeDefined();
     });
 
-    it('renders heading with step name', () => {
+    it("renders heading with step name", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
-          <AutomatedStep stepKey="step4_styleAnchors" stepName="Style Anchors" />
-        </PlanningMachineProvider>
+          <AutomatedStep
+            stepKey="step4_styleAnchors"
+            stepName="Style Anchors"
+          />
+        </PlanningMachineProvider>,
       );
 
-      const heading = screen.getByRole('heading', { name: /style anchors/i });
-      expect(heading.tagName).toBe('H2');
+      const heading = screen.getByRole("heading", { name: /style anchors/i });
+      expect(heading.tagName).toBe("H2");
     });
 
-    it('renders no-artifact message initially', () => {
+    it("renders no-artifact message initially", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
-          <AutomatedStep stepKey="step4_styleAnchors" stepName="Style Anchors" />
-        </PlanningMachineProvider>
+          <AutomatedStep
+            stepKey="step4_styleAnchors"
+            stepName="Style Anchors"
+          />
+        </PlanningMachineProvider>,
       );
 
       const noArtifact = screen.getByText(/no artifact generated yet/i);
