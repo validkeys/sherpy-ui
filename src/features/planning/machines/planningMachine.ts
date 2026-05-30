@@ -88,72 +88,53 @@ const fetchQuestion = fromPromise<
     projectContext: string;
   }
 >(async ({ input }) => {
-  console.log("[fetchQuestion] Input:", input);
-
-  // Call streaming interview API
-  const response = await fetch("/api/ai/interview", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      projectId: input.projectId,
-      stepNumber: input.stepNumber,
-      previousAnswers: input.previousAnswers,
-      projectContext: input.projectContext,
-    }),
+  console.log("[fetchQuestion] Input:", {
+    projectId: input.projectId,
+    stepNumber: input.stepNumber,
+    previousAnswersCount: input.previousAnswers.length,
   });
 
-  if (!response.ok) {
-    throw new Error(
-      `Interview API failed: ${response.status} ${response.statusText}`,
-    );
-  }
+  try {
+    // Use existing server function (same pattern as generateArtifact)
+    console.log("[fetchQuestion] Importing server function...");
+    const { $generateQuestion } = await import("../../ai/server");
 
-  if (!response.body) {
-    throw new Error("No response body from interview API");
-  }
+    console.log("[fetchQuestion] Calling $generateQuestion...");
+    const result = await $generateQuestion({
+      data: {
+        projectId: input.projectId,
+        stepNumber: input.stepNumber,
+        previousAnswers: input.previousAnswers,
+      },
+    });
 
-  // Read entire stream
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let accumulatedText = "";
+    console.log("[fetchQuestion] ✅ Success:", {
+      hasQuestion: !!result.question,
+      questionLength: result.question?.length ?? 0,
+    });
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    accumulatedText += decoder.decode(value, { stream: true });
-  }
-
-  // Check if response is structured JSON or text
-  const contentType = response.headers.get("content-type");
-  if (
-    contentType?.includes("application/json") ||
-    accumulatedText.trim().startsWith("{")
-  ) {
-    // JSON mode: parse structured response
-    try {
-      const parsed = JSON.parse(accumulatedText);
-      return {
-        question: parsed.question,
-        options:
-          // biome-ignore lint/suspicious/noExplicitAny: API response structure is dynamic
-          parsed.options?.map((opt: any) => opt.title || opt) || undefined,
-      };
-    } catch (err) {
-      console.error("[fetchQuestion] Failed to parse JSON response:", err);
-      throw new Error("Invalid JSON response from interview API");
+    // Validate question is non-empty
+    if (!result.question || result.question.trim().length === 0) {
+      throw new Error("Server returned empty question");
     }
-  } else {
-    // Text mode: parse options from markdown
+
+    // Parse options from markdown in question text
     const { parseOptions } = await import("../../ai/parse-options");
-    const parsedOptions = parseOptions(accumulatedText);
+    const parsedOptions = parseOptions(result.question);
 
     return {
-      question: accumulatedText,
+      question: result.question,
       options:
         parsedOptions.length > 0
           ? parsedOptions.map((opt) => opt.title)
           : undefined,
     };
+  } catch (error) {
+    console.error("[fetchQuestion] ❌ Error:", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
   }
 });
 

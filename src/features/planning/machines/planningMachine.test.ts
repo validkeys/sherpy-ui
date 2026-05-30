@@ -5,7 +5,7 @@ import { planningMachine } from "./planningMachine";
 // Mock global fetch for API calls
 global.fetch = vi.fn();
 
-// Mock $generateArtifact server function
+// Mock server functions
 vi.mock("../../ai/server", () => ({
   $generateArtifact: vi.fn(async ({ data }) => ({
     id: "mock-artifact-id",
@@ -17,6 +17,13 @@ vi.mock("../../ai/server", () => ({
     content: `# Mock artifact for step ${data.stepNumber}`,
     status: "ready",
     generatedAt: new Date().toISOString(),
+  })),
+  $generateQuestion: vi.fn(async ({ data }) => ({
+    question: `Mock question for step ${data.stepNumber}
+
+1. **Option A** - Description A
+2. **Option B** - Description B
+3. **Option C** - Description C`,
   })),
 }));
 

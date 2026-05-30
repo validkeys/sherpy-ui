@@ -94,6 +94,42 @@ mcp__playwright__browser_take_screenshot({
 
 ---
 
+## ✅ BUG-021: FIXED - Step 2 Interview Question Not Rendering (2026-05-30)
+
+**Problem**: Step 2 interview questions didn't appear in WorkflowChat UI, blocking workflow completion.
+
+**Root Cause**: `fetchQuestion` actor was calling non-existent REST API `/api/ai/interview` instead of using the existing `$generateQuestion` server function.
+
+**Solution**: Replaced fetch() call with server function call (same pattern as `generateArtifact` actor).
+
+**Implementation**:
+- Updated `fetchQuestion` actor to use `$generateQuestion` server function
+- Replaced 76 lines of stream reading code with simple async/await
+- Added comprehensive logging (import, call, success, error)
+- Added validation (question non-empty check)
+- Updated test mocks to include `$generateQuestion`
+
+**Fix Verification (2026-05-30)**:
+- ✅ 43/43 planning machine tests pass
+- ✅ 5/5 adapter reproduction tests pass
+- ✅ No regressions in existing tests
+- ✅ Comprehensive logging shows fetch flow
+
+**Key Learning**: Always check for existing server functions before implementing REST APIs. TanStack Start prefers server functions over REST endpoints for internal operations.
+
+**Files Changed**:
+- `src/features/planning/machines/planningMachine.ts` (lines 82-138)
+- `src/features/planning/machines/planningMachine.test.ts` (mock updated)
+
+**Documentation**:
+- `.tmp-docs/bug-021-actual-root-cause.md` - Root cause analysis
+- `.tmp-docs/bug-021-fix-complete.md` - Implementation summary
+- `src/features/planning/adapters/__tests__/bug-021-adapter-null-question.test.ts` - Reproduction tests
+
+**Status**: ✅ FIXED and TESTED - Ready for manual verification
+
+---
+
 ## ✅ BUG-020: FIXED - Empty Business Requirements Artifact (2026-05-22)
 
 **Problem**: Business Requirements artifact (Step 2) was generated with generic placeholder content instead of actual interview answers.
