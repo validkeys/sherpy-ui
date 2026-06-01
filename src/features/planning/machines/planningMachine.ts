@@ -14,38 +14,19 @@ import type {
 } from "./types";
 
 // ─────────────────────────────────────────────────────────────
-// PERSISTENCE HELPER (BUG-019)
+// PERSISTENCE (BUG-022)
 // ─────────────────────────────────────────────────────────────
 
 /**
- * ✅ Interview answer persistence removed - now handled by StatePersistence (BUG-022)
- * This prevents duplicate writes (old: immediate fire-and-forget, new: debounced batch)
+ * ✅ All persistence handled by StatePersistence subscription (BUG-022 Phase 1)
+ *
+ * StatePersistence subscribes to actor state changes and:
+ * - Writes to localStorage (immediate, synchronous)
+ * - Writes to database (debounced 500ms, fire-and-forget)
+ * - Handles auxiliary tables (interview_answers, form_responses)
+ *
+ * Legacy fire-and-forget functions removed (BUG-022 Phase 2)
  */
-
-function persistFormResponsesToDatabase(
-  projectId: string,
-  stepNumber: 1 | 5,
-  responses: Record<string, string>,
-): void {
-  import("../infrastructure/server-functions")
-    .then(({ $saveFormResponses }) => {
-      return $saveFormResponses({
-        data: { projectId, stepNumber, responses },
-      });
-    })
-    .then(() => {
-      console.log(
-        `[persistFormResponses] ✅ Saved: Step ${stepNumber}, ${Object.keys(responses).length} responses`,
-      );
-    })
-    .catch((error) => {
-      console.error(`[persistFormResponses] ❌ Failed to persist responses:`, {
-        projectId,
-        stepNumber,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    });
-}
 
 // ─────────────────────────────────────────────────────────────
 // REAL API ACTORS
@@ -153,23 +134,8 @@ const generateArtifact = fromPromise<
 
   console.log("[generateArtifact] Extracted answers:", answers);
 
-  // Persist form responses to database (steps 1 and 5)
-  if (input.stepNumber === 1 && input.accumulatedContext.step1Responses) {
-    const responses = input.accumulatedContext.step1Responses as Record<
-      string,
-      string
-    >;
-    persistFormResponsesToDatabase(input.projectId, 1, responses);
-  } else if (
-    input.stepNumber === 5 &&
-    input.accumulatedContext.step5Responses
-  ) {
-    const responses = input.accumulatedContext.step5Responses as Record<
-      string,
-      string
-    >;
-    persistFormResponsesToDatabase(input.projectId, 5, responses);
-  }
+  // ✅ Form responses persistence handled by StatePersistence (BUG-022)
+  // Legacy fire-and-forget persistence calls removed in Phase 2
 
   try {
     // Call server function for artifact generation
