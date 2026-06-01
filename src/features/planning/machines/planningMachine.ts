@@ -18,37 +18,9 @@ import type {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Persist interview answer to database (fire-and-forget)
- * Errors are logged but don't block the workflow
+ * ✅ Interview answer persistence removed - now handled by StatePersistence (BUG-022)
+ * This prevents duplicate writes (old: immediate fire-and-forget, new: debounced batch)
  */
-function persistInterviewAnswerToDatabase(
-  projectId: string,
-  stepNumber: 2 | 3,
-  question: string,
-  answer: string,
-): void {
-  // Use server function to persist (prevents bundling issues - BUG-017)
-  import("../infrastructure/server-functions")
-    .then(({ $saveInterviewAnswer }) => {
-      return $saveInterviewAnswer({
-        data: { projectId, stepNumber, question, answer },
-      });
-    })
-    .then(() => {
-      console.log(
-        `[persistInterviewAnswer] ✅ Saved: Step ${stepNumber}, Q: "${question.slice(0, 50)}..."`,
-      );
-    })
-    .catch((error) => {
-      // Log but don't throw - persistence failure doesn't block workflow
-      console.error(`[persistInterviewAnswer] ❌ Failed to persist answer:`, {
-        projectId,
-        stepNumber,
-        question: question.slice(0, 50),
-        error: error instanceof Error ? error.message : String(error),
-      });
-    });
-}
 
 function persistFormResponsesToDatabase(
   projectId: string,
@@ -689,13 +661,8 @@ export const planningMachine = setup({
               target: "checkingComplete",
               actions: assign({
                 step2Answers: ({ context, event }) => {
-                  // Persist to database (fire-and-forget) - BUG-019
-                  persistInterviewAnswerToDatabase(
-                    context.projectId,
-                    2,
-                    event.question,
-                    event.answer,
-                  );
+                  // ✅ Persistence now handled by StatePersistence layer (BUG-022)
+                  // Removed duplicate fire-and-forget call that caused double writes
 
                   // Delegate answer creation to domain layer
                   const newAnswer = createInterviewAnswer(
@@ -800,13 +767,8 @@ export const planningMachine = setup({
               target: "checkingComplete",
               actions: assign({
                 step3Answers: ({ context, event }) => {
-                  // Persist to database (fire-and-forget) - BUG-019
-                  persistInterviewAnswerToDatabase(
-                    context.projectId,
-                    3,
-                    event.question,
-                    event.answer,
-                  );
+                  // ✅ Persistence now handled by StatePersistence layer (BUG-022)
+                  // Removed duplicate fire-and-forget call that caused double writes
 
                   // Delegate answer creation to domain layer
                   const newAnswer = createInterviewAnswer(

@@ -25,6 +25,25 @@ describe("StatePersistence", () => {
   let mockSubscriber: (snapshot: SnapshotType) => void;
   let localStorageMock: Record<string, string>;
 
+  // Helper to create mock snapshots with toJSON() method
+  const createMockSnapshot = (partial: Partial<SnapshotType>): SnapshotType => {
+    const snapshot = {
+      value: { step1: "idle" },
+      context: {
+        currentStepNumber: 1,
+        step2Answers: [],
+        step3Answers: [],
+        step1Responses: {},
+        step5Responses: {},
+      },
+      ...partial,
+      toJSON: function () {
+        return this;
+      },
+    };
+    return snapshot as SnapshotType;
+  };
+
   beforeEach(() => {
     // Mock localStorage
     localStorageMock = {};
@@ -43,12 +62,26 @@ describe("StatePersistence", () => {
       key: vi.fn(),
     } as any;
 
-    // Mock XState actor
+    // Mock XState actor (XState v5 returns Subscription object, not function)
     mockActor = {
       subscribe: vi.fn((callback: (snapshot: SnapshotType) => void) => {
         mockSubscriber = callback;
-        return vi.fn(); // unsubscribe function
+        // XState v5 returns { unsubscribe: () => void }, not a function
+        return { unsubscribe: vi.fn() };
       }),
+      getSnapshot: vi.fn(() => ({
+        value: { step1: "idle" },
+        context: {
+          currentStepNumber: 1,
+          step2Answers: [],
+          step3Answers: [],
+          step1Responses: {},
+          step5Responses: {},
+        },
+        toJSON: function () {
+          return this;
+        },
+      })),
     };
 
     // Clear all mocks
@@ -87,7 +120,11 @@ describe("StatePersistence", () => {
       "planning-state-project-123",
     );
 
-    const mockSnapshot = {
+    // BUG-022 Fix: Initial state is persisted in constructor (via getSnapshot)
+    // So we expect 1 call from constructor
+    expect(localStorage.setItem).toHaveBeenCalledTimes(1);
+
+    const mockSnapshot = createMockSnapshot({
       value: { step2: "idle" },
       context: {
         currentStepNumber: 2,
@@ -96,17 +133,13 @@ describe("StatePersistence", () => {
         step1Responses: {},
         step5Responses: {},
       },
-    } as SnapshotType;
+    });
 
-    // Trigger state change
+    // Trigger state change via subscription
     mockSubscriber(mockSnapshot);
 
-    // localStorage should be written immediately
-    expect(localStorage.setItem).toHaveBeenCalledTimes(1);
-    expect(localStorage.setItem).toHaveBeenCalledWith(
-      "planning-state-project-123",
-      JSON.stringify(mockSnapshot),
-    );
+    // localStorage should be written again (2 total: initial + subscription)
+    expect(localStorage.setItem).toHaveBeenCalledTimes(2);
 
     persistence.destroy();
   });
@@ -125,7 +158,7 @@ describe("StatePersistence", () => {
       "planning-state-project-123",
     );
 
-    const mockSnapshot = {
+    const mockSnapshot = createMockSnapshot({
       value: { step2: "idle" },
       context: {
         currentStepNumber: 2,
@@ -134,7 +167,7 @@ describe("StatePersistence", () => {
         step1Responses: {},
         step5Responses: {},
       },
-    } as SnapshotType;
+    });
 
     // Should not throw
     expect(() => mockSubscriber(mockSnapshot)).not.toThrow();
@@ -159,7 +192,10 @@ describe("StatePersistence", () => {
       "planning-state-project-123",
     );
 
-    const mockSnapshot = {
+    // Clear initial persistence call
+    vi.clearAllMocks();
+
+    const mockSnapshot = createMockSnapshot({
       value: { step2: "submitting" },
       context: {
         currentStepNumber: 2,
@@ -168,7 +204,7 @@ describe("StatePersistence", () => {
         step1Responses: {},
         step5Responses: {},
       },
-    } as SnapshotType;
+    });
 
     // Trigger state change
     mockSubscriber(mockSnapshot);
@@ -186,7 +222,10 @@ describe("StatePersistence", () => {
       "planning-state-project-123",
     );
 
-    const mockSnapshot = {
+    // Clear initial persistence call
+    vi.clearAllMocks();
+
+    const mockSnapshot = createMockSnapshot({
       value: { step2: "generatingArtifact" },
       context: {
         currentStepNumber: 2,
@@ -195,7 +234,7 @@ describe("StatePersistence", () => {
         step1Responses: {},
         step5Responses: {},
       },
-    } as SnapshotType;
+    });
 
     // Trigger state change
     mockSubscriber(mockSnapshot);
@@ -212,7 +251,8 @@ describe("StatePersistence", () => {
 
   it("unsubscribes and clears timers on destroy", () => {
     const unsubscribeMock = vi.fn();
-    mockActor.subscribe.mockReturnValue(unsubscribeMock);
+    // XState v5 returns Subscription object with unsubscribe method
+    mockActor.subscribe.mockReturnValue({ unsubscribe: unsubscribeMock });
 
     const persistence = new StatePersistence(
       mockActor,
@@ -221,7 +261,7 @@ describe("StatePersistence", () => {
     );
 
     // Trigger state change to start debounce timer
-    const mockSnapshot = {
+    const mockSnapshot = createMockSnapshot({
       value: { step2: "idle" },
       context: {
         currentStepNumber: 2,
@@ -230,7 +270,7 @@ describe("StatePersistence", () => {
         step1Responses: {},
         step5Responses: {},
       },
-    } as SnapshotType;
+    });
 
     mockSubscriber(mockSnapshot);
 

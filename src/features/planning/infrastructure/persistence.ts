@@ -50,17 +50,22 @@ type SnapshotType = SnapshotFrom<typeof planningMachine>;
 export class StatePersistence {
   private debounceTimer: NodeJS.Timeout | null = null;
   private pendingSnapshot: SnapshotType | null = null;
-  private unsubscribe: (() => void) | null = null;
+  private unsubscribe: { unsubscribe: () => void } | null = null;
 
   constructor(
     private actor: ActorType,
     private projectId: string,
     private storageKey: string,
   ) {
-    // Subscribe to actor on construction
+    // Subscribe to future state changes
     this.unsubscribe = this.actor.subscribe((snapshot: SnapshotType) => {
       this.persist(snapshot);
     });
+
+    // ✅ CRITICAL: Persist initial state immediately (BUG-009 pattern)
+    // XState v5 subscribe() only fires on FUTURE changes, not current state
+    // Without this, localStorage remains empty if actor is stable and no events fire
+    this.persist(this.actor.getSnapshot());
   }
 
   /**
@@ -72,7 +77,7 @@ export class StatePersistence {
       clearTimeout(this.debounceTimer);
     }
     if (this.unsubscribe) {
-      this.unsubscribe();
+      this.unsubscribe.unsubscribe();
     }
   }
 
@@ -105,7 +110,11 @@ export class StatePersistence {
     if (typeof window === "undefined") return;
 
     try {
-      const serialized = JSON.stringify(snapshot);
+      // Convert to plain object to strip non-serializable properties
+      // snapshot.toJSON() returns serializable representation
+      // Double JSON parse/stringify strips getters and functions
+      const plainSnapshot = JSON.parse(JSON.stringify(snapshot.toJSON()));
+      const serialized = JSON.stringify(plainSnapshot);
       localStorage.setItem(this.storageKey, serialized);
     } catch (error) {
       console.error("[StatePersistence] localStorage failed:", error);
@@ -132,7 +141,15 @@ export class StatePersistence {
       if (this.pendingSnapshot) {
         const snapshotToSave = this.pendingSnapshot;
         this.pendingSnapshot = null;
-        this.persistAllToDatabase(snapshotToSave);
+
+        // Catch both synchronous throws and async rejections
+        try {
+          this.persistAllToDatabase(snapshotToSave).catch((error) => {
+            console.error("[StatePersistence] Async persistence error:", error);
+          });
+        } catch (error) {
+          console.error("[StatePersistence] Sync persistence error:", error);
+        }
       }
     }, 500);
   }
@@ -188,6 +205,13 @@ export class StatePersistence {
    *
    * These tables support reporting and analytics outside the main workflow.
    * Errors here don't block main state persistence.
+   *
+   * NOTE: This re-persists ALL answers/responses on every state change.
+   * Repository functions (saveInterviewAnswer, saveFormResponse) use UPSERT
+   * logic to prevent duplicates. This is acceptable because:
+   * 1. Debouncing (500ms) batches rapid changes
+   * 2. Database handles idempotency via UPSERT
+   * 3. Simpler than tracking which items are already persisted
    */
   private async persistAuxiliaryTables(snapshot: SnapshotType): Promise<void> {
     try {
@@ -195,7 +219,7 @@ export class StatePersistence {
         "./repository"
       );
 
-      // Persist Step 2 & 3 interview answers
+      // Persist Step 2 & 3 interview answers (UPSERT via repository)
       const step2Promises = snapshot.context.step2Answers.map((answer: any) =>
         saveInterviewAnswer(this.projectId, 2, answer.question, answer.answer),
       );
