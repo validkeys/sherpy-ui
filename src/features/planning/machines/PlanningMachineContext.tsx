@@ -25,6 +25,7 @@ import {
   trackError,
   trackSyncLatency,
 } from "../infrastructure/metrics";
+import { StatePersistence } from "../infrastructure/persistence";
 import { $loadPlanningState } from "../infrastructure/server-functions";
 import { planningMachine } from "./planningMachine";
 import type { PlanningInput } from "./types";
@@ -165,7 +166,7 @@ export function PlanningMachineProvider({
   }, [authoritativeSnapshot, input]);
 
   // ============================================================================
-  // STEP 5: Start actor and setup subscriptions
+  // STEP 5: Start actor and setup persistence
   // ============================================================================
   useEffect(() => {
     console.log("[PlanningMachineProvider] Starting actor");
@@ -185,24 +186,12 @@ export function PlanningMachineProvider({
       });
     }
 
-    // Subscribe for localStorage persistence
-    const persistSubscription = actor.subscribe((snapshot) => {
-      // biome-ignore lint/suspicious/noExplicitAny: XState v5 snapshot.value typing is complex
-      const stateValue = snapshot.value as any;
-      const isTransientState =
-        typeof stateValue === "object" &&
-        Object.values(stateValue).some(
-          // biome-ignore lint/suspicious/noExplicitAny: checking dynamic state values
-          (v: any) => v === "submitting" || v === "generatingArtifact",
-        );
-
-      if (!isTransientState) {
-        saveState(storageKey, snapshot);
-      }
-    });
-
-    // Persist initial state
-    saveState(storageKey, actor.getSnapshot());
+    // ✅ Unified persistence layer (handles localStorage + database)
+    // StatePersistence subscribes to actor state changes and:
+    // 1. Immediately writes to localStorage (synchronous, instant)
+    // 2. Debounces database writes to 500ms (async, fire-and-forget)
+    // 3. Skips transient states (submitting, generatingArtifact)
+    const persistence = new StatePersistence(actor, projectId, storageKey);
 
     // Expose actor for debugging
     if (typeof window !== "undefined") {
@@ -212,13 +201,13 @@ export function PlanningMachineProvider({
 
     // Cleanup
     return () => {
-      persistSubscription.unsubscribe();
+      persistence.destroy();
 
       if (process.env.NODE_ENV === "production") {
         actor.stop();
       }
     };
-  }, [actor, storageKey]);
+  }, [actor, storageKey, projectId]);
 
   // ============================================================================
   // STEP 6: Hot-reload actor when database data arrives
