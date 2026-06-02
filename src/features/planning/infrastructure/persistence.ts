@@ -167,11 +167,17 @@ export class StatePersistence {
       // Import server function (dynamic to prevent bundling)
       const { $savePlanningState } = await import("./server-functions");
 
+      // Clean snapshot: Convert to JSON and back to strip non-serializable data
+      // XState snapshots can contain functions, symbols, and other non-serializable types
+      // that cause Seroval serialization errors when passed to TanStack server functions.
+      // Double JSON.parse(stringify(toJSON())) ensures we get a plain object.
+      const cleanSnapshot = JSON.parse(JSON.stringify(snapshot.toJSON()));
+
       // Persist main state snapshot
       await $savePlanningState({
         data: {
           projectId: this.projectId,
-          snapshot,
+          snapshot: cleanSnapshot,
         },
       });
 
