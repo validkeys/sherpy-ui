@@ -147,23 +147,54 @@ export function PlanningMachineProvider({
   }, [dbSnapshot, cachedSnapshot, isLoadingDb, dbError, projectId]);
 
   // ============================================================================
-  // STEP 4: Create actor with authoritative state
+  // STEP 4: Create actor ONCE from initial snapshot (cache or database)
   // ============================================================================
+  // ✅ FIX (BUG-022 Phase 3): Only create actor ONCE per projectId
+  //
+  // PROBLEM: Actor was being RECREATED when database snapshot arrived,
+  // discarding the correctly-restored actor from cache and replacing it
+  // with a (potentially stale) database snapshot.
+  //
+  // SOLUTION: Create actor only once from initial authoritative snapshot.
+  // Use RESTORE_SNAPSHOT event (via hot-reload useEffect) to update
+  // actor state when database arrives, instead of recreating the actor.
+  //
+  // Why useMemo with `input` dependency is correct:
+  // - Actor should be recreated if projectId changes (different project)
+  // - Input contains projectId and entryPath (project-specific, immutable per project)
+  // - Actor should NOT be recreated when authoritative snapshot changes
+  //   (that's what hot-reload is for)
+  const initialSnapshot = React.useRef(authoritativeSnapshot);
   const actor = React.useMemo(() => {
-    if (authoritativeSnapshot) {
-      console.log(
-        "[PlanningMachineProvider] Creating actor from snapshot:",
-        authoritativeSnapshot.context?.currentStepNumber,
-      );
-      return createActor(planningMachine, {
-        input,
-        snapshot: authoritativeSnapshot as SnapshotType,
+    const snapshot = initialSnapshot.current;
+
+    if (snapshot) {
+      console.log("[PlanningMachineProvider] Creating actor from snapshot:", {
+        currentStepNumber: snapshot.context?.currentStepNumber,
+        stateValue: snapshot.value,
+        status: snapshot.status,
       });
+
+      // DO NOT provide `input` when restoring from snapshot.
+      // The snapshot already contains the complete context.
+      const newActor = createActor(planningMachine, {
+        snapshot: snapshot as SnapshotType,
+      });
+
+      console.log(
+        "[PlanningMachineProvider] Actor created, state before start:",
+        {
+          value: newActor.getSnapshot().value,
+          currentStepNumber: newActor.getSnapshot().context.currentStepNumber,
+        },
+      );
+
+      return newActor;
     }
 
     console.log("[PlanningMachineProvider] Creating fresh actor");
     return createActor(planningMachine, { input });
-  }, [authoritativeSnapshot, input]);
+  }, [input]); // Only recreate if input changes
 
   // ============================================================================
   // STEP 5: Start actor and setup persistence
@@ -173,17 +204,47 @@ export function PlanningMachineProvider({
 
     try {
       actor.start();
+
+      // Log state IMMEDIATELY after start
+      const afterStartSnapshot = actor.getSnapshot();
+      console.log(
+        "[PlanningMachineProvider] Actor state immediately after start:",
+        {
+          value: afterStartSnapshot.value,
+          currentStepNumber: afterStartSnapshot.context.currentStepNumber,
+          status: afterStartSnapshot.status,
+        },
+      );
     } catch (error) {
       console.warn("[PlanningMachineProvider] Actor start failed:", error);
     }
 
     // Resume automated steps if needed
     const restoredAutomatedStep = getRestoredAutomatedStep(actor.getSnapshot());
+    console.log(
+      "[PlanningMachineProvider] Checking for restored automated step:",
+      restoredAutomatedStep,
+    );
+
     if (restoredAutomatedStep) {
+      console.log(
+        "[PlanningMachineProvider] Sending RESUME_AUTOMATED_STEP event:",
+        restoredAutomatedStep,
+      );
       actor.send({
         type: "RESUME_AUTOMATED_STEP",
         stepNumber: restoredAutomatedStep,
       });
+
+      // Log state after RESUME event
+      const afterResumeSnapshot = actor.getSnapshot();
+      console.log(
+        "[PlanningMachineProvider] Actor state after RESUME_AUTOMATED_STEP:",
+        {
+          value: afterResumeSnapshot.value,
+          currentStepNumber: afterResumeSnapshot.context.currentStepNumber,
+        },
+      );
     }
 
     // ✅ Unified persistence layer (handles localStorage + database)
@@ -367,22 +428,6 @@ function snapshotsEqual(
 // ─────────────────────────────────────────────────────────────
 // PERSISTENCE HELPERS
 // ─────────────────────────────────────────────────────────────
-
-/**
- * Save state to localStorage cache
- * Database persistence is handled by server-side snapshot saves
- */
-function saveState(key: string, snapshot: SnapshotType): void {
-  // Skip during SSR
-  if (typeof window === "undefined") return;
-
-  try {
-    const persistedSnapshot = toPlainSnapshot(snapshot.toJSON());
-    localStorage.setItem(key, JSON.stringify(persistedSnapshot));
-  } catch (error) {
-    console.error("[PlanningMachineContext] Failed to save state:", error);
-  }
-}
 
 function toPlainSnapshot(snapshot: unknown): Record<string, unknown> {
   return JSON.parse(JSON.stringify(snapshot)) as Record<string, unknown>;
