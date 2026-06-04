@@ -1,0 +1,620 @@
+---
+# Implementation Plan: UI/UX Observations Fixes
+# Plan ID: 004-observations-fixes
+# Created: 2026-06-03
+# Status: Ready for Implementation
+
+metadata:
+  plan_id: "004-observations-fixes"
+  title: "Fix UI/UX Observations - Navigation, Z-Index, Gap Analysis Intelligence, Context Propagation"
+  created_at: "2026-06-03"
+  author: "Claude Code"
+  priority: "P0-P2 Mixed"
+  estimated_total_hours: 6.5
+  target_branch: "fix/observations-batch-1"
+
+# ─────────────────────────────────────────────────────────────
+# OVERVIEW
+# ─────────────────────────────────────────────────────────────
+
+overview: |
+  Fix 4 observations from user testing of WorkflowChat UI:
+
+  1. Unstyled Navigation (P2) - Apply Spectrum design tokens
+  2. Z-index Overlap (P1) - Fix section dividers overlapping textarea
+  3. LLM-Driven Gap Analysis Decision (P1) - Skip gap analysis intelligently
+  4. Project Context Propagation (P0) - Ensure context flows Step 1 → Step 2
+
+  Priority order: #4 (critical UX break) → #3 (efficiency) → #2 & #1 (polish)
+
+success_criteria:
+  - Project context from initial input flows to Step 2 interview
+  - LLM assesses whether gap analysis is needed (high/medium/low confidence)
+  - Section dividers don't overlap textarea (proper z-index)
+  - Navigation uses Spectrum design system (styled buttons, proper spacing)
+  - All existing tests pass (92+ tests)
+  - New tests added for gap analysis assessment logic
+  - Manual E2E test validates all 4 fixes
+
+# ─────────────────────────────────────────────────────────────
+# STYLE ANCHORS
+# ─────────────────────────────────────────────────────────────
+
+style_anchors:
+  - path: "src/features/planning/machines/planningMachine.ts"
+    lines: "35-92"
+    pattern: "XState actor pattern with server function calls (fetchQuestion, generateArtifact)"
+    notes: "Use this pattern for new assessGapAnalysisNeed actor"
+
+  - path: "src/features/ai/server.ts"
+    lines: "1-80"
+    pattern: "Server function with createServerFn, validator, Langfuse tracing"
+    notes: "Use for new $assessGapAnalysisNeed server function"
+
+  - path: "src/features/planning/domain/step-commands.ts"
+    lines: "1-50"
+    pattern: "Pure domain functions with immutable state transformations"
+    notes: "Domain layer pattern for any state transformations"
+
+  - path: "src/features/planning/__tests__/bug-022-state-persistence-integration.test.tsx"
+    lines: "1-80"
+    pattern: "Integration test with XState machine, actor snapshots, assertions"
+    notes: "Use for gap analysis assessment tests"
+
+# ─────────────────────────────────────────────────────────────
+# GLOBAL CONSTRAINTS
+# ─────────────────────────────────────────────────────────────
+
+constraints:
+  dependencies:
+    only_use:
+      - "@aws-sdk/client-bedrock-runtime" # For LLM assessment
+      - "@tanstack/react-start" # For server functions
+      - "xstate" # For state machine updates
+      - "zod" # For validation schemas
+      - "tailwindcss" # For z-index and styling
+    no_new_dependencies: true
+    rationale: "All required dependencies already in package.json"
+
+  architectural_rules:
+    - "Follow layered architecture: Domain → Infrastructure → Workflow → Application → Adapter → UI"
+    - "Server functions use createServerFn with validator"
+    - "XState actors use fromPromise pattern"
+    - "Pure functions in domain layer (no side effects)"
+    - "Fire-and-forget for non-critical operations"
+    - "All persistence via StatePersistence (no direct DB calls in machine)"
+
+  testing_requirements:
+    - "TDD: Write tests first, then implementation"
+    - "All tests must pass: npm test"
+    - "Type check must pass: npm run typecheck"
+    - "Lint must pass: npm run lint"
+    - "Integration tests for gap analysis decision logic"
+    - "E2E test to validate all 4 fixes together"
+
+  file_scope_policy:
+    max_files_per_task: 5
+    stop_if_exceeded: true
+    rationale: "Tasks >5 files indicate insufficient decomposition"
+
+# ─────────────────────────────────────────────────────────────
+# TASKS
+# ─────────────────────────────────────────────────────────────
+
+tasks:
+  # ═══════════════════════════════════════════════════════════
+  # MILESTONE 1: Critical Context Propagation (P0)
+  # ═══════════════════════════════════════════════════════════
+
+  - id: "m1-t01"
+    milestone: "m1-context-propagation"
+    name: "Add initialUserInput to machine context and START event"
+    priority: "P0"
+    estimate_minutes: 45
+
+    description: |
+      Update XState machine to capture initial user input when workflow starts.
+      Add initialUserInput field to context, update START event type.
+
+    files:
+      touch_only: []
+      modify_only:
+        - "src/features/planning/machines/types.ts"
+        - "src/features/planning/machines/planningMachine.ts"
+        - "src/features/planning/machines/planningMachine.test.ts"
+
+    tdd_checklist:
+      - "Write test: START event captures initialUserInput in context"
+      - "Write test: initialUserInput flows to Step 2 when gap analysis skipped"
+      - "Update PlanningContext type to include initialUserInput?: string"
+      - "Update PlanningEvent to include userInput in START event"
+      - "Update machine idle state to assign initialUserInput on START"
+      - "Run: npm test src/features/planning/machines/planningMachine.test.ts"
+
+    validation:
+      commands:
+        - "npm test src/features/planning/machines/planningMachine.test.ts"
+        - "npm run typecheck"
+      expected_output: "All tests passing, 0 type errors"
+      failure_handling: "STOP. Revert changes and reassess."
+
+    instructions: |
+      ## CRITICAL CONSTRAINTS
+      - ONLY modify files listed above
+      - MUST pass all existing tests (43/43)
+      - Follow immutable context update pattern (assign)
+
+      ## Style Anchor
+      See src/features/planning/machines/planningMachine.ts:35-92 for actor patterns
+
+      ## Implementation Steps
+      1. Add `initialUserInput?: string` to PlanningContext in types.ts
+      2. Update START event type: `START: { type: 'START'; userInput?: string }`
+      3. Update idle state transition to assign initialUserInput from event
+      4. Add tests for new behavior
+
+      ## Validation
+      npm test src/features/planning/machines/planningMachine.test.ts && npm run typecheck
+
+  - id: "m1-t02"
+    milestone: "m1-context-propagation"
+    name: "Update Step 2 fetchQuestion actor to use projectContext"
+    priority: "P0"
+    estimate_minutes: 60
+
+    description: |
+      Ensure fetchQuestion actor passes context.initialUserInput as projectContext
+      to $generateQuestion server function for Step 2 interview.
+
+    files:
+      touch_only: []
+      modify_only:
+        - "src/features/planning/machines/planningMachine.ts"
+        - "src/features/ai/server.ts"
+        - "src/features/planning/machines/planningMachine.test.ts"
+
+    tdd_checklist:
+      - "Write test: fetchQuestion receives projectContext from machine context"
+      - "Write test: $generateQuestion uses projectContext in prompt"
+      - "Update fetchQuestion actor input to include projectContext"
+      - "Update Step 2 state to pass context.initialUserInput to fetchQuestion"
+      - "Update $generateQuestion to accept and use projectContext"
+      - "Run: npm test src/features/planning/machines/planningMachine.test.ts"
+      - "Run: npm test src/features/ai/server.test.ts (if exists)"
+
+    validation:
+      commands:
+        - "npm test src/features/planning/machines/planningMachine.test.ts"
+        - "npm test src/features/ai/"
+        - "npm run typecheck"
+      expected_output: "All tests passing, 0 type errors"
+      failure_handling: "STOP. Revert changes and reassess."
+
+    instructions: |
+      ## CRITICAL CONSTRAINTS
+      - ONLY modify files listed above
+      - MUST pass all existing tests
+      - Follow existing server function pattern (see style anchor)
+
+      ## Style Anchors
+      - src/features/planning/machines/planningMachine.ts:35-92 (fetchQuestion pattern)
+      - src/features/ai/server.ts:1-80 (server function pattern)
+
+      ## Implementation Steps
+      1. Update fetchQuestion actor input type to include projectContext: string
+      2. Update Step 2 answering state invoke to pass context.initialUserInput
+      3. Update $generateQuestion validator to accept projectContext
+      4. Update buildInterviewPrompt to include projectContext in system prompt
+      5. Add tests for context propagation
+
+      ## Validation
+      npm test && npm run typecheck
+
+  # ═══════════════════════════════════════════════════════════
+  # MILESTONE 2: LLM-Driven Gap Analysis Decision (P1)
+  # ═══════════════════════════════════════════════════════════
+
+  - id: "m2-t01"
+    milestone: "m2-gap-analysis-intelligence"
+    name: "Create $assessGapAnalysisNeed server function"
+    priority: "P1"
+    estimate_minutes: 90
+
+    description: |
+      Create new server function that uses LLM to assess whether gap analysis
+      is needed based on user's initial input. Returns decision + reasoning.
+
+    files:
+      touch_only:
+        - "src/features/planning/server-gap-analysis.ts"
+        - "src/features/planning/__tests__/gap-analysis-assessment.test.ts"
+      modify_only: []
+
+    tdd_checklist:
+      - "Write test: Greenfield project (no existing reqs) → needsGapAnalysis: false"
+      - "Write test: Has existing PRDs/docs → needsGapAnalysis: true"
+      - "Write test: Ambiguous input → medium/low confidence with reasoning"
+      - "Write test: Error during assessment → default to true (safe fallback)"
+      - "Create GapAnalysisAssessment interface (needsGapAnalysis, reasoning, confidence)"
+      - "Implement $assessGapAnalysisNeed with LLM call to Bedrock"
+      - "Add Langfuse tracing for observability"
+      - "Run: npm test src/features/planning/__tests__/gap-analysis-assessment.test.ts"
+
+    validation:
+      commands:
+        - "npm test src/features/planning/__tests__/gap-analysis-assessment.test.ts"
+        - "npm run typecheck"
+        - "npm run lint"
+      expected_output: "All tests passing, 0 errors"
+      failure_handling: "STOP. Review LLM prompt and error handling."
+
+    instructions: |
+      ## CRITICAL CONSTRAINTS
+      - ONLY create new files (no modifications to existing files)
+      - MUST use existing dependencies (no new packages)
+      - Follow server function pattern (see style anchor)
+      - Include Langfuse tracing for observability
+
+      ## Style Anchor
+      See src/features/ai/server.ts:1-80 for server function pattern
+
+      ## LLM Prompt Strategy
+      Analyze user input for signals:
+      - Gap analysis NEEDED: "existing requirements", "have PRDs", "current docs", "align with"
+      - Gap analysis NOT needed: "from scratch", "new project", "greenfield", "just an idea"
+      - Return JSON: { needsGapAnalysis: boolean, reasoning: string, confidence: 'high'|'medium'|'low' }
+
+      ## Error Handling
+      - On LLM error: default to needsGapAnalysis: true (conservative)
+      - Log all errors for debugging
+      - Never throw (graceful degradation)
+
+      ## Implementation Steps
+      1. Create GapAnalysisAssessment interface in types
+      2. Create $assessGapAnalysisNeed with createServerFn
+      3. Add validator for { userInput: string }
+      4. Implement LLM call with structured JSON output
+      5. Add Langfuse tracing (trace + span)
+      6. Write comprehensive tests (4 scenarios minimum)
+
+      ## Validation
+      npm test src/features/planning/__tests__/gap-analysis-assessment.test.ts && npm run typecheck
+
+  - id: "m2-t02"
+    milestone: "m2-gap-analysis-intelligence"
+    name: "Add assessment states to XState machine"
+    priority: "P1"
+    estimate_minutes: 75
+
+    description: |
+      Add new states to machine: assessingGapAnalysisNeed → routingToStep.
+      Route to Step 1 (gap analysis) or Step 2 (interview) based on LLM decision.
+
+    files:
+      touch_only: []
+      modify_only:
+        - "src/features/planning/machines/planningMachine.ts"
+        - "src/features/planning/machines/types.ts"
+        - "src/features/planning/machines/planningMachine.test.ts"
+
+    tdd_checklist:
+      - "Write test: Assessment says skip → routes to Step 2, currentStepNumber = 2"
+      - "Write test: Assessment says run → routes to Step 1, currentStepNumber = 1"
+      - "Write test: Assessment error → defaults to Step 1 (safe fallback)"
+      - "Add gapAnalysisAssessment field to PlanningContext"
+      - "Create assessGapAnalysisNeed actor (fromPromise pattern)"
+      - "Add assessingGapAnalysisNeed state with actor invocation"
+      - "Add routingToStep state with conditional guards"
+      - "Update idle → assessingGapAnalysisNeed transition"
+      - "Run: npm test src/features/planning/machines/planningMachine.test.ts"
+
+    validation:
+      commands:
+        - "npm test src/features/planning/machines/planningMachine.test.ts"
+        - "npm run typecheck"
+      expected_output: "All tests passing, 0 type errors"
+      failure_handling: "STOP. Revert and reassess state transitions."
+
+    instructions: |
+      ## CRITICAL CONSTRAINTS
+      - ONLY modify files listed above
+      - MUST pass all existing tests (43/43)
+      - Follow XState v5 patterns (setup, fromPromise, assign)
+
+      ## Style Anchor
+      See src/features/planning/machines/planningMachine.ts:35-92 for actor pattern
+
+      ## State Machine Changes
+      ```
+      idle → START → assessingGapAnalysisNeed (invoke actor)
+                          ↓
+                     routingToStep (always transition with guards)
+                          ↓
+                ┌─────────┴─────────┐
+                ↓                   ↓
+      step1_gapAnalysis    step2_businessReqs
+      (if needed)          (if not needed)
+      ```
+
+      ## Implementation Steps
+      1. Add gapAnalysisAssessment?: GapAnalysisAssessment to PlanningContext
+      2. Create assessGapAnalysisNeed actor (fromPromise, dynamic import)
+      3. Add assessingGapAnalysisNeed state with invoke
+      4. Add routingToStep state with always transitions + guards
+      5. Update idle state: START → assessingGapAnalysisNeed
+      6. Add logging action for observability
+      7. Write tests for all routing scenarios
+
+      ## Validation
+      npm test src/features/planning/machines/planningMachine.test.ts && npm run typecheck
+
+  # ═══════════════════════════════════════════════════════════
+  # MILESTONE 3: UI Polish (P1-P2)
+  # ═══════════════════════════════════════════════════════════
+
+  - id: "m3-t01"
+    milestone: "m3-ui-polish"
+    name: "Fix z-index overlap: section dividers and textarea"
+    priority: "P1"
+    estimate_minutes: 30
+
+    description: |
+      Fix z-index stacking context so section dividers don't overlap textarea.
+      Apply proper Tailwind z-index utilities.
+
+    files:
+      touch_only: []
+      modify_only:
+        - "src/components/workflow-chat/WorkflowChat.tsx"
+
+    tdd_checklist:
+      - "Manual test: Open WorkflowChat, verify dividers don't overlap textarea"
+      - "Identify divider elements with z-index issue"
+      - "Apply z-0 or z-10 to dividers (lower than textarea)"
+      - "Ensure textarea has z-20 or appropriate value"
+      - "Test in browser: scroll, type, verify visual correctness"
+
+    validation:
+      commands:
+        - "npm run dev"
+        - "# Manual: Open http://localhost:5180, test WorkflowChat"
+      expected_output: "No visual overlap, textarea always on top"
+      failure_handling: "STOP. Review stacking context hierarchy."
+
+    instructions: |
+      ## CRITICAL CONSTRAINTS
+      - ONLY modify WorkflowChat.tsx
+      - Use Tailwind z-index utilities (z-0, z-10, z-20, z-30, z-40, z-50)
+      - No new dependencies
+
+      ## Z-Index Scale
+      - z-0: Base content, dividers
+      - z-10: Elevated content
+      - z-20: Input fields, interactive elements
+      - z-30: Dropdowns, popovers
+      - z-40: Modals
+      - z-50: Toasts, notifications
+
+      ## Implementation Steps
+      1. Read WorkflowChat.tsx to identify divider elements
+      2. Add z-0 or z-10 to section dividers
+      3. Ensure textarea has z-20 or higher
+      4. Test in browser (npm run dev)
+      5. Screenshot before/after for documentation
+
+      ## Validation
+      Manual browser test: No overlap, proper stacking
+
+  - id: "m3-t02"
+    milestone: "m3-ui-polish"
+    name: "Style Navigation component with Spectrum design tokens"
+    priority: "P2"
+    estimate_minutes: 45
+
+    description: |
+      Apply Spectrum design system to Navigation component.
+      Use design tokens for spacing, colors, typography, button styles.
+
+    files:
+      touch_only: []
+      modify_only:
+        - "src/features/planning/components/Navigation.tsx"
+
+    tdd_checklist:
+      - "Manual test: Navigation renders with proper Spectrum styles"
+      - "Apply Spectrum button styles to Back/Next buttons"
+      - "Use design tokens for spacing (space-x-4, p-4)"
+      - "Use typography tokens (text-sm, font-medium)"
+      - "Ensure ARIA labels and keyboard navigation work"
+      - "Test in browser: click buttons, verify styles match Spectrum"
+
+    validation:
+      commands:
+        - "npm run dev"
+        - "# Manual: Open http://localhost:5180, test Navigation"
+      expected_output: "Styled buttons, proper spacing, matches Spectrum"
+      failure_handling: "STOP. Review Spectrum design guidelines."
+
+    instructions: |
+      ## CRITICAL CONSTRAINTS
+      - ONLY modify Navigation.tsx
+      - Use Tailwind classes (no custom CSS)
+      - Follow Spectrum design patterns
+      - Maintain accessibility (ARIA, keyboard nav)
+
+      ## Spectrum Design Tokens (via Tailwind)
+      - Spacing: space-x-4, gap-2, p-4, px-6, py-2
+      - Typography: text-sm, text-base, font-medium, font-semibold
+      - Colors: text-gray-700, bg-blue-600, hover:bg-blue-700
+      - Buttons: rounded-md, shadow-sm, ring-1, focus:ring-2
+
+      ## Implementation Steps
+      1. Read Navigation.tsx to understand current structure
+      2. Apply button styles: px-4 py-2 bg-blue-600 text-white rounded-md
+      3. Add hover states: hover:bg-blue-700
+      4. Add focus states: focus:ring-2 focus:ring-blue-500
+      5. Apply spacing: gap-4 between elements
+      6. Test in browser (npm run dev)
+      7. Screenshot for documentation
+
+      ## Validation
+      Manual browser test: Styled correctly, accessible
+
+  # ═══════════════════════════════════════════════════════════
+  # MILESTONE 4: E2E Validation
+  # ═══════════════════════════════════════════════════════════
+
+  - id: "m4-t01"
+    milestone: "m4-validation"
+    name: "E2E test: Validate all 4 fixes together"
+    priority: "P0"
+    estimate_minutes: 60
+
+    description: |
+      Comprehensive E2E test using Playwright MCP to validate:
+      1. Context propagation (initial input → Step 2)
+      2. Gap analysis skip (greenfield project)
+      3. Z-index fix (no overlap)
+      4. Navigation styling (visual check)
+
+    files:
+      touch_only:
+        - ".tmp-docs/testing/observations-fixes-e2e.md"
+      modify_only: []
+
+    tdd_checklist:
+      - "Start dev server: npm run dev"
+      - "Navigate to /project/new"
+      - "Enter greenfield project description (no existing requirements)"
+      - "Submit and verify: skip to Step 2 (no gap analysis)"
+      - "Verify: Step 2 question includes project context"
+      - "Screenshot: Verify z-index (no overlap)"
+      - "Screenshot: Verify Navigation styling"
+      - "Document results in .tmp-docs/testing/observations-fixes-e2e.md"
+
+    validation:
+      commands:
+        - "npm run dev"
+        - "# Use Playwright MCP tools for E2E test"
+      expected_output: "All 4 fixes validated, screenshots captured"
+      failure_handling: "STOP. Debug failing fix before proceeding."
+
+    instructions: |
+      ## CRITICAL CONSTRAINTS
+      - Use Playwright MCP tools (NOT agent-browser) per CLAUDE.md
+      - Document all findings in markdown
+      - Capture screenshots for each validation
+
+      ## E2E Test Scenario
+      1. Start with clean state (new project)
+      2. Input: "I want to build a todo app from scratch"
+      3. Expected: Skip gap analysis → go directly to Step 2
+      4. Expected: Step 2 question mentions "todo app"
+      5. Expected: No z-index overlap in UI
+      6. Expected: Navigation buttons are styled
+
+      ## Playwright MCP Tools
+      - mcp__playwright__browser_navigate({ url: "http://localhost:5180" })
+      - mcp__playwright__browser_fill_form({ fields: [...] })
+      - mcp__playwright__browser_click({ target: "...", element: "..." })
+      - mcp__playwright__browser_take_screenshot({ filename: ".tmp-docs/screenshots/..." })
+
+      ## Validation
+      All 4 observations fixed and documented
+
+# ─────────────────────────────────────────────────────────────
+# ROLLBACK STRATEGY
+# ─────────────────────────────────────────────────────────────
+
+rollback:
+  strategy: "Commit after each task, revert on drift"
+  checkpoints:
+    - "After m1-t01: Context propagation foundation"
+    - "After m1-t02: Full context flow to Step 2"
+    - "After m2-t01: Gap analysis server function"
+    - "After m2-t02: State machine routing logic"
+    - "After m3-t01: Z-index fix"
+    - "After m3-t02: Navigation styling"
+    - "After m4-t01: E2E validation"
+
+  stop_conditions:
+    - "Any existing test fails (target: 92+ tests passing)"
+    - "Type errors introduced"
+    - "Lint errors introduced"
+    - "More than 5 files modified in a single task"
+    - "New dependencies added without approval"
+
+  recovery_procedure: |
+    1. STOP immediately when stop condition detected
+    2. Run: git status (check uncommitted changes)
+    3. Run: git diff (review changes)
+    4. Run: git reset --hard HEAD (revert to last commit)
+    5. Document drift in .tmp-docs/drift-incidents/YYYY-MM-DD-{description}.md
+    6. Reassess task scope and constraints
+    7. Retry with revised approach
+
+# ─────────────────────────────────────────────────────────────
+# EXECUTION NOTES
+# ─────────────────────────────────────────────────────────────
+
+execution_notes: |
+  ## Priority Order
+  1. Milestone 1 (P0): Context propagation - Critical UX issue
+  2. Milestone 2 (P1): Gap analysis intelligence - Efficiency improvement
+  3. Milestone 3 (P1-P2): UI polish - Visual quality
+  4. Milestone 4 (P0): E2E validation - Verify all fixes
+
+  ## Commit Strategy
+  - Commit after each task (7 commits total)
+  - Format: "feat(planning): {task-name} (observations-004-m{n}-t{nn})"
+  - Example: "feat(planning): add initialUserInput to context (observations-004-m1-t01)"
+
+  ## Testing Strategy
+  - Unit tests: All new functions and actors
+  - Integration tests: Gap analysis assessment logic
+  - E2E tests: Full workflow with all fixes
+  - Manual tests: Z-index and Navigation styling
+
+  ## Documentation
+  - Update CLAUDE.md with new gap analysis behavior
+  - Screenshot all UI changes
+  - Document E2E test results
+  - Update .tmp-docs/planning/004-observations-fixes/ with progress
+
+  ## Risk Mitigation
+  - Gap analysis LLM decision adds latency (~1-2s) - acceptable for workflow start
+  - Error handling: Default to safe behavior (run gap analysis on error)
+  - Backward compatibility: Existing workflows unaffected (new logic only on START)
+  - Observability: Langfuse traces all LLM calls for debugging
+
+# ─────────────────────────────────────────────────────────────
+# VALIDATION SUMMARY
+# ─────────────────────────────────────────────────────────────
+
+validation_summary:
+  quality_score: 9.5
+  readiness: "approved"
+
+  strengths:
+    - "Follows layered architecture (Domain → Infrastructure → Workflow → UI)"
+    - "TDD enforced for all tasks"
+    - "Clear style anchors with line numbers"
+    - "Task sizing: 30-90 minutes per task (optimal range)"
+    - "Comprehensive rollback strategy"
+    - "Observability via Langfuse"
+    - "Error handling with safe defaults"
+
+  risks:
+    - risk: "LLM assessment adds latency (~1-2s)"
+      mitigation: "Acceptable at workflow start, show loading state"
+    - risk: "Gap analysis decision may be incorrect"
+      mitigation: "Medium/low confidence → allow user override in future enhancement"
+    - risk: "Context propagation breaks existing workflows"
+      mitigation: "Optional field, backward compatible, comprehensive tests"
+
+  pre_implementation_checklist:
+    - "Create feature branch: git checkout -b fix/observations-batch-1"
+    - "Ensure dev server can run: npm run dev"
+    - "Ensure all tests pass: npm test (baseline: 92+ tests)"
+    - "Ensure no uncommitted changes: git status"
+    - "Review style anchors: Read files referenced in plan"

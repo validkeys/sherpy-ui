@@ -94,6 +94,42 @@ mcp__playwright__browser_take_screenshot({
 
 ---
 
+## ✅ OBSERVATION #4: FIXED - Context Not Propagating to Step 2+ Questions (2026-06-04)
+
+**Problem**: Step 2 and later interview questions did not receive Step 1 project context, causing LLM to ask for information already provided.
+
+**Root Cause**: `$generateQuestion` server function received `projectContext` parameter but ignored it, always falling back to failed database lookup.
+
+**Solution**: Made three surgical changes to enable context flow:
+
+**Implementation**:
+- Updated `fetchQuestion` actor to pass `projectContext` to server function (planningMachine.ts line 61)
+- Updated `$generateQuestion` validator to accept optional `projectContext` parameter (server.ts lines 155-165)
+- Updated handler to use `projectContext` first, database as fallback (server.ts lines 174-176)
+
+**Fix Verification (2026-06-04)**:
+- ✅ 155/155 tests pass (planning + AI modules)
+- ✅ Build succeeds
+- ✅ Zero regressions
+- ✅ Context now flows: XState machine → server function → LLM prompt
+
+**Key Learning**: When XState machine builds context with `buildProjectContext(context)`, ensure the actor actually passes it through to server functions. Validators must accept all parameters that handlers need.
+
+**Files Changed**:
+- `src/features/ai/server.ts` (validator + handler, +8 lines)
+- `src/features/planning/machines/planningMachine.ts` (actor call, +1 line)
+
+**Documentation**:
+- `.tmp-docs/planning/004-observations-fixes/M1-t01-COMPLETE.md` - Implementation summary
+- `.tmp-docs/planning/004-observations-fixes/OBSERVATIONS-CHECKLIST.md` - Task checklist
+- `observations.md` (observation #4) - Original issue report
+
+**Manual Verification Needed**: Create project → fill Step 1 → verify Step 2 question references Step 1 context
+
+**Status**: ✅ FIXED and TESTED (commit 3f9addb) - Ready for manual verification
+
+---
+
 ## ✅ BUG-021: FIXED - Step 2 Interview Question Not Rendering (2026-05-30)
 
 **Problem**: Step 2 interview questions didn't appear in WorkflowChat UI, blocking workflow completion.
@@ -385,10 +421,39 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
-## 5. Rules
+## 5. Rules - Documentation Organization
 
-- All temporary markdown documents (summaries etc..) go in .tmp-docs/
-- All screenshots go to .tmp-docs/screenshots
-- All implementation plans go in .tmp-docs/plans
-- All code-reviews go in .tmp-docs/code-reviews/00{n}-slug/review.yaml
-- When referencing e2e testing, we are referring to docs/e2e-testing
+All temporary documentation is organized in `.tmp-docs/` with the following structure:
+
+- **Bug Reports**: `.tmp-docs/bug-reports/{NNN}-{slug}/`
+  - Each bug gets its own numbered folder (e.g., `018-ssr-hydration/`)
+  - All related docs (diagnosis, fix verification, summaries) go in the same folder
+  - Format: `{NNN}-{short-description}.md`
+
+- **Planning Documents**: `.tmp-docs/planning/{NNN}-{slug}/`
+  - Implementation plans, roadmaps, milestones
+  - Each plan gets a numbered folder (e.g., `001-state-refactor/`)
+  - Format: plan documents, checklists, timelines
+
+- **Screenshots**: `.tmp-docs/screenshots/`
+  - All screenshots regardless of context
+  - Use descriptive filenames: `bug-018-before.png`, `test-run-012-results.png`
+
+- **Scripts**: `.tmp-docs/scripts/`
+  - Shell scripts, automation tools
+  - Mark executable with `chmod +x`
+
+- **Code Reviews**: `.tmp-docs/code-reviews/{NNN}-{slug}/`
+  - Each review gets a numbered folder
+  - Primary file: `review.yaml` or `review.md`
+
+**Quick Reference:**
+- Bug report: `.tmp-docs/bug-reports/023-description/`
+- Implementation plan: `.tmp-docs/planning/005-feature-name/`
+- Screenshot: `.tmp-docs/screenshots/descriptive-name.png`
+- Script: `.tmp-docs/scripts/script-name.sh`
+- Code review: `.tmp-docs/code-reviews/013-review-name/review.yaml`
+
+**Notes:**
+- When referencing e2e testing, we are referring to `docs/e2e-testing/`
+- The `.tmp-docs/` folder is tracked in git (not in .gitignore)
