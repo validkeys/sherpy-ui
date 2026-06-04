@@ -152,10 +152,17 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       throw new Error("stepNumber must be a number");
     if (!Array.isArray(input.previousAnswers))
       throw new Error("previousAnswers must be an array");
+    // projectContext is optional
+    if (
+      input.projectContext !== undefined &&
+      typeof input.projectContext !== "string"
+    )
+      throw new Error("projectContext must be a string");
     return {
       projectId: input.projectId,
       stepNumber: input.stepNumber,
       previousAnswers: input.previousAnswers as string[],
+      projectContext: input.projectContext as string | undefined,
     };
   })
   .handler(async ({ data }): Promise<GenerateQuestionOutput> => {
@@ -164,9 +171,9 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       throw new Error(`Invalid step number: ${data.stepNumber}`);
     }
 
-    // Get project overview from Step 1 for context in later steps
-    let projectOverview: string | undefined;
-    if (data.stepNumber > 1) {
+    // Use projectContext from input first, fall back to database if needed
+    let projectOverview = data.projectContext;
+    if (!projectOverview && data.stepNumber > 1) {
       try {
         const stepState = await $getStepState({
           data: { projectId: data.projectId },

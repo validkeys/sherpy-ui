@@ -58,6 +58,7 @@ const fetchQuestion = fromPromise<
         projectId: input.projectId,
         stepNumber: input.stepNumber,
         previousAnswers: input.previousAnswers,
+        projectContext: input.projectContext,
       },
     });
 
