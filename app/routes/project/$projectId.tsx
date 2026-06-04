@@ -13,6 +13,10 @@ import {
   type Stage,
 } from "@/components/spectrum-stepper/SpectrumStepper";
 import { useProjectProgress } from "@/features/planning/application/queries";
+import {
+  PlanningMachineProvider,
+  useSelector,
+} from "@/features/planning/machines/PlanningMachineContext";
 import { useProject } from "@/features/projects/hooks";
 
 export const Route = createFileRoute("/project/$projectId")({
@@ -26,6 +30,19 @@ export const Route = createFileRoute("/project/$projectId")({
 });
 
 function ProjectComponent() {
+  const { projectId } = Route.useParams();
+
+  return (
+    <PlanningMachineProvider
+      input={{ projectId, entryPath: "new-project" }}
+      storageKey={`planning-machine-${projectId}`}
+    >
+      <ProjectLayout />
+    </PlanningMachineProvider>
+  );
+}
+
+function ProjectLayout() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
   const { data: project } = useProject(projectId);
@@ -44,8 +61,21 @@ function ProjectComponent() {
     });
   }
 
+  // Detect if Step 1 is currently assessing gap analysis
+  const isAssessingGapAnalysis = useSelector((state) => {
+    const stateValue = state.value;
+    if (typeof stateValue === "object" && "step1_gapAnalysis" in stateValue) {
+      return stateValue.step1_gapAnalysis === "assessingNeed";
+    }
+    return false;
+  });
+
   const stages: Stage[] = progress
-    ? adaptStepsToStages(progress.stepSummaries)
+    ? adaptStepsToStages(progress.stepSummaries).map((stage, i) => ({
+        ...stage,
+        // Add loading indicator to Step 1 during gap analysis assessment
+        isLoading: stage.num === 1 && isAssessingGapAnalysis,
+      }))
     : Array.from({ length: 10 }, (_, i) => ({
         id: String(i + 1),
         num: i + 1,
