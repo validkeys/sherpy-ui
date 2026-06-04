@@ -113,20 +113,34 @@ mcp__playwright__browser_take_screenshot({
 - ✅ Zero regressions
 - ✅ Context now flows: XState machine → server function → LLM prompt
 
+**Phase 3: Loading Indicator (2026-06-04)**:
+- ✅ Moved PlanningMachineProvider to parent route for machine state access
+- ✅ Implemented `useSelector` to detect `step1_gapAnalysis.assessingNeed` substate
+- ✅ Applied `isLoading` prop to SpectrumStepper Stage 1 during assessment
+- ✅ 46/46 planning machine tests passing
+- ✅ Manual E2E validation completed (Phase 4)
+
+**Architecture Change**:
+- Provider now in parent route (`/project/$projectId`) instead of child route (`/build`)
+- SpectrumStepper can access machine state via `useSelector`
+- Loading state applied during ~3 second gap analysis assessment
+
 **Key Learning**: When XState machine builds context with `buildProjectContext(context)`, ensure the actor actually passes it through to server functions. Validators must accept all parameters that handlers need.
 
 **Files Changed**:
-- `src/features/ai/server.ts` (validator + handler, +8 lines)
-- `src/features/planning/machines/planningMachine.ts` (actor call, +1 line)
+- `src/features/ai/server.ts` (validator + handler, +8 lines) - M1
+- `src/features/planning/machines/planningMachine.ts` (actor call, +1 line) - M1
+- `app/routes/project/$projectId.tsx` (+28 lines) - M3: Provider + loading detection
+- `app/routes/project/$projectId.build.tsx` (-8 lines) - M3: Removed provider
 
 **Documentation**:
-- `.tmp-docs/planning/004-observations-fixes/M1-t01-COMPLETE.md` - Implementation summary
+- `.tmp-docs/planning/004-observations-fixes/M1-COMPLETION-SUMMARY.md` - Phase 1 context propagation
+- `.tmp-docs/planning/004-observations-fixes/M3-VERIFICATION-RESULTS.md` - Phase 3 loading indicator
+- `.tmp-docs/planning/004-observations-fixes/M4-VERIFICATION-RESULTS.md` - Phase 4 E2E validation
 - `.tmp-docs/planning/004-observations-fixes/OBSERVATIONS-CHECKLIST.md` - Task checklist
 - `observations.md` (observation #4) - Original issue report
 
-**Manual Verification Needed**: Create project → fill Step 1 → verify Step 2 question references Step 1 context
-
-**Status**: ✅ FIXED and TESTED (commit 3f9addb) - Ready for manual verification
+**Status**: ✅ COMPLETE (commits 3f9addb, abd42ea) - All phases validated
 
 ---
 

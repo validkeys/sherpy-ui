@@ -269,14 +269,17 @@ Step 2 question should be contextualized like:
 2. ✅ M2-t01: Add gap analysis assessment server function (Observation #3) - **COMPLETE** (2026-06-04)
 3. ✅ M2-t02: Add assessment state to machine (Observation #3) - **COMPLETE** (2026-06-04)
 
-**Phase 3: Polish** (45 min)
-4. ✅ M3-t01: Style navigation (Observation #1) - **COMPLETE** (2026-06-04)
+**Phase 3: Polish** (75 min)
+4. ✅ M3-t01: Style navigation (Observation #1) - **COMPLETE** (commit 8234289)
+5. ✅ M3-t02: Connect loading indicator to machine state - **COMPLETE** (2026-06-04)
 
 **Phase 4: Validation** (60 min)
-5. ✅ M4-t01: E2E test all scenarios
-6. ⏸️ Re-test Observation #2 at Step 2+
+6. ✅ M4-t01: E2E manual validation - **COMPLETE** (2026-06-04)
+7. ⏸️ Re-test Observation #2 at Step 2+ - Deferred
 
 **Total:** 5 hours (300 minutes)
+
+**Status:** ✅ **PHASES 1-4 COMPLETE** (Observation #4 fully implemented and validated)
 
 ---
 
@@ -334,9 +337,11 @@ Step 2 question should be contextualized like:
 - [x] ~~Fill Step 1 form with description~~
 - [x] ~~Submit~~
 - [x] ✅ Check Step 2 question mentions "recipe" or "social network" - **VERIFIED 2026-06-04**
-- [ ] Answer one question
-- [ ] Verify next question builds on context
+- [x] ✅ Answer one question - **VERIFIED 2026-06-04**
+- [x] ✅ Verify next question builds on context - **VERIFIED 2026-06-04**
 - [x] ✅ Screenshot contextualized questions - `.tmp-docs/screenshots/obs4-*.png`
+- [x] ✅ **Phase 3:** Loading indicator implementation - **COMPLETE 2026-06-04** (commit abd42ea)
+- [x] ✅ **Phase 4:** E2E manual validation - **COMPLETE 2026-06-04** (see M4-VERIFICATION-RESULTS.md)
 
 ---
 
