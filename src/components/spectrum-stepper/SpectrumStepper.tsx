@@ -5,6 +5,7 @@ export interface Stage {
   num: number;
   name: string;
   status: "pending" | "now" | "complete" | "skipped";
+  isLoading?: boolean;
 }
 
 export interface SpectrumStepperProps {
@@ -61,7 +62,7 @@ function Segment({
       type="button"
       className="group/seg flex-1 relative focus-visible:outline-none focus-visible:z-10"
       onClick={onClick}
-      aria-label={`Stage ${stage.num}: ${stage.name} — ${stage.status}`}
+      aria-label={`Stage ${stage.num}: ${stage.name} — ${stage.status}${stage.isLoading ? " (loading)" : ""}`}
     >
       {/* Colored fill bar */}
       <span
@@ -78,6 +79,7 @@ function Segment({
           fillOpacityClass,
           "bg-[var(--seg-color)] [box-shadow:var(--seg-glow)]",
           "motion-safe:transition-[opacity,box-shadow] motion-safe:duration-[140ms] motion-safe:[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
+          stage.isLoading && "animate-pulse",
         )}
       />
 

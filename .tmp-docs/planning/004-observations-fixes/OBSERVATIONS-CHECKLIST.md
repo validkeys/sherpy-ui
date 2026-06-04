@@ -169,7 +169,7 @@ Decision:
 > 
 > 'I'd be happy to help you gather comprehensive business requirements! However, I need the project context first. **Could you please provide an overview of your software project?**'"
 
-### **Status:** ✅ CONFIRMED AND ROOT CAUSE IDENTIFIED
+### **Status:** ✅ FIXED AND VERIFIED (2026-06-04)
 
 ### **Evidence:**
 - Manual test completed: `.tmp-docs/planning/004-observations-fixes/MANUAL-TEST-RESULTS.md`
@@ -266,11 +266,11 @@ Step 2 question should be contextualized like:
 1. ✅ M1-t01: Fix `$generateQuestion` (Observation #4) - **COMPLETE** (commit 3f9addb)
 
 **Phase 2: Intelligence** (165 min)
-2. ✅ M2-t01: Add gap analysis assessment server function (Observation #3)
-3. ✅ M2-t02: Add assessment state to machine (Observation #3)
+2. ✅ M2-t01: Add gap analysis assessment server function (Observation #3) - **COMPLETE** (2026-06-04)
+3. ✅ M2-t02: Add assessment state to machine (Observation #3) - **COMPLETE** (2026-06-04)
 
 **Phase 3: Polish** (45 min)
-4. ✅ M3-t01: Style navigation (Observation #1)
+4. ✅ M3-t01: Style navigation (Observation #1) - **COMPLETE** (2026-06-04)
 
 **Phase 4: Validation** (60 min)
 5. ✅ M4-t01: E2E test all scenarios
@@ -333,10 +333,10 @@ Step 2 question should be contextualized like:
 - [x] ~~Create project: "A recipe sharing social network"~~
 - [x] ~~Fill Step 1 form with description~~
 - [x] ~~Submit~~
-- [ ] Check Step 2 question mentions "recipe" or "social network" (NEEDS MANUAL TEST)
+- [x] ✅ Check Step 2 question mentions "recipe" or "social network" - **VERIFIED 2026-06-04**
 - [ ] Answer one question
 - [ ] Verify next question builds on context
-- [ ] Screenshot contextualized questions
+- [x] ✅ Screenshot contextualized questions - `.tmp-docs/screenshots/obs4-*.png`
 
 ---
 
