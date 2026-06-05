@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseOptions } from "./parse-options";
+import { parseOptions, stripOptionsSection } from "./parse-options";
 
 describe("parseOptions", () => {
   describe("Format 1: Markdown with **Options:**", () => {
@@ -340,5 +340,94 @@ Option A - Description A
       // Case-insensitive matching
       expect(options[0].recommended).toBe(true);
     });
+  });
+});
+
+describe("stripOptionsSection", () => {
+  it("should remove **Options:** section and everything after", () => {
+    const text = `What is the primary problem your project aims to solve?
+
+**Options:**
+1. Automate manual workflow (Recommended) - Replace time-consuming manual processes
+2. Improve existing solution - Enhance or replace current tooling
+3. New capability - Build something entirely new
+4. Type your own answer`;
+
+    const result = stripOptionsSection(text);
+
+    expect(result).toBe(
+      "What is the primary problem your project aims to solve?",
+    );
+    expect(result).not.toContain("**Options:**");
+    expect(result).not.toContain("Automate manual workflow");
+  });
+
+  it("should handle case-insensitive **Options:** variations", () => {
+    const variants = [
+      "Question\n\n**Options:**\n1. A - B",
+      "Question\n\n**options:**\n1. A - B",
+      "Question\n\n** Options: **\n1. A - B",
+      "Question\n\n**OPTIONS:**\n1. A - B",
+    ];
+
+    for (const text of variants) {
+      const result = stripOptionsSection(text);
+      expect(result).toBe("Question");
+      expect(result).not.toContain("**");
+      expect(result).not.toContain("Options");
+    }
+  });
+
+  it("should return original text if no **Options:** section found", () => {
+    const text = "Just a simple question with no options?";
+    const result = stripOptionsSection(text);
+    expect(result).toBe(text);
+  });
+
+  it("should handle empty string", () => {
+    const result = stripOptionsSection("");
+    expect(result).toBe("");
+  });
+
+  it("should handle **Options:** at the very beginning", () => {
+    const text = "**Options:**\n1. Option A - Description";
+    const result = stripOptionsSection(text);
+    expect(result).toBe("");
+  });
+
+  it("should preserve question text with multiple paragraphs", () => {
+    const text = `What is your preferred architecture pattern?
+
+This is an important decision that affects scalability and maintainability.
+
+Consider your team size and complexity requirements.
+
+**Options:**
+1. Monolithic - Simple and fast
+2. Microservices - Scalable but complex`;
+
+    const result = stripOptionsSection(text);
+
+    expect(result).toBe(
+      "What is your preferred architecture pattern?\n\n" +
+        "This is an important decision that affects scalability and maintainability.\n\n" +
+        "Consider your team size and complexity requirements.",
+    );
+    expect(result).not.toContain("**Options:**");
+    expect(result).not.toContain("Monolithic");
+  });
+
+  it("should handle question with **bold** text before options", () => {
+    const text = `What is your **primary** goal?
+
+**Options:**
+1. Speed - Fast performance
+2. Cost - Low budget`;
+
+    const result = stripOptionsSection(text);
+
+    expect(result).toBe("What is your **primary** goal?");
+    expect(result).toContain("**primary**"); // Preserve bold text in question
+    expect(result).not.toContain("Speed");
   });
 });

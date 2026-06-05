@@ -59,7 +59,8 @@ describe("useStreamingQuestion", () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(result.current.text).toBe(textResponse);
+      // BUG-022 fix: **Options:** section is now stripped from question text
+      expect(result.current.text).toBe("Here's your question:");
       expect(result.current.error).toBeNull();
       expect(onOptionsReady).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -277,7 +278,8 @@ describe("useStreamingQuestion", () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(result.current.text).toBe(textResponse);
+      // BUG-022 fix: **Options:** section is now stripped from question text
+      expect(result.current.text).toBe("Text mode question");
       expect(result.current.options).toHaveLength(1);
       expect(result.current.options[0].letter).toBe("1");
     });
@@ -301,7 +303,8 @@ describe("useStreamingQuestion", () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(result.current.text).toBe(textResponse);
+      // BUG-022 fix: **Options:** section is now stripped from question text
+      expect(result.current.text).toBe("Text mode");
     });
   });
 
@@ -366,13 +369,14 @@ describe("useStreamingQuestion", () => {
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
-      expect(result.current.text).toBe(response1);
+      // BUG-022 fix: **Options:** section is now stripped from question text
+      expect(result.current.text).toBe("First response");
 
       // Trigger refetch
       result.current.refetch();
 
-      // Wait for text to change to the second response
-      await waitFor(() => expect(result.current.text).toBe(response2), {
+      // Wait for text to change to the second response (also stripped)
+      await waitFor(() => expect(result.current.text).toBe("Second response"), {
         timeout: 2000,
       });
       expect(mockFetch).toHaveBeenCalledTimes(2);

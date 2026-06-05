@@ -94,6 +94,41 @@ mcp__playwright__browser_take_screenshot({
 
 ---
 
+## ✅ BUG-022: FIXED - Duplicate Options Display (2026-06-05)
+
+**Problem**: Multi-option questions showed duplicate options - once as markdown text in the question, and again as interactive buttons.
+
+**Root Cause**: Text mode parsing in `useStreamingQuestion` hook preserved the full question text including the **Options:** markdown section, causing UI to display both the raw markdown and the parsed interactive buttons.
+
+**Solution**: Added `stripOptionsSection()` function to remove **Options:** section from question text before displaying.
+
+**Implementation:**
+- Created `stripOptionsSection()` in `src/features/ai/parse-options.ts`
+- Updated `useStreamingQuestion` hook to strip options before `setText()`
+- Added 8 unit tests for edge cases (case-insensitive, multi-paragraph, etc.)
+- Updated 4 existing tests to expect clean question text
+
+**Fix Verification (2026-06-05):**
+- ✅ 677 tests passing (32 parse-options, 17 hooks)
+- ✅ Zero regressions
+- ✅ Handles case variations (`**Options:**`, `**options:**`, `**OPTIONS:**`)
+- ✅ Preserves markdown formatting in question text
+- ✅ JSON mode already correct (receives separate fields)
+
+**Files Changed:**
+- `src/features/ai/parse-options.ts` (+18 lines) - New function
+- `src/features/ai/hooks.ts` (+4 lines) - Import + usage  
+- `src/features/ai/parse-options.test.ts` (+88 lines) - 8 new tests
+- `src/features/ai/hooks.test.ts` (+4 lines) - Updated expectations
+
+**Documentation:**
+- `.tmp-docs/bug-reports/022-duplicate-options-display/bug-report.md` - Original report
+- `.tmp-docs/bug-reports/022-duplicate-options-display/fix-verification.md` - Complete verification
+
+**Status**: ✅ FIXED and TESTED - Ready for manual verification
+
+---
+
 ## ✅ OBSERVATION #4: FIXED - Context Not Propagating to Step 2+ Questions (2026-06-04)
 
 **Problem**: Step 2 and later interview questions did not receive Step 1 project context, causing LLM to ask for information already provided.

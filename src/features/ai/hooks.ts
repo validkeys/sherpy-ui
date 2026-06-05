@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { InterviewQuestionResponse } from "../planning/response-schemas";
 import type { StepOption } from "../planning/types";
 import { isStructuredOutputEnabled } from "./feature-flags";
-import { parseOptions } from "./parse-options";
+import { parseOptions, stripOptionsSection } from "./parse-options";
 
 interface UseStreamingQuestionParams {
   projectId: string;
@@ -122,16 +122,22 @@ export function useStreamingQuestion(
             }
           } else {
             // Text mode: legacy parsing
+            let cleanedText = accumulatedText;
             if (accumulatedText.includes("[STEP_COMPLETE]")) {
               setIsComplete(true);
-              setText(accumulatedText.replace("[STEP_COMPLETE]", "").trim());
-            } else {
-              setText(accumulatedText);
+              cleanedText = accumulatedText
+                .replace("[STEP_COMPLETE]", "")
+                .trim();
             }
 
             // Parse options from text
-            const parsedOptions = parseOptions(accumulatedText);
+            const parsedOptions = parseOptions(cleanedText);
             setOptions(parsedOptions);
+
+            // Strip **Options:** section from question text to prevent duplicate display
+            const questionOnly = stripOptionsSection(cleanedText);
+            setText(questionOnly);
+
             if (currentParams.onOptionsReady) {
               currentParams.onOptionsReady(parsedOptions);
             }
