@@ -117,13 +117,13 @@ describe("BUG-012: FormStep StrictMode Compatibility", () => {
           projectDescription: "Healthcare patient portal for BUG-012 test",
         });
 
-        // Verify state transitioned from 'collecting' to 'submitting'
+        // Verify state transitioned from 'collecting' to 'assessingNeed' (Observation #4)
         // Note: We don't wait for 'step2_businessReqs' because that requires
         // API call completion which isn't mocked in this test. The key is that
         // the event was processed and step1Responses was populated.
         const stateValue = snapshot.value as any;
         expect(stateValue.step1_gapAnalysis).toBeDefined();
-        expect(stateValue.step1_gapAnalysis).toBe("submitting");
+        expect(stateValue.step1_gapAnalysis).toBe("assessingNeed");
       },
       {
         timeout: 2000,
