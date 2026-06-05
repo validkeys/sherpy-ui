@@ -1,0 +1,39 @@
+{
+  "allKeys": [
+    "planning-machine-seed-mpsg4yjh",
+    "sherpy-theme-v1"
+  ],
+  "planningKeys": [
+    "planning-machine-seed-mpsg4yjh"
+  ],
+  "planningData": {
+    "planning-machine-seed-mpsg4yjh": {
+      "status": "active",
+      "context": {
+        "projectId": "seed-mpsg4yjh",
+        "entryPath": "new-project",
+        "startedAt": "2026-05-26T10:00:00.000Z",
+        "updatedAt": "2026-05-26T10:15:00.000Z",
+        "step1Responses": {},
+        "step2Answers": [],
+        "step2CurrentQuestion": null,
+        "step2CurrentOptions": null,
+        "step3Answers": [],
+        "step3CurrentQuestion": null,
+        "step3CurrentOptions": null,
+        "step5Responses": {},
+        "step7Edits": null,
+        "artifacts": {},
+        "completedSteps": [],
+        "currentStepNumber": 1,
+        "error": null
+      },
+      "value": {
+        "step1_gapAnalysis": "collecting"
+      },
+      "children": {},
+      "historyValue": {},
+      "tags": []
+    }
+  }
+}

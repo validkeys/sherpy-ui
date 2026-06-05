@@ -1,0 +1,14 @@
+# BUG-020 Test Answers
+
+These are the 10 unique answers I'll provide to verify they appear in the artifact:
+
+Q1: Automate invoice generation and payment tracking for B2B SaaS companies
+Q2: Finance teams, accountants, and billing administrators
+Q3: Reduce manual invoice creation from 2 hours to 5 minutes per customer
+Q4: Integration with Stripe and QuickBooks is mandatory
+Q5: GDPR and PCI-DSS compliance for payment data
+Q6: Handle 10,000 invoices per month with sub-second API response times
+Q7: Reduce billing errors by 95% and payment collection time by 50%
+Q8: Existing manual Excel-based process taking 20 hours per week
+Q9: Must support recurring subscriptions and usage-based billing
+Q10: Initial MVP launch in 3 months, full feature set in 6 months

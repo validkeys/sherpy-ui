@@ -1,0 +1,303 @@
+- generic [ref=e566]:
+  - complementary [ref=e567]:
+    - generic [ref=e568]:
+      - img [ref=e569]
+      - generic [ref=e572]: sherpy
+      - generic [ref=e573]: v0.4.2
+    - generic [ref=e574]:
+      - generic [ref=e575]:
+        - generic [ref=e576]: Workspace
+        - button "m2-existing-docs-test" [ref=e577] [cursor=pointer]:
+          - img [ref=e578]
+          - generic [ref=e580]: m2-existing-docs-test
+        - button "m2-greenfield-test" [ref=e581] [cursor=pointer]:
+          - img [ref=e582]
+          - generic [ref=e584]: m2-greenfield-test
+        - button "obs4-recipe-social-network-test" [ref=e585] [cursor=pointer]:
+          - img [ref=e586]
+          - generic [ref=e588]: obs4-recipe-social-network-test
+        - button "diagnostic-test-todo-app" [ref=e589] [cursor=pointer]:
+          - img [ref=e590]
+          - generic [ref=e592]: diagnostic-test-todo-app
+        - button "kd-1" [ref=e593] [cursor=pointer]:
+          - img [ref=e594]
+          - generic [ref=e596]: kd-1
+        - button "e2e-state-refactor-test" [ref=e597] [cursor=pointer]:
+          - img [ref=e598]
+          - generic [ref=e600]: e2e-state-refactor-test
+        - button "e2e-bug-022-verification" [ref=e601] [cursor=pointer]:
+          - img [ref=e602]
+          - generic [ref=e604]: e2e-bug-022-verification
+        - button "Seed Step 2" [ref=e605] [cursor=pointer]:
+          - img [ref=e606]
+          - generic [ref=e608]: Seed Step 2
+        - button "Seed Step 2" [ref=e609] [cursor=pointer]:
+          - img [ref=e610]
+          - generic [ref=e612]: Seed Step 2
+        - button "Seed Step 2" [ref=e613] [cursor=pointer]:
+          - img [ref=e614]
+          - generic [ref=e616]: Seed Step 2
+        - button "Seed Step 2" [ref=e617] [cursor=pointer]:
+          - img [ref=e618]
+          - generic [ref=e620]: Seed Step 2
+        - button "Seed Step 2" [ref=e621] [cursor=pointer]:
+          - img [ref=e622]
+          - generic [ref=e624]: Seed Step 2
+        - button "Seed Step 6" [ref=e625] [cursor=pointer]:
+          - img [ref=e626]
+          - generic [ref=e628]: Seed Step 6
+        - button "Seed Step 1" [ref=e629] [cursor=pointer]:
+          - img [ref=e630]
+          - generic [ref=e632]: Seed Step 1
+        - button "Seed Step 1" [ref=e633] [cursor=pointer]:
+          - img [ref=e634]
+          - generic [ref=e636]: Seed Step 1
+        - button "bug-fix-test-new-project" [ref=e637] [cursor=pointer]:
+          - img [ref=e638]
+          - generic [ref=e640]: bug-fix-test-new-project
+        - button "df-123" [ref=e641] [cursor=pointer]:
+          - img [ref=e642]
+          - generic [ref=e644]: df-123
+        - button "Counter Fix Test" [ref=e645] [cursor=pointer]:
+          - img [ref=e646]
+          - generic [ref=e648]: Counter Fix Test
+        - button "bug-020-test" [ref=e649] [cursor=pointer]:
+          - img [ref=e650]
+          - generic [ref=e652]: bug-020-test
+        - button "df-4" [ref=e653] [cursor=pointer]:
+          - img [ref=e654]
+          - generic [ref=e656]: df-4
+        - button "test-new-project-bug" [ref=e657] [cursor=pointer]:
+          - img [ref=e658]
+          - generic [ref=e660]: test-new-project-bug
+        - button "df-3" [ref=e661] [cursor=pointer]:
+          - img [ref=e662]
+          - generic [ref=e664]: df-3
+        - button "test-dashboard-navigation" [ref=e665] [cursor=pointer]:
+          - img [ref=e666]
+          - generic [ref=e668]: test-dashboard-navigation
+        - button "fix-test-2" [ref=e669] [cursor=pointer]:
+          - img [ref=e670]
+          - generic [ref=e672]: fix-test-2
+        - button "df-2" [ref=e673] [cursor=pointer]:
+          - img [ref=e674]
+          - generic [ref=e676]: df-2
+        - button "df-1" [ref=e677] [cursor=pointer]:
+          - img [ref=e678]
+          - generic [ref=e680]: df-1
+        - button "e2e-run-017-1779308831" [ref=e681] [cursor=pointer]:
+          - img [ref=e682]
+          - generic [ref=e684]: e2e-run-017-1779308831
+        - button "e2e-test-run-016-20260520" [ref=e685] [cursor=pointer]:
+          - img [ref=e686]
+          - generic [ref=e688]: e2e-test-run-016-20260520
+        - button "e2e-test-run-015" [ref=e689] [cursor=pointer]:
+          - img [ref=e690]
+          - generic [ref=e692]: e2e-test-run-015
+        - button "sherpy-web" [ref=e693] [cursor=pointer]:
+          - img [ref=e694]
+          - generic [ref=e696]: sherpy-web
+        - button "billing-platform" [ref=e697] [cursor=pointer]:
+          - img [ref=e698]
+          - generic [ref=e700]: billing-platform
+        - button "New project" [ref=e701] [cursor=pointer]:
+          - img [ref=e702]
+          - generic [ref=e703]: New project
+      - generic [ref=e704]:
+        - generic [ref=e705]: Recent runs
+        - button "SHR-0062" [ref=e706] [cursor=pointer]:
+          - img [ref=e707]
+          - generic [ref=e710]: SHR-0062
+        - button "SHR-0061" [ref=e711] [cursor=pointer]:
+          - img [ref=e712]
+          - generic [ref=e715]: SHR-0061
+        - button "SHR-0060" [ref=e716] [cursor=pointer]:
+          - img [ref=e717]
+          - generic [ref=e720]: SHR-0060
+    - generic [ref=e721]:
+      - generic [ref=e722]: DU
+      - generic [ref=e723]:
+        - generic [ref=e724]: Demo User
+        - generic [ref=e725]: "@demo"
+  - main [ref=e726]:
+    - generic [ref=e727]:
+      - navigation "breadcrumb" [ref=e728]:
+        - list [ref=e729]:
+          - listitem [ref=e730]:
+            - generic [ref=e731] [cursor=pointer]: m2-existing-docs-test
+          - listitem [ref=e732]:
+            - generic [ref=e733]: /
+            - generic [ref=e734]: run-01
+      - generic [ref=e735]:
+        - generic [ref=e736]: stage 01 of 10
+        - generic [ref=e737]: ·
+        - generic [ref=e738]: Gap Analysis
+      - generic [ref=e739]:
+        - generic [ref=e740]:
+          - button "Build" [ref=e741] [cursor=pointer]:
+            - img [ref=e742]
+            - text: Build
+          - button "Review" [ref=e744] [cursor=pointer]:
+            - img [ref=e745]
+            - text: Review
+        - button "Toggle theme" [ref=e748] [cursor=pointer]:
+          - img [ref=e749]
+    - progressbar "Workflow stages" [ref=e752]:
+      - 'button "Stage 1: Gap Analysis — now" [ref=e753]':
+        - generic:
+          - generic: stage 01
+          - generic: Gap Analysis
+      - 'button "Stage 2: Business Requirements — pending" [ref=e755]':
+        - generic:
+          - generic: stage 02
+          - generic: Business Requirements
+      - 'button "Stage 3: Technical Requirements — pending" [ref=e757]':
+        - generic:
+          - generic: stage 03
+          - generic: Technical Requirements
+      - 'button "Stage 4: QA Test Plan — pending" [ref=e759]':
+        - generic:
+          - generic: stage 04
+          - generic: QA Test Plan
+      - 'button "Stage 5: Implementation Planner — pending" [ref=e761]':
+        - generic:
+          - generic: stage 05
+          - generic: Implementation Planner
+      - 'button "Stage 6: Developer Summary — pending" [ref=e763]':
+        - generic:
+          - generic: stage 06
+          - generic: Developer Summary
+      - 'button "Stage 7: Architecture Decisions — pending" [ref=e765]':
+        - generic:
+          - generic: stage 07
+          - generic: Architecture Decisions
+      - 'button "Stage 8: Delivery Timeline — pending" [ref=e767]':
+        - generic:
+          - generic: stage 08
+          - generic: Delivery Timeline
+      - 'button "Stage 9: Executive Summary — pending" [ref=e769]':
+        - generic:
+          - generic: stage 09
+          - generic: Executive Summary
+      - 'button "Stage 10: Complete — pending" [ref=e771]':
+        - generic:
+          - generic: stage 10
+          - generic: Complete
+    - generic [ref=e773]:
+      - generic [ref=e774]: Step 2 of 10
+      - generic [ref=e775]:
+        - button "Back" [ref=e776]
+        - button "Next" [disabled] [ref=e777]
+    - generic [ref=e778]:
+      - generic [ref=e779]:
+        - generic [ref=e781]: artifacts
+        - generic [ref=e783]:
+          - button "Artifact gap-analysis-worksheet.md is not available yet" [disabled] [ref=e784]:
+            - generic [ref=e785]:
+              - img [ref=e786]
+              - generic [ref=e789]: gap-analysis-worksheet.md
+            - generic [ref=e791]: Stage 1 · Gap Analysis Worksheet
+          - button "Artifact business-requirements.yaml is not available yet" [disabled] [ref=e792]:
+            - generic [ref=e793]:
+              - img [ref=e794]
+              - generic [ref=e797]: business-requirements.yaml
+            - generic [ref=e799]: Stage 2 · Business Requirements Interview
+          - button "Artifact technical-requirements.yaml is not available yet" [disabled] [ref=e800]:
+            - generic [ref=e801]:
+              - img [ref=e802]
+              - generic [ref=e805]: technical-requirements.yaml
+            - generic [ref=e807]: Stage 3 · Technical Requirements Interview
+          - button "Artifact style-anchors.md is not available yet" [disabled] [ref=e808]:
+            - generic [ref=e809]:
+              - img [ref=e810]
+              - generic [ref=e813]: style-anchors.md
+            - generic [ref=e815]: Stage 4 · Style Anchors Collection
+          - button "Artifact implementation-plan.yaml is not available yet" [disabled] [ref=e816]:
+            - generic [ref=e817]:
+              - img [ref=e818]
+              - generic [ref=e821]: implementation-plan.yaml
+            - generic [ref=e823]: Stage 5 · Implementation Planner
+          - button "Artifact plan-review.md is not available yet" [disabled] [ref=e824]:
+            - generic [ref=e825]:
+              - img [ref=e826]
+              - generic [ref=e829]: plan-review.md
+            - generic [ref=e831]: Stage 6 · Implementation Plan Review
+          - button "Artifact architecture-decisions.md is not available yet" [disabled] [ref=e832]:
+            - generic [ref=e833]:
+              - img [ref=e834]
+              - generic [ref=e837]: architecture-decisions.md
+            - generic [ref=e839]: Stage 7 · Architecture Decision Records
+          - button "Artifact delivery-timeline.yaml is not available yet" [disabled] [ref=e840]:
+            - generic [ref=e841]:
+              - img [ref=e842]
+              - generic [ref=e845]: delivery-timeline.yaml
+            - generic [ref=e847]: Stage 8 · Delivery Timeline
+          - button "Artifact qa-test-plan.yaml is not available yet" [disabled] [ref=e848]:
+            - generic [ref=e849]:
+              - img [ref=e850]
+              - generic [ref=e853]: qa-test-plan.yaml
+            - generic [ref=e855]: Stage 9 · QA Test Plan
+          - button "Artifact summaries.md is not available yet" [disabled] [ref=e856]:
+            - generic [ref=e857]:
+              - img [ref=e858]
+              - generic [ref=e861]: summaries.md
+            - generic [ref=e863]: Stage 10 · Generate Summaries
+      - generic [ref=e865]:
+        - generic [ref=e867]:
+          - generic [ref=e870]:
+            - generic [ref=e872]: Stage 01
+            - generic [ref=e873]: Gap Analysis Worksheet
+          - generic [ref=e942]:
+            - generic [ref=e944]: U
+            - generic [ref=e945]:
+              - generic [ref=e946]:
+                - generic [ref=e947]: You
+                - generic [ref=e948]: ·
+                - generic [ref=e949]: 2026-06-04T12:04:13.669Z
+              - paragraph [ref=e951]: Do you have existing requirements?
+              - paragraph [ref=e954]: “Yes”
+          - generic [ref=e955]:
+            - generic [ref=e957]: U
+            - generic [ref=e958]:
+              - generic [ref=e959]:
+                - generic [ref=e960]: You
+                - generic [ref=e961]: ·
+                - generic [ref=e962]: 2026-06-04T12:04:13.669Z
+              - paragraph [ref=e964]: What are you building?
+              - paragraph [ref=e967]: “I have PRD documents for a payment system migration project”
+          - generic [ref=e970]:
+            - generic [ref=e972]: Stage 02
+            - generic [ref=e973]: Business Requirements Interview
+          - generic [ref=e989]:
+            - img [ref=e991]
+            - generic [ref=e994]:
+              - generic [ref=e995]:
+                - generic [ref=e996]: Sherpy
+                - generic [ref=e997]: ·
+                - generic [ref=e998]: 2026-06-04T12:05:04.633Z
+              - paragraph [ref=e1000]: "# Category 1: Problem Definition & Scope What is the primary problem your payment system migration project aims to solve? **Options:** 1. Automate manual workflow (Recommended) - Replace time-consuming manual processes with automated workflows 2. Improve existing solution - Enhance or replace current tooling that's inadequate 3. New capability - Build something entirely new that doesn't exist yet 4. Type your own answer"
+              - generic [ref=e1001]:
+                - generic [ref=e1002]: PICK ONE
+                - radiogroup "Answer options" [ref=e1003]:
+                  - generic [ref=e1004]:
+                    - radio "Automate manual workflow" [ref=e1005]
+                    - generic [ref=e1006]: A
+                    - generic [ref=e1007]: Automate manual workflow
+                  - generic [ref=e1008]:
+                    - radio "Improve existing solution" [ref=e1009]
+                    - generic [ref=e1010]: B
+                    - generic [ref=e1011]: Improve existing solution
+                  - generic [ref=e1012]:
+                    - radio "New capability" [ref=e1013]
+                    - generic [ref=e1014]: C
+                    - generic [ref=e1015]: New capability
+        - generic [ref=e897]:
+          - textbox "Message" [ref=e898]:
+            - /placeholder: Type your message...
+          - generic [ref=e899]:
+            - generic [ref=e900]:
+              - generic [ref=e901]: ↵
+              - generic [ref=e902]: send
+            - button "Send message" [disabled]:
+              - generic: Send
+    - button "🐛 Show Debug Panel" [ref=e941] [cursor=pointer]

@@ -1,0 +1,275 @@
+# BUG-022: State Loss During Step 7 Review - Implementation Plan
+# Generated: 2026-06-01
+# Root Cause: Dual persistence pattern with inconsistent coverage
+# Solution: Single persistence layer (StatePersistence class)
+
+version: "1.0"
+project:
+  name: "BUG-022: State Loss Fix"
+  type: bug-fix
+  description: |
+    Eliminate dual persistence pattern by consolidating ALL state persistence
+    into a single StatePersistence layer. Remove persistence from server functions
+    to make them pure domain logic.
+  ordering_strategy: multi-pr
+  ordering_rationale: |
+    Using Multi-PR / Trunk-Based strategy because:
+    - Phase 1 can be independently merged (adds new layer, keeps old for safety)
+    - Phase 2 can be independently merged (removes redundancy after validation)
+    - Each phase is independently testable and reversible
+    - Allows gradual rollout with validation between phases
+    - Supports rollback at any phase without breaking changes
+
+milestones:
+  - id: m0
+    name: "Phase 1: Add Unified Persistence Layer"
+    description: |
+      Create StatePersistence class that handles ALL state changes (localStorage + database).
+      Wire into Context Provider. Keep server function persistence for redundancy (safe).
+      Result: TWO persistence paths (redundant but validates new layer works).
+    dependencies: []
+    estimated_duration: "2 days"
+    tasks_file: "tasks/milestone-m0.tasks.yaml"
+    success_criteria:
+      - StatePersistence class handles 100% of state transitions
+      - Database writes happen from BOTH paths (old + new) for validation
+      - All existing tests pass (no regressions)
+      - New integration tests verify database persistence on all transitions
+      - E2E test with page refresh at Step 7 passes
+      - Deployed to staging for 48 hour validation
+    acceptance_criteria:
+      functional:
+        - id: AC-M0-F1
+          requirement: "BUG-022 root cause"
+          criterion: "StatePersistence persists to database on every non-transient state change"
+          verification: "Integration test confirms DB write on internal transitions"
+        - id: AC-M0-F2
+          requirement: "BUG-022 symptom"
+          criterion: "Page refresh at Step 7 restores correct state (no loss)"
+          verification: "E2E test: progress to Step 7, refresh, verify state preserved"
+      non_functional:
+        - id: AC-M0-NF1
+          requirement: "Performance"
+          criterion: "Database writes debounced to 500ms (batch rapid transitions)"
+          verification: "Unit test confirms debouncing behavior"
+        - id: AC-M0-NF2
+          requirement: "Reliability"
+          criterion: "Database failures don't block workflow (fire-and-forget)"
+          verification: "Integration test with DB mock error confirms workflow continues"
+      testing:
+        - Unit tests for StatePersistence class (debouncing, error handling)
+        - Integration tests for full persistence flow (actor → localStorage → DB)
+        - E2E test for page refresh at Step 7 (reproduces original bug)
+      documentation:
+        - JSDoc comments for StatePersistence class
+        - Architecture diagram updated (show dual paths during Phase 1)
+        - Observability logs documented
+    exit_checklist:
+      - criterion: "All tests passing (existing + new)"
+        blocking: true
+      - criterion: "No TypeScript errors"
+        blocking: true
+      - criterion: "Database writes confirmed from both paths (redundant validation)"
+        blocking: true
+      - criterion: "E2E test with page refresh passes"
+        blocking: true
+      - criterion: "Code review completed with sign-off"
+        blocking: true
+      - criterion: "Deployed to staging"
+        blocking: false
+      - criterion: "Monitored for 48 hours with zero data loss incidents"
+        blocking: false
+
+  - id: m1
+    name: "Phase 2: Remove Redundant Persistence"
+    description: |
+      Remove database persistence from server functions (make them pure domain logic).
+      Result: ONE persistence path via StatePersistence (enterprise architecture).
+      Simplifies codebase by ~155 lines.
+    dependencies: [m0]
+    estimated_duration: "1 day"
+    tasks_file: "tasks/milestone-m1.tasks.yaml"
+    success_criteria:
+      - Server functions are pure domain transformations (no persistence)
+      - StatePersistence is ONLY persistence mechanism (100% coverage)
+      - All existing tests pass (updated mocks)
+      - Net code reduction of ~155 lines achieved
+      - Database write volume decreased by 60-70% (debouncing eliminates duplicates)
+      - Deployed to staging for 24 hour validation
+    acceptance_criteria:
+      functional:
+        - id: AC-M1-F1
+          requirement: "Single way of doing things"
+          criterion: "Zero database write calls exist outside StatePersistence"
+          verification: "Code search confirms no savePlanningState() in server functions"
+        - id: AC-M1-F2
+          requirement: "Pure domain logic"
+          criterion: "Server functions only transform state (no side effects)"
+          verification: "Code review confirms server functions are pure"
+      non_functional:
+        - id: AC-M1-NF1
+          requirement: "Performance"
+          criterion: "Database write volume reduced by 60-70%"
+          verification: "Staging metrics show fewer DB writes per workflow"
+        - id: AC-M1-NF2
+          requirement: "Maintainability"
+          criterion: "Code complexity reduced (fewer lines, single persistence path)"
+          verification: "Git diff shows net -155 lines"
+      testing:
+        - Update all server function tests (remove persistence mocks)
+        - Integration tests still pass with single persistence path
+        - E2E test with page refresh still passes
+      documentation:
+        - Architecture diagram updated (show single path)
+        - Server function JSDoc updated (remove persistence mentions)
+        - Migration guide for other similar patterns
+    exit_checklist:
+      - criterion: "All tests passing with updated mocks"
+        blocking: true
+      - criterion: "No TypeScript errors"
+        blocking: true
+      - criterion: "Code search confirms zero persistence in server functions"
+        blocking: true
+      - criterion: "Database write volume reduction confirmed in staging"
+        blocking: false
+      - criterion: "Code review completed with sign-off"
+        blocking: true
+      - criterion: "Deployed to staging"
+        blocking: false
+      - criterion: "Monitored for 24 hours with zero data loss incidents"
+        blocking: false
+
+  - id: m2
+    name: "Phase 3: Production Rollout & Monitoring"
+    description: |
+      Gradual production rollout (10% → 50% → 100%) with comprehensive monitoring.
+      Validate zero data loss, improved performance, simplified architecture.
+    dependencies: [m1]
+    estimated_duration: "3 days"
+    tasks_file: "tasks/milestone-m2.tasks.yaml"
+    success_criteria:
+      - Deployed to 100% of production traffic
+      - Zero data loss incidents (7 day window)
+      - Database write volume reduced by 60-70% (production metrics)
+      - Persistence error rate < 0.1% (production metrics)
+      - E2E test runs successfully in production monitoring
+      - Rollback plan tested and documented
+    acceptance_criteria:
+      functional:
+        - id: AC-M2-F1
+          requirement: "Zero data loss"
+          criterion: "No user-reported workflow state loss incidents"
+          verification: "Production monitoring + support ticket review"
+        - id: AC-M2-F2
+          requirement: "Rollback capability"
+          criterion: "Can rollback to Phase 1 (dual persistence) within 5 minutes"
+          verification: "Rollback procedure tested in staging"
+      non_functional:
+        - id: AC-M2-NF1
+          requirement: "Performance at scale"
+          criterion: "Database write volume reduced by 60-70% in production"
+          verification: "Production metrics dashboard"
+        - id: AC-M2-NF2
+          requirement: "Reliability at scale"
+          criterion: "Persistence error rate < 0.1%"
+          verification: "Production error tracking"
+        - id: AC-M2-NF3
+          requirement: "Observability"
+          criterion: "Comprehensive metrics and alerts for persistence layer"
+          verification: "Monitoring dashboard shows all key metrics"
+      testing:
+        - Production smoke tests after each rollout step
+        - Synthetic E2E tests running continuously
+        - Load testing to validate debouncing under high traffic
+      documentation:
+        - Runbook for rollback procedure
+        - Monitoring dashboard documentation
+        - Post-mortem document with lessons learned
+    exit_checklist:
+      - criterion: "100% production traffic on new persistence layer"
+        blocking: true
+      - criterion: "Zero data loss incidents (7 day window)"
+        blocking: true
+      - criterion: "Database write volume reduction confirmed"
+        blocking: false
+      - criterion: "Error rate < 0.1%"
+        blocking: true
+      - criterion: "Rollback plan tested"
+        blocking: true
+      - criterion: "Monitoring alerts configured"
+        blocking: true
+      - criterion: "Post-mortem document completed"
+        blocking: false
+
+estimated_total_duration: "6 days"
+estimated_total_effort: "30-40 hours"
+
+risk_mitigation:
+  - risk: "New persistence layer has bugs"
+    mitigation: "Phase 1 keeps dual persistence for validation"
+    contingency: "Rollback to server function persistence only"
+
+  - risk: "Performance degradation from debouncing"
+    mitigation: "500ms debounce tuned based on existing transition patterns"
+    contingency: "Adjust debounce timing or add priority queue"
+
+  - risk: "Database write failures in production"
+    mitigation: "Fire-and-forget pattern prevents blocking workflow"
+    contingency: "Comprehensive error tracking and alerts"
+
+  - risk: "Regression in server functions after removing persistence"
+    mitigation: "Comprehensive test updates before Phase 2"
+    contingency: "Rollback to Phase 1 (dual persistence)"
+
+rollback_strategy:
+  phase_1_rollback:
+    trigger: "Critical bugs in StatePersistence or performance issues"
+    procedure: |
+      1. Feature flag off StatePersistence (revert to server function persistence only)
+      2. Deploy rollback to production (< 5 minutes)
+      3. Monitor for 1 hour
+      4. Root cause analysis
+    recovery_time: "< 5 minutes"
+
+  phase_2_rollback:
+    trigger: "Data loss incidents or server function errors"
+    procedure: |
+      1. Revert Phase 2 commits (re-add persistence to server functions)
+      2. Deploy rollback to production (< 5 minutes)
+      3. Back to dual persistence (Phase 1 state)
+      4. Investigate server function issues
+    recovery_time: "< 5 minutes"
+
+  phase_3_rollback:
+    trigger: "Production issues at scale"
+    procedure: |
+      1. Rollback to previous phase (10% → 0%)
+      2. Analyze production metrics
+      3. Fix issues in staging
+      4. Re-attempt rollout
+    recovery_time: "< 10 minutes"
+
+success_metrics:
+  data_loss_incidents:
+    target: 0
+    measurement: "Production support tickets + monitoring alerts"
+
+  database_write_reduction:
+    target: "60-70%"
+    measurement: "Production database metrics (before vs after)"
+
+  persistence_error_rate:
+    target: "< 0.1%"
+    measurement: "Production error tracking"
+
+  code_complexity:
+    target: "-158 lines net"
+    measurement: "Git diff summary"
+
+  test_coverage:
+    target: "Maintain or improve"
+    measurement: "Coverage reports"
+
+  developer_confidence:
+    target: "High (based on code review)"
+    measurement: "Code review feedback + architecture alignment"
