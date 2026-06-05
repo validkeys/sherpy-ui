@@ -349,10 +349,39 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
-## 5. Rules
+## 5. Rules - Documentation Organization
 
-- All temporary markdown documents (summaries etc..) go in .tmp-docs/
-- All screenshots go to .tmp-docs/screenshots
-- All implementation plans go in .tmp-docs/plans
-- All code-reviews go in .tmp-docs/code-reviews/00{n}-slug/review.yaml
-- When referencing e2e testing, we are referring to docs/e2e-testing
+All temporary documentation is organized in `.tmp-docs/` with the following structure:
+
+- **Bug Reports**: `.tmp-docs/bug-reports/{NNN}-{slug}/`
+  - Each bug gets its own numbered folder (e.g., `018-ssr-hydration/`)
+  - All related docs (diagnosis, fix verification, summaries) go in the same folder
+  - Format: `{NNN}-{short-description}.md`
+
+- **Planning Documents**: `.tmp-docs/planning/{NNN}-{slug}/`
+  - Implementation plans, roadmaps, milestones
+  - Each plan gets a numbered folder (e.g., `001-state-refactor/`)
+  - Format: plan documents, checklists, timelines
+
+- **Screenshots**: `.tmp-docs/screenshots/`
+  - All screenshots regardless of context
+  - Use descriptive filenames: `bug-018-before.png`, `test-run-012-results.png`
+
+- **Scripts**: `.tmp-docs/scripts/`
+  - Shell scripts, automation tools
+  - Mark executable with `chmod +x`
+
+- **Code Reviews**: `.tmp-docs/code-reviews/{NNN}-{slug}/`
+  - Each review gets a numbered folder
+  - Primary file: `review.yaml` or `review.md`
+
+**Quick Reference:**
+- Bug report: `.tmp-docs/bug-reports/023-description/`
+- Implementation plan: `.tmp-docs/planning/005-feature-name/`
+- Screenshot: `.tmp-docs/screenshots/descriptive-name.png`
+- Script: `.tmp-docs/scripts/script-name.sh`
+- Code review: `.tmp-docs/code-reviews/013-review-name/review.yaml`
+
+**Notes:**
+- When referencing e2e testing, we are referring to `docs/e2e-testing/`
+- The `.tmp-docs/` folder is tracked in git (not in .gitignore)

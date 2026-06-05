@@ -39,6 +39,7 @@ export default defineConfig({
     tailwindcss(),
     tanstackStart({
       srcDirectory: "app",
+      routeFileIgnorePattern: "\\.test\\.(ts|tsx)$",
     }),
     {
       name: "api-streaming-routes",
