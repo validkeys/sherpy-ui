@@ -25,6 +25,19 @@ vi.mock("../../ai/server", () => ({
 2. **Option B** - Description B
 3. **Option C** - Description C`,
   })),
+  $assessGapAnalysisNeed: vi.fn(async ({ data }) => {
+    // Default: greenfield projects skip gap analysis
+    const hasExisting = data.hasExistingRequirements
+      ?.toLowerCase()
+      .includes("yes");
+    return {
+      needsGapAnalysis: hasExisting,
+      reasoning: hasExisting
+        ? "User has existing requirements"
+        : "Greenfield project, skip gap analysis",
+      confidence: "high" as const,
+    };
+  }),
 }));
 
 beforeEach(() => {
@@ -190,7 +203,7 @@ describe("Step 1: Gap Analysis Form", () => {
     });
   });
 
-  it("should transition to submitting state after SUBMIT_FORM", () => {
+  it("should transition to assessingNeed state after SUBMIT_FORM", () => {
     const actor = createActor(planningMachine, {
       input: { projectId: "test", entryPath: "new-project" },
     });
@@ -200,11 +213,17 @@ describe("Step 1: Gap Analysis Form", () => {
     actor.send({
       type: "SUBMIT_FORM",
       stepNumber: 1,
-      responses: { overview: "Test project" },
+      responses: {
+        projectDescription: "Test project",
+        existingRequirements: "No",
+      },
     });
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.matches({ step1_gapAnalysis: "submitting" })).toBe(true);
+    expect(
+      snapshot.matches({ step1_gapAnalysis: "assessingNeed" }) ||
+        snapshot.matches({ step1_gapAnalysis: "decideGapAnalysis" }),
+    ).toBe(true);
   });
 
   it("should invoke generateArtifact actor in submitting state", async () => {
@@ -265,14 +284,102 @@ describe("Step 1: Gap Analysis Form", () => {
     actor.send({
       type: "SUBMIT_FORM",
       stepNumber: 1,
-      responses: { overview: "Test project" },
+      responses: {
+        projectDescription: "Test project",
+        existingRequirements: "Yes",
+      },
     });
 
-    // Wait for artifact generation
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Wait for assessment + artifact generation
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     const snapshot = actor.getSnapshot();
     expect(snapshot.matches("step2_businessReqs")).toBe(true);
+  });
+
+  it("should skip gap analysis for greenfield projects (Observation #3)", async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: "test", entryPath: "new-project" },
+    });
+    actor.start();
+
+    actor.send({ type: "START_PLANNING" });
+    actor.send({
+      type: "SUBMIT_FORM",
+      stepNumber: 1,
+      responses: {
+        projectDescription: "Build a todo list app from scratch",
+        existingRequirements: "No",
+      },
+    });
+
+    // Wait for assessment to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const snapshot = actor.getSnapshot();
+
+    // Should have assessed as not needing gap analysis
+    expect(snapshot.context.step1GapAnalysisNeeded).toBe(false);
+    expect(snapshot.context.step1GapAnalysisReasoning).toBeTruthy();
+
+    // Should skip directly to Step 2 without generating artifact
+    expect(snapshot.matches("step2_businessReqs")).toBe(true);
+    expect(snapshot.context.artifacts[1]).toBeUndefined();
+  });
+
+  it("should run gap analysis for projects with existing requirements (Observation #3)", async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: "test", entryPath: "new-project" },
+    });
+    actor.start();
+
+    actor.send({ type: "START_PLANNING" });
+    actor.send({
+      type: "SUBMIT_FORM",
+      stepNumber: 1,
+      responses: {
+        projectDescription:
+          "I have PRD documents for a payment system migration",
+        existingRequirements: "Yes",
+      },
+    });
+
+    // Wait for assessment + artifact generation
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const snapshot = actor.getSnapshot();
+
+    // Should have assessed as needing gap analysis
+    expect(snapshot.context.step1GapAnalysisNeeded).toBe(true);
+    expect(snapshot.context.step1GapAnalysisReasoning).toContain("existing");
+
+    // Should generate gap analysis artifact before moving to Step 2
+    expect(snapshot.context.artifacts[1]).toBeDefined();
+    expect(snapshot.matches("step2_businessReqs")).toBe(true);
+  });
+
+  it("should store assessment reasoning in context", async () => {
+    const actor = createActor(planningMachine, {
+      input: { projectId: "test", entryPath: "new-project" },
+    });
+    actor.start();
+
+    actor.send({ type: "START_PLANNING" });
+    actor.send({
+      type: "SUBMIT_FORM",
+      stepNumber: 1,
+      responses: {
+        projectDescription: "Build a new app",
+        existingRequirements: "No",
+      },
+    });
+
+    // Wait for assessment
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const snapshot = actor.getSnapshot();
+    expect(snapshot.context.step1GapAnalysisNeeded).toBe(false);
+    expect(snapshot.context.step1GapAnalysisReasoning).toContain("Greenfield");
   });
 });
 

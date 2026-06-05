@@ -92,6 +92,47 @@ const fetchQuestion = fromPromise<
   }
 });
 
+const assessGapAnalysisNeed = fromPromise<
+  {
+    needsGapAnalysis: boolean;
+    reasoning: string;
+    confidence: "high" | "medium" | "low";
+  },
+  {
+    projectId: string;
+    projectDescription: string;
+    hasExistingRequirements: string;
+  }
+>(async ({ input }) => {
+  console.log("[assessGapAnalysisNeed] Starting assessment:", {
+    projectId: input.projectId,
+    projectDescription: input.projectDescription.substring(0, 50),
+    hasExistingRequirements: input.hasExistingRequirements,
+  });
+
+  try {
+    // Call server function for gap analysis assessment
+    console.log("[assessGapAnalysisNeed] Importing server function...");
+    const { $assessGapAnalysisNeed } = await import("../../ai/server");
+
+    console.log("[assessGapAnalysisNeed] Calling $assessGapAnalysisNeed...");
+    const result = await $assessGapAnalysisNeed({
+      data: {
+        projectId: input.projectId,
+        projectDescription: input.projectDescription,
+        hasExistingRequirements: input.hasExistingRequirements,
+      },
+    });
+
+    console.log("[assessGapAnalysisNeed] ✅ Success:", result);
+
+    return result;
+  } catch (error) {
+    console.error("[assessGapAnalysisNeed] ❌ Error:", error);
+    throw error;
+  }
+});
+
 const generateArtifact = fromPromise<
   Artifact,
   {
@@ -261,6 +302,7 @@ export const planningMachine = setup({
   },
   actors: {
     fetchQuestion,
+    assessGapAnalysisNeed,
     generateArtifact,
   },
   guards: {},
@@ -279,6 +321,8 @@ export const planningMachine = setup({
     startedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     step1Responses: {},
+    step1GapAnalysisNeeded: null,
+    step1GapAnalysisReasoning: null,
     step2Answers: [],
     step2CurrentQuestion: null,
     step2CurrentOptions: null,
@@ -543,13 +587,67 @@ export const planningMachine = setup({
             SUBMIT_FORM: {
               guard: ({ event }) =>
                 event.type === "SUBMIT_FORM" && event.stepNumber === 1,
-              target: "submitting",
+              target: "assessingNeed",
               actions: assign({
                 step1Responses: ({ event }) => event.responses,
                 updatedAt: () => new Date().toISOString(),
               }),
             },
           },
+        },
+        assessingNeed: {
+          invoke: {
+            src: "assessGapAnalysisNeed",
+            input: ({ context }) => ({
+              projectId: context.projectId,
+              projectDescription:
+                context.step1Responses.projectDescription || "",
+              hasExistingRequirements:
+                context.step1Responses.existingRequirements || "No",
+            }),
+            onDone: {
+              target: "decideGapAnalysis",
+              actions: assign({
+                step1GapAnalysisNeeded: ({ event }) =>
+                  event.output.needsGapAnalysis,
+                step1GapAnalysisReasoning: ({ event }) =>
+                  event.output.reasoning,
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+            onError: {
+              // On error, fallback to skipping gap analysis (conservative default)
+              target: "decideGapAnalysis",
+              actions: assign({
+                step1GapAnalysisNeeded: false,
+                step1GapAnalysisReasoning:
+                  "Assessment failed, defaulting to skip gap analysis",
+                error: ({ event }) => `Assessment failed: ${event.error}`,
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+          },
+        },
+        decideGapAnalysis: {
+          always: [
+            {
+              // If gap analysis needed, generate artifact
+              guard: ({ context }) => context.step1GapAnalysisNeeded === true,
+              target: "submitting",
+            },
+            {
+              // Otherwise, skip directly to Step 2
+              target: "#planning.step2_businessReqs",
+              actions: assign({
+                completedSteps: ({ context }) =>
+                  context.completedSteps.includes(1)
+                    ? context.completedSteps
+                    : [...context.completedSteps, 1],
+                currentStepNumber: 2,
+                updatedAt: () => new Date().toISOString(),
+              }),
+            },
+          ],
         },
         submitting: {
           invoke: {

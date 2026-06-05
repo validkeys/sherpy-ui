@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as bedrockModule from "@/lib/bedrock";
 import * as artifactStore from "../artifacts/store";
 import { MOCK_ARTIFACT_PROVENANCE } from "./mock-artifacts";
-import { buildArtifactPrompt, buildInterviewPrompt } from "./prompts";
+import {
+  buildArtifactPrompt,
+  buildGapAnalysisAssessmentPrompt,
+  buildInterviewPrompt,
+} from "./prompts";
 import type { AIProviderError } from "./provider-errors";
 import { generateArtifact, generateText } from "./server";
 
@@ -443,5 +447,28 @@ target_audience: Product managers`;
 
       expect(body.response_format).toBeUndefined();
     });
+  });
+});
+
+describe("buildGapAnalysisAssessmentPrompt", () => {
+  it("includes project description in prompt", () => {
+    const messages = buildGapAnalysisAssessmentPrompt(
+      "Build a todo list app from scratch",
+      "No",
+    );
+
+    const allContent = messages.map((m) => m.content).join(" ");
+    expect(allContent).toContain("Build a todo list app from scratch");
+    expect(allContent).toContain("Gap Analysis Decision Rules");
+  });
+
+  it("includes decision rules for greenfield and existing requirements", () => {
+    const messages = buildGapAnalysisAssessmentPrompt("Some project", "Yes");
+
+    const allContent = messages.map((m) => m.content).join(" ");
+    expect(allContent).toContain("SKIP gap analysis");
+    expect(allContent).toContain("RUN gap analysis");
+    expect(allContent).toContain("greenfield");
+    expect(allContent).toContain("existing requirements");
   });
 });

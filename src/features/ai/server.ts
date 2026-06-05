@@ -31,6 +31,7 @@ import {
 } from "./mock-artifacts";
 import {
   buildArtifactPrompt,
+  buildGapAnalysisAssessmentPrompt,
   buildInterviewPrompt,
   buildRefinementPrompt,
 } from "./prompts";
@@ -39,6 +40,12 @@ import { getArtifactName } from "./skills-content";
 
 interface GenerateQuestionOutput {
   question: string;
+}
+
+interface AssessGapAnalysisNeedOutput {
+  needsGapAnalysis: boolean;
+  reasoning: string;
+  confidence: "high" | "medium" | "low";
 }
 
 // Non-streaming helper for generating text from Claude
@@ -205,6 +212,85 @@ export const $generateQuestion = createServerFn({ method: "POST" })
     });
 
     return { question };
+  });
+
+export const $assessGapAnalysisNeed = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => {
+    if (typeof d !== "object" || d === null) throw new Error("invalid input");
+    const input = d as Record<string, unknown>;
+    if (typeof input.projectId !== "string" || !input.projectId)
+      throw new Error("projectId required");
+    if (
+      typeof input.projectDescription !== "string" ||
+      !input.projectDescription
+    )
+      throw new Error("projectDescription required");
+    if (
+      typeof input.hasExistingRequirements !== "string" ||
+      !input.hasExistingRequirements
+    )
+      throw new Error("hasExistingRequirements required");
+    return {
+      projectId: input.projectId,
+      projectDescription: input.projectDescription,
+      hasExistingRequirements: input.hasExistingRequirements,
+    };
+  })
+  .handler(async ({ data }): Promise<AssessGapAnalysisNeedOutput> => {
+    console.log("[assessGapAnalysisNeed] Assessing:", {
+      projectId: data.projectId,
+      projectDescription: data.projectDescription.substring(0, 50),
+      hasExistingRequirements: data.hasExistingRequirements,
+    });
+
+    const messages = buildGapAnalysisAssessmentPrompt(
+      data.projectDescription,
+      data.hasExistingRequirements,
+    );
+
+    const response = await generateText(messages, 1, {
+      name: "assess-gap-analysis-need",
+      sessionId: data.projectId,
+      metadata: {
+        projectDescriptionLength: data.projectDescription.length,
+        hasExistingRequirements: data.hasExistingRequirements,
+      },
+    });
+
+    console.log("[assessGapAnalysisNeed] Raw LLM response:", response);
+
+    // Parse JSON response
+    try {
+      const parsed = JSON.parse(response) as AssessGapAnalysisNeedOutput;
+
+      // Validate structure
+      if (
+        typeof parsed.needsGapAnalysis !== "boolean" ||
+        typeof parsed.reasoning !== "string" ||
+        !["high", "medium", "low"].includes(parsed.confidence)
+      ) {
+        throw new Error("Invalid response structure from LLM");
+      }
+
+      console.log("[assessGapAnalysisNeed] ✅ Assessment result:", parsed);
+
+      return parsed;
+    } catch (error) {
+      console.error("[assessGapAnalysisNeed] ❌ Failed to parse response:", {
+        error: error instanceof Error ? error.message : String(error),
+        response,
+      });
+
+      // Fallback to conservative default (skip gap analysis for greenfield)
+      const fallback: AssessGapAnalysisNeedOutput = {
+        needsGapAnalysis: false,
+        reasoning:
+          "Failed to parse LLM response. Defaulting to skip gap analysis.",
+        confidence: "low",
+      };
+
+      return fallback;
+    }
   });
 
 export async function generateArtifact(

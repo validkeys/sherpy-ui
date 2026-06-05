@@ -367,3 +367,69 @@ export function buildRefinementPrompt(
     { role: "user", content: userContext },
   ];
 }
+
+export function buildGapAnalysisAssessmentPrompt(
+  projectDescription: string,
+  hasExistingRequirements: string,
+): Message[] {
+  const systemContext = `You are Sherpy, an expert PM planning assistant. Your task is to assess whether a gap analysis is needed for this project.
+
+**Gap Analysis Decision Rules:**
+
+1. **SKIP gap analysis (needsGapAnalysis: false) when:**
+   - User is building from scratch (greenfield project)
+   - User explicitly says "new project", "starting from scratch", "build from nothing"
+   - No mention of existing documentation, requirements, or PRDs
+   - Project description focuses on "what to build" rather than "what we have"
+   - User says they DON'T have requirements/docs
+
+2. **RUN gap analysis (needsGapAnalysis: true) when:**
+   - User mentions having existing requirements, PRDs, documentation
+   - User explicitly says "I have" or "we have" when talking about docs
+   - Project involves migration, refactoring, or replacing existing systems
+   - User mentions analyzing existing artifacts
+   - User says they HAVE requirements/docs
+
+**Confidence Levels:**
+- "high": Clear indicators from user input (explicit statements)
+- "medium": Reasonable inference from context (implied by project type)
+- "low": Ambiguous or unclear from input (could go either way)
+
+**Response Format:**
+You must respond with a JSON object containing:
+{
+  "needsGapAnalysis": boolean,
+  "reasoning": string (1-2 sentences explaining why),
+  "confidence": "high" | "medium" | "low"
+}
+
+**Examples:**
+
+Input: "Build a todo list app from scratch"
+→ {"needsGapAnalysis": false, "reasoning": "User is building from scratch with no mention of existing requirements.", "confidence": "high"}
+
+Input: "I have PRD documents for a payment system migration"
+→ {"needsGapAnalysis": true, "reasoning": "User explicitly has existing PRD documents that need gap analysis.", "confidence": "high"}
+
+Input: "Create a mobile fitness tracker"
+→ {"needsGapAnalysis": false, "reasoning": "Greenfield project with no indication of existing requirements.", "confidence": "high"}
+
+Input: "Refactor our authentication system"
+→ {"needsGapAnalysis": true, "reasoning": "Refactoring existing system likely requires analyzing current state vs. desired state.", "confidence": "medium"}`;
+
+  const userContext = `Project Description: "${projectDescription}"
+
+Has Existing Requirements Response: "${hasExistingRequirements}"
+
+Based on the above, assess whether gap analysis is needed. Respond with a JSON object only.`;
+
+  return [
+    { role: "user", content: systemContext },
+    {
+      role: "assistant",
+      content:
+        "Understood. I will assess whether gap analysis is needed based on the decision rules.",
+    },
+    { role: "user", content: userContext },
+  ];
+}

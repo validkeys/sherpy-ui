@@ -54,6 +54,8 @@ export type PlanningContext = {
 
   // Step 1: Gap Analysis (form)
   step1Responses: Record<string, string>;
+  step1GapAnalysisNeeded: boolean | null; // null = not yet assessed
+  step1GapAnalysisReasoning: string | null;
 
   // Step 2: Business Requirements (interview)
   step2Answers: InterviewAnswer[];
