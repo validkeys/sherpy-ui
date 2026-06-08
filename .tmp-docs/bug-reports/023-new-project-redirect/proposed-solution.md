@@ -1,3 +1,86 @@
+# BUG-023: Proposed Solution
+
+**Date:** 2026-06-08  
+**Status:** 🔧 AWAITING APPROVAL
+
+---
+
+## Problem Summary
+
+**Duplicate navigation calls** when creating a new project:
+1. `CreateProjectFlow.tsx` navigates to new project (line 53)
+2. `AppLayout.tsx` also navigates to new project (line 22)
+
+This causes a race condition that may redirect users back to the previous project under certain timing conditions.
+
+---
+
+## Recommended Solution
+
+### **Remove duplicate navigation from CreateProjectFlow**
+
+Let the parent component (AppLayout) handle all navigation, following React's "lift state up" pattern.
+
+---
+
+## Implementation
+
+### File 1: `src/features/projects/components/CreateProjectFlow.tsx`
+
+**Change 1: Remove useNavigate import (line 2)**
+
+```diff
+  import { Dialog } from "@base-ui/react/dialog";
+- import { useNavigate } from "@tanstack/react-router";
+  import { useState } from "react";
+```
+
+**Change 2: Remove navigate constant (line 29)**
+
+```diff
+  const { mutate: createProject, isPending } = useCreateProject();
+- const navigate = useNavigate();
+```
+
+**Change 3: Remove navigate call from onSuccess (lines 53-56)**
+
+```diff
+  createProject(
+    { name: name.trim(), entryPath },
+    {
+      onSuccess: (project) => {
+        onCreated?.(project.id);
+        handleClose();
+-       navigate({
+-         to: "/project/$projectId/build",
+-         params: { projectId: project.id },
+-       });
+      },
+    },
+  );
+```
+
+### File 2: `src/components/layouts/AppLayout.tsx`
+
+**No changes needed** - Already correct:
+
+```typescript
+onCreated={(newProjectId) => {
+  navigate({
+    to: "/project/$projectId/build",
+    params: { projectId: newProjectId },
+  });
+  setCreateOpen(false);
+}}
+```
+
+---
+
+## Complete Modified File
+
+**File:** `src/features/projects/components/CreateProjectFlow.tsx`
+
+```typescript
 import { Dialog } from "@base-ui/react/dialog";
 import { useState } from "react";
 import { Intake } from "@/components/intake/Intake";
@@ -46,15 +129,6 @@ export function CreateProjectFlow({
       { name: name.trim(), entryPath },
       {
         onSuccess: (project) => {
-          // BUG-023 FIX: Navigation is handled by parent component (AppLayout)
-          // via the onCreated callback. We previously had duplicate navigation
-          // here which caused a race condition - under certain timing, both
-          // navigations would fire and potentially interfere with each other.
-          //
-          // By letting the parent handle navigation, we have:
-          // 1. Single source of truth for navigation logic
-          // 2. No race conditions between duplicate navigate() calls
-          // 3. Clearer separation of concerns (child reports success, parent decides action)
           onCreated?.(project.id);
           handleClose();
         },
@@ -159,3 +233,54 @@ export function CreateProjectFlow({
     </Dialog.Root>
   );
 }
+```
+
+---
+
+## Benefits
+
+1. **✅ Eliminates race condition** - Only one navigation call
+2. **✅ Clearer responsibility** - Parent owns navigation logic
+3. **✅ Simpler code** - Fewer imports, less complexity
+4. **✅ More maintainable** - One place to update navigation logic
+5. **✅ Follows React patterns** - Child emits events, parent decides actions
+
+---
+
+## Testing Checklist
+
+After implementing this fix:
+
+- [ ] Unit tests pass for CreateProjectFlow
+- [ ] Unit tests pass for AppLayout
+- [ ] E2E: Create new project from dashboard
+- [ ] E2E: Create new project while viewing another project
+- [ ] E2E: Verify URL changes to new project ID
+- [ ] E2E: Verify no double navigation in Network tab
+- [ ] E2E: Create multiple projects rapidly
+- [ ] Manual: Verify the original bug is fixed
+
+---
+
+## Risk Assessment
+
+**Risk Level:** ⚠️ **LOW**
+
+**Potential Issues:**
+- None identified - This removes problematic code without adding new logic
+
+**Rollback Plan:**
+- Simple git revert if issues arise
+- Original code is fully preserved in git history
+
+---
+
+## Questions Before Approval
+
+1. Are there any other places that call `onCreated` prop and expect CreateProjectFlow to NOT navigate?
+2. Are there any tests that specifically assert CreateProjectFlow navigates on its own?
+3. Should we add a test to ensure only ONE navigation happens?
+
+---
+
+**Status:** ✅ Ready for approval and implementation
