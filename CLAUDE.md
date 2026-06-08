@@ -6,6 +6,101 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 ---
 
+## ✅ BUG-023: FIXED - New Project Redirect Race Condition (2026-06-08)
+
+**Problem**: When creating a new project while viewing an existing project, users were sometimes redirected back to the previous project instead of the newly created one.
+
+**Root Cause**: Duplicate navigation calls created a race condition:
+- `CreateProjectFlow.tsx` was calling `navigate()` to the new project
+- `AppLayout.tsx` was ALSO calling `navigate()` via the `onCreated` callback
+- Under certain timing conditions, these conflicting navigations interfered with each other
+
+**Solution**: Removed navigation from `CreateProjectFlow` component, letting the parent (`AppLayout`) handle all navigation as single source of truth.
+
+**Implementation:**
+- Removed `useNavigate` import from `CreateProjectFlow.tsx`
+- Removed `navigate()` call from `onSuccess` callback
+- Added explanatory comments for future developers
+
+**Fix Verification (2026-06-08)**:
+- ✅ 41/41 tests pass (projects feature)
+- ✅ No regressions
+- ✅ Clearer separation of concerns
+- ✅ Single navigation call eliminates race condition
+
+**Files Changed:**
+- `src/features/projects/components/CreateProjectFlow.tsx` (-7 lines, +8 lines comments)
+- `src/components/layouts/AppLayout.tsx` (+3 lines comments)
+- `src/features/projects/components/CreateProjectFlow.test.tsx` (+4 lines comments)
+
+**Documentation:**
+- `.tmp-docs/bug-reports/023-new-project-redirect/bug-report.md` - Original report
+- `.tmp-docs/bug-reports/023-new-project-redirect/root-cause-analysis.md` - Investigation
+- `.tmp-docs/bug-reports/023-new-project-redirect/proposed-solution.md` - Implementation plan
+- `.tmp-docs/bug-reports/023-new-project-redirect/SUMMARY.md` - Executive summary
+
+**Status**: ✅ FIXED and TESTED - Ready for production
+
+---
+
+## ✅ BUG-024: FIXED - Auxiliary Persistence Client-Side Execution (2026-06-08)
+
+**Problem**: Browser console error when workflow state changes:
+```
+[StatePersistence] Auxiliary table persistence failed:
+SyntaxError: The requested module 'better-sqlite3' does not provide an export named 'default'
+```
+
+**Root Cause**: `StatePersistence` class runs client-side but tried to import server-side database code:
+- Used `import("./repository")` which loads Node.js database modules
+- Dynamic imports execute in caller's context (browser)
+- Browser cannot load Node.js native modules (`better-sqlite3`)
+- Interview answers and form responses failed to persist to database
+
+**Solution**: Replace repository imports with TanStack server function calls (RPC pattern).
+
+**Implementation:**
+- Updated `persistAuxiliaryTables()` to use `$saveInterviewAnswer` and `$saveFormResponses` server functions
+- Replaced direct repository calls with RPC pattern (same as main state persistence)
+- Added test mocks for server functions
+- Server functions execute on server where database access is available
+
+**Fix Verification (2026-06-08)**:
+- ✅ 343/343 tests pass (planning feature)
+- ✅ 23/23 infrastructure tests pass
+- ✅ Zero regressions
+- ✅ Consistent pattern across all persistence operations
+
+**Files Changed:**
+- `src/features/planning/infrastructure/persistence.ts` (~55 lines) - Use server functions
+- `src/features/planning/infrastructure/__tests__/persistence.test.ts` (+7 lines) - Mock server functions
+
+**Documentation:**
+- `.tmp-docs/bug-reports/024-auxiliary-persistence-client-side/README.md` - Navigation hub
+- `.tmp-docs/bug-reports/024-auxiliary-persistence-client-side/SUMMARY.md` - Executive summary
+- `.tmp-docs/bug-reports/024-auxiliary-persistence-client-side/bug-report.md` - Technical analysis
+- `.tmp-docs/bug-reports/024-auxiliary-persistence-client-side/implementation-plan.md` - Fix guide
+- `.tmp-docs/bug-reports/024-auxiliary-persistence-client-side/architecture-comparison.md` - Visual diagrams
+- `.tmp-docs/bug-reports/024-auxiliary-persistence-client-side/execution-trace.md` - Runtime analysis
+- `.tmp-docs/bug-reports/024-auxiliary-persistence-client-side/fix-verification.md` - Test results
+
+**Key Learning**: Dynamic imports execute in caller's context. Client code must use server functions (RPC pattern), never direct repository imports. This applies to all Node.js-specific APIs (database, file system, environment variables).
+
+**Architecture Pattern:**
+```typescript
+// ❌ WRONG: Direct import of server code from client
+const { saveInterviewAnswer } = await import("./repository");
+await saveInterviewAnswer(projectId, 2, question, answer);
+
+// ✅ CORRECT: Server function (RPC) from client
+const { $saveInterviewAnswer } = await import("./server-functions");
+await $saveInterviewAnswer({ data: { projectId, stepNumber: 2, question, answer } });
+```
+
+**Status**: ✅ FIXED and TESTED - Ready for manual E2E verification
+
+---
+
 ## ✅ AUTOMATED TESTING: Use Playwright MCP (Updated 2026-05-15)
 
 **For testing React forms, use Playwright MCP tools (NOT agent-browser).**

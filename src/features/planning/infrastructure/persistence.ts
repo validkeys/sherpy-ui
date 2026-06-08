@@ -212,43 +212,83 @@ export class StatePersistence {
    * These tables support reporting and analytics outside the main workflow.
    * Errors here don't block main state persistence.
    *
+   * Uses TanStack server functions (RPC pattern) to execute database operations
+   * server-side where database access is available (BUG-024 fix).
+   *
    * NOTE: This re-persists ALL answers/responses on every state change.
-   * Repository functions (saveInterviewAnswer, saveFormResponse) use UPSERT
-   * logic to prevent duplicates. This is acceptable because:
+   * Server functions use UPSERT logic to prevent duplicates. This is acceptable:
    * 1. Debouncing (500ms) batches rapid changes
    * 2. Database handles idempotency via UPSERT
    * 3. Simpler than tracking which items are already persisted
    */
   private async persistAuxiliaryTables(snapshot: SnapshotType): Promise<void> {
     try {
-      const { saveInterviewAnswer, saveFormResponse } = await import(
-        "./repository"
+      // Import TanStack server functions (safe to call from client via RPC)
+      // BUG-024 FIX: Previously imported ./repository which tried to load
+      // Node.js database code (better-sqlite3) in the browser → SyntaxError.
+      // Server functions use RPC pattern - stub imported client-side,
+      // execution happens server-side where database access is available.
+      const { $saveInterviewAnswer, $saveFormResponses } = await import(
+        "./server-functions"
       );
 
-      // Persist Step 2 & 3 interview answers (UPSERT via repository)
+      // Persist Step 2 & 3 interview answers (UPSERT via server function)
       const step2Promises = snapshot.context.step2Answers.map((answer: any) =>
-        saveInterviewAnswer(this.projectId, 2, answer.question, answer.answer),
+        $saveInterviewAnswer({
+          data: {
+            projectId: this.projectId,
+            stepNumber: 2,
+            question: answer.question,
+            answer: answer.answer,
+          },
+        }),
       );
       const step3Promises = snapshot.context.step3Answers.map((answer: any) =>
-        saveInterviewAnswer(this.projectId, 3, answer.question, answer.answer),
+        $saveInterviewAnswer({
+          data: {
+            projectId: this.projectId,
+            stepNumber: 3,
+            question: answer.question,
+            answer: answer.answer,
+          },
+        }),
       );
 
-      // Persist Step 1 & 5 form responses
-      const step1Promises = Object.entries(snapshot.context.step1Responses).map(
-        ([field, value]) =>
-          saveFormResponse(this.projectId, 1, field, value as string),
-      );
-      const step5Promises = Object.entries(snapshot.context.step5Responses).map(
-        ([field, value]) =>
-          saveFormResponse(this.projectId, 5, field, value as string),
-      );
+      // Persist Step 1 & 5 form responses (batch operation via server function)
+      const step1Promise =
+        Object.keys(snapshot.context.step1Responses).length > 0
+          ? $saveFormResponses({
+              data: {
+                projectId: this.projectId,
+                stepNumber: 1,
+                responses: snapshot.context.step1Responses as Record<
+                  string,
+                  string
+                >,
+              },
+            })
+          : Promise.resolve({ success: true });
+
+      const step5Promise =
+        Object.keys(snapshot.context.step5Responses).length > 0
+          ? $saveFormResponses({
+              data: {
+                projectId: this.projectId,
+                stepNumber: 5,
+                responses: snapshot.context.step5Responses as Record<
+                  string,
+                  string
+                >,
+              },
+            })
+          : Promise.resolve({ success: true });
 
       // Execute all in parallel
       await Promise.all([
         ...step2Promises,
         ...step3Promises,
-        ...step1Promises,
-        ...step5Promises,
+        step1Promise,
+        step5Promise,
       ]);
     } catch (error) {
       // Log but don't throw - auxiliary persistence failure isn't critical

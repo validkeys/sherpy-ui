@@ -17,6 +17,17 @@ import { StatePersistence } from "../persistence";
 type SnapshotType = SnapshotFrom<typeof planningMachine>;
 
 // ============================================================================
+// Mocks
+// ============================================================================
+
+// Mock server functions (BUG-024 fix: persistence now uses server functions)
+vi.mock("../server-functions", () => ({
+  $savePlanningState: vi.fn().mockResolvedValue({ success: true }),
+  $saveInterviewAnswer: vi.fn().mockResolvedValue({ success: true }),
+  $saveFormResponses: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+// ============================================================================
 // Test Setup
 // ============================================================================
 
