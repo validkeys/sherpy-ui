@@ -7,6 +7,9 @@ const mockStreamText = vi.fn();
 vi.mock("ai", () => ({
   generateText: (...args: unknown[]) => mockGenerateText(...args),
   streamText: (...args: unknown[]) => mockStreamText(...args),
+  Output: {
+    object: (opts: Record<string, unknown>) => ({ type: "object", ...opts }),
+  },
 }));
 
 vi.mock("@/lib/ai-provider", () => ({
@@ -44,7 +47,7 @@ describe("aiGenerateText", () => {
   it("returns text from AI SDK generateText", async () => {
     mockGenerateText.mockResolvedValue({
       text: "Hello from Claude!",
-      usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+      usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
       finishReason: "stop",
     });
 
@@ -54,7 +57,7 @@ describe("aiGenerateText", () => {
     expect(mockGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "mock-model",
-        maxTokens: 512,
+        maxOutputTokens: 512,
         messages: sampleMessages,
       }),
     );
@@ -74,7 +77,7 @@ describe("aiGenerateText", () => {
 
     expect(mockGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
-        maxTokens: 1024,
+        maxOutputTokens: 1024,
         temperature: 0.7,
       }),
     );
@@ -83,7 +86,7 @@ describe("aiGenerateText", () => {
   it("calls Langfuse observability helpers", async () => {
     mockGenerateText.mockResolvedValue({
       text: "observed",
-      usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30 },
+      usage: { inputTokens: 20, outputTokens: 10, totalTokens: 30 },
       finishReason: "stop",
     });
 
@@ -156,7 +159,7 @@ describe("aiGenerateObject", () => {
     mockGenerateText.mockResolvedValue({
       text: JSON.stringify(mockObject),
       output: mockObject,
-      usage: { promptTokens: 50, completionTokens: 30, totalTokens: 80 },
+      usage: { inputTokens: 50, outputTokens: 30, totalTokens: 80 },
       finishReason: "stop",
     });
 
@@ -182,7 +185,7 @@ describe("aiGenerateObject", () => {
 
     expect(mockGenerateText).toHaveBeenCalledWith(
       expect.objectContaining({
-        maxTokens: 2048,
+        maxOutputTokens: 2048,
       }),
     );
   });
@@ -229,7 +232,7 @@ describe("aiStreamText", () => {
 
     mockStreamText.mockResolvedValue({
       textStream: textGen(),
-      usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+      usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
     });
 
     const stream = await aiStreamText(sampleMessages);
@@ -253,8 +256,8 @@ describe("aiStreamText", () => {
       const onChunkInternal = opts.onChunk as (
         event: Record<string, unknown>,
       ) => void;
-      onChunkInternal({ chunk: { type: "text-delta", textDelta: "Hi" } });
-      onChunkInternal({ chunk: { type: "text-delta", textDelta: "!" } });
+      onChunkInternal({ chunk: { type: "text-delta", text: "Hi" } });
+      onChunkInternal({ chunk: { type: "text-delta", text: "!" } });
 
       async function* textGen() {
         yield "Hi!";
@@ -285,7 +288,7 @@ describe("aiStreamText", () => {
         event: Record<string, unknown>,
       ) => void;
       onFinish({
-        usage: { promptTokens: 10, completionTokens: 8, totalTokens: 18 },
+        usage: { inputTokens: 10, outputTokens: 8, totalTokens: 18 },
         finishReason: "stop",
       });
 
@@ -295,7 +298,7 @@ describe("aiStreamText", () => {
 
       return Promise.resolve({
         textStream: textGen(),
-        usage: { promptTokens: 10, completionTokens: 8, totalTokens: 18 },
+        usage: { inputTokens: 10, outputTokens: 8, totalTokens: 18 },
       });
     });
 

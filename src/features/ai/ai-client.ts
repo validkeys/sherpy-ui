@@ -1,4 +1,4 @@
-import { generateText, type Output, streamText } from "ai";
+import { generateText, Output, streamText } from "ai";
 import type { z } from "zod";
 import { BEDROCK_MODEL_ID, getBedrockModel } from "@/lib/ai-provider";
 import {
@@ -62,7 +62,7 @@ export async function aiGenerateText(
         role: "user" | "assistant";
         content: string;
       }>,
-      maxTokens,
+      maxOutputTokens: maxTokens,
       ...(temperature !== undefined && { temperature }),
       abortSignal,
     });
@@ -79,8 +79,8 @@ export async function aiGenerateText(
     output: result.text,
     usage: result.usage
       ? {
-          input: result.usage.promptTokens ?? 0,
-          output: result.usage.completionTokens ?? 0,
+          input: result.usage.inputTokens ?? 0,
+          output: result.usage.outputTokens ?? 0,
           total: result.usage.totalTokens ?? 0,
         }
       : undefined,
@@ -133,9 +133,9 @@ export async function aiGenerateObject<T>(
         role: "user" | "assistant";
         content: string;
       }>,
-      maxTokens,
+      maxOutputTokens: maxTokens,
       ...(temperature !== undefined && { temperature }),
-      output: { type: "object", schema } as unknown as Output,
+      output: Output.object({ schema }),
       abortSignal,
     });
   } catch (error) {
@@ -152,8 +152,8 @@ export async function aiGenerateObject<T>(
     output: JSON.stringify(output),
     usage: result.usage
       ? {
-          input: result.usage.promptTokens ?? 0,
-          output: result.usage.completionTokens ?? 0,
+          input: result.usage.inputTokens ?? 0,
+          output: result.usage.outputTokens ?? 0,
           total: result.usage.totalTokens ?? 0,
         }
       : undefined,
@@ -208,13 +208,13 @@ export async function aiStreamText(
         role: "user" | "assistant";
         content: string;
       }>,
-      maxTokens,
+      maxOutputTokens: maxTokens,
       ...(temperature !== undefined && { temperature }),
       abortSignal,
       onChunk: ({ chunk }) => {
         if (chunk.type === "text-delta") {
-          accumulated += chunk.textDelta;
-          onChunk?.(chunk.textDelta);
+          accumulated += chunk.text;
+          onChunk?.(chunk.text);
         }
       },
       onFinish: ({ usage, finishReason }) => {
@@ -223,8 +223,8 @@ export async function aiStreamText(
           output: accumulated,
           usage: usage
             ? {
-                input: usage.promptTokens ?? 0,
-                output: usage.completionTokens ?? 0,
+                input: usage.inputTokens ?? 0,
+                output: usage.outputTokens ?? 0,
                 total: usage.totalTokens ?? 0,
               }
             : undefined,
@@ -289,39 +289,18 @@ export async function aiStreamObject<T>(
 
   const startTime = Date.now();
 
-  const { streamText: doStream } = await import("ai");
-  let streamResult: Awaited<ReturnType<typeof doStream>>;
+  let streamResult: Awaited<ReturnType<typeof streamText>>;
   try {
-    streamResult = await doStream({
+    streamResult = await streamText({
       model: getBedrockModel(modelId),
       messages: messages as Array<{
         role: "user" | "assistant";
         content: string;
       }>,
-      maxTokens,
+      maxOutputTokens: maxTokens,
       ...(temperature !== undefined && { temperature }),
-      output: { type: "object", schema } as unknown as Output,
+      output: Output.object({ schema }),
       abortSignal,
-      onFinish: ({ usage, finishReason, output }) => {
-        const latencyMs = Date.now() - startTime;
-        finalizeGenerationSpan(span, {
-          output: JSON.stringify(output),
-          usage: usage
-            ? {
-                input: usage.promptTokens ?? 0,
-                output: usage.completionTokens ?? 0,
-                total: usage.totalTokens ?? 0,
-              }
-            : undefined,
-          metadata: {
-            latencyMs,
-            finishReason: finishReason ?? "unknown",
-            streamingEnabled: true,
-            structuredOutput: true,
-          },
-        });
-        void flushLangfuse();
-      },
     });
   } catch (error) {
     throw logAIProviderError(error, {
@@ -343,6 +322,38 @@ export async function aiStreamObject<T>(
       }
     },
   });
+
+  // Finalize the Langfuse span once the structured output, usage, and finish
+  // reason resolve. These promise-likes resolve automatically when the
+  // underlying model stream completes (i.e. when the consumer drains the stream).
+  Promise.all([
+    streamResult.output,
+    streamResult.usage,
+    streamResult.finishReason,
+  ])
+    .then(([output, usage, finishReason]) => {
+      const latencyMs = Date.now() - startTime;
+      finalizeGenerationSpan(span, {
+        output: JSON.stringify(output),
+        usage: usage
+          ? {
+              input: usage.inputTokens ?? 0,
+              output: usage.outputTokens ?? 0,
+              total: usage.totalTokens ?? 0,
+            }
+          : undefined,
+        metadata: {
+          latencyMs,
+          finishReason: finishReason ?? "unknown",
+          streamingEnabled: true,
+          structuredOutput: true,
+        },
+      });
+      void flushLangfuse();
+    })
+    .catch(() => {
+      // Stream errors propagate to the consumer; observability is best-effort.
+    });
 
   return {
     stream: textStream,
