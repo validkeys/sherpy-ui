@@ -1,6 +1,5 @@
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as bedrockModule from "@/lib/bedrock";
 import * as artifactStore from "../artifacts/store";
 import { MOCK_ARTIFACT_PROVENANCE } from "./mock-artifacts";
 import {
@@ -11,14 +10,19 @@ import {
 import type { AIProviderError } from "./provider-errors";
 import { generateArtifact, generateText } from "./server";
 
-// Mock the bedrock client
+const { mockBedrockClient } = vi.hoisted(() => {
+  const mockSend = vi.fn();
+  return { mockBedrockClient: { send: mockSend } };
+});
+
 vi.mock("@/lib/bedrock", () => ({
-  bedrockClient: {
-    send: vi.fn(),
-  },
+  bedrockClient: mockBedrockClient,
+  getBedrockClient: () => mockBedrockClient,
   BEDROCK_REGION: "us-east-1",
   BEDROCK_MODEL_ID: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 }));
+
+import * as bedrockModule from "@/lib/bedrock";
 
 // Mock feature flags
 vi.mock("./feature-flags", () => ({
@@ -197,7 +201,7 @@ describe("generateText", () => {
       name: "AIProviderError",
       code: "AI_PROVIDER_AUTH_INVALID",
       message:
-        "AI provider credentials are invalid or expired. Refresh AWS credentials and rerun the request.",
+        "AI provider credentials are invalid or expired. Refresh AWS credentials and rerun the request. (UnrecognizedClientException, HTTP 400)",
     } satisfies Partial<AIProviderError>);
 
     expect(console.error).toHaveBeenCalledWith(
@@ -231,7 +235,7 @@ describe("generateText", () => {
     ).rejects.toMatchObject({
       code: "AI_PROVIDER_ACCESS_DENIED",
       message:
-        "AI provider access was denied. Confirm IAM permissions and Bedrock model access.",
+        "AI provider access was denied. Confirm IAM permissions and Bedrock model access. (AccessDeniedException, HTTP 403)",
     });
   });
 });

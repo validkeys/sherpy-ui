@@ -37,7 +37,7 @@ export async function streamQuestion(
   const startTime = Date.now();
 
   // Build request body
-  const body: any = {
+  const body: Record<string, unknown> = {
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: 512,
     messages,
@@ -49,7 +49,10 @@ export async function streamQuestion(
     if (schema) {
       body.response_format = {
         type: "json_schema",
-        json_schema: schema,
+        json_schema: {
+          name: "response",
+          schema,
+        },
       };
     }
   }

@@ -4,7 +4,7 @@ import {
 } from "@aws-sdk/client-bedrock-runtime";
 import { createServerFn } from "@tanstack/react-start";
 import { nanoid } from "nanoid";
-import { BEDROCK_MODEL_ID, bedrockClient } from "@/lib/bedrock";
+import { BEDROCK_MODEL_ID, getBedrockClient } from "@/lib/bedrock";
 // NOTE: Do NOT import database functions at module level - causes BUG-017
 // Use lazy imports inside handlers instead
 import {
@@ -72,23 +72,10 @@ export async function generateText(
     maxTokens: 512,
   });
 
-  console.log(
-    "[langfuse-debug] LANGFUSE_ENABLED:",
-    process.env.LANGFUSE_ENABLED,
-    "hasPublicKey:",
-    !!process.env.LANGFUSE_PUBLIC_KEY,
-    "baseUrl:",
-    process.env.LANGFUSE_BASEURL,
-    "trace:",
-    !!trace,
-    "span:",
-    !!span,
-  );
-
   const startTime = Date.now();
 
   // Build request body
-  const body: any = {
+  const body: Record<string, unknown> = {
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: 512,
     messages,
@@ -100,7 +87,10 @@ export async function generateText(
     if (schema) {
       body.response_format = {
         type: "json_schema",
-        json_schema: schema,
+        json_schema: {
+          name: "response",
+          schema,
+        },
       };
     }
   }
@@ -113,8 +103,18 @@ export async function generateText(
 
   let res: InvokeModelCommandOutput;
   try {
-    res = await bedrockClient.send(cmd);
+    res = await getBedrockClient().send(cmd);
   } catch (error) {
+    console.error("[generateText] Bedrock error:", {
+      name: (error as Record<string, unknown>)?.name,
+      message: (error as Record<string, unknown>)?.message,
+      httpStatus: (
+        (error as Record<string, unknown>)?.$metadata as Record<string, unknown>
+      )?.httpStatusCode,
+      requestId: (
+        (error as Record<string, unknown>)?.$metadata as Record<string, unknown>
+      )?.requestId,
+    });
     throw logAIProviderError(error, {
       operation: "generateText",
       stepNumber,
@@ -356,7 +356,12 @@ export async function generateArtifact(
     const { saveArtifact: saveArtifactToDb } = await import(
       "@/lib/db/artifact"
     );
-    saveArtifactToDb(projectId, stepNumber as any, format, content);
+    saveArtifactToDb(
+      projectId,
+      stepNumber as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10,
+      format,
+      content,
+    );
   } catch (error) {
     console.error("[generateArtifact] Failed to persist to database:", error);
   }
@@ -440,7 +445,7 @@ export const $refineArtifact = createServerFn({ method: "POST" })
         );
         saveArtifactToDb(
           data.projectId,
-          stepNumber as any,
+          stepNumber as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10,
           artifact.format,
           refinedContent,
         );

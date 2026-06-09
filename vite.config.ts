@@ -33,7 +33,11 @@ export default defineConfig({
     exclude: ["better-sqlite3"],
   },
   ssr: {
-    external: ["better-sqlite3"],
+    external: [
+      "better-sqlite3",
+      "@aws-sdk/client-bedrock-runtime",
+      "@aws-sdk/client-sts",
+    ],
   },
   plugins: [
     tailwindcss(),
@@ -44,7 +48,6 @@ export default defineConfig({
     {
       name: "api-streaming-routes",
       configureServer(server) {
-        // Seed API middleware
         server.middlewares.use(
           "/api/dev/seed",
           async (req: Connect.IncomingMessage, res, next) => {

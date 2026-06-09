@@ -51,7 +51,8 @@ function normalizeError(error) {
 
   if (
     status === 404 ||
-    combined.includes("model") ||
+    combined.includes("model not found") ||
+    combined.includes("model identifier") ||
     combined.includes("resource not found") ||
     combined.includes("validationexception")
   ) {

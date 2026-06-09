@@ -64,7 +64,8 @@ export function normalizeAIProviderError(error: unknown): AIProviderErrorCode {
 
   if (
     status === 404 ||
-    combined.includes("model") ||
+    combined.includes("model not found") ||
+    combined.includes("model identifier") ||
     combined.includes("resource not found") ||
     combined.includes("validationexception")
   ) {
@@ -102,6 +103,13 @@ export function toAIProviderError(error: unknown): AIProviderError {
   if (error instanceof AIProviderError) return error;
 
   const code = normalizeAIProviderError(error);
+  const providerError = error as ProviderErrorShape;
+  const status = providerError.$metadata?.httpStatusCode;
+  const providerName = providerError.name ?? providerError.code ?? "";
+  if (status && providerName) {
+    const message = `${getAIProviderErrorMessage(code)} (${providerName}, HTTP ${status})`;
+    return new AIProviderError(code, message);
+  }
   return new AIProviderError(code, getAIProviderErrorMessage(code));
 }
 

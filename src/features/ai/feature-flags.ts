@@ -34,7 +34,7 @@ export function getFeatureFlags(): FeatureFlags {
   const enabled = process.env.USE_STRUCTURED_OUTPUT === "true";
   const steps = process.env.STRUCTURED_OUTPUT_STEPS
     ? process.env.STRUCTURED_OUTPUT_STEPS.split(",").map(Number)
-    : [1]; // Default: only Step 1
+    : [1];
 
   return {
     useStructuredOutput: enabled,

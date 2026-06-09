@@ -175,6 +175,7 @@ skills:
 firewall:
   allow:
     - "bedrock-runtime.ca-central-1.amazonaws.com"
+    - "bedrock.ca-central-1.amazonaws.com"
     - "sts.amazonaws.com"
     - "sts.ca-central-1.amazonaws.com"
     - "oidc.ca-central-1.amazonaws.com"
