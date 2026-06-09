@@ -1,28 +1,17 @@
-import {
-  InvokeModelCommand,
-  type InvokeModelCommandOutput,
-} from "@aws-sdk/client-bedrock-runtime";
 import { createServerFn } from "@tanstack/react-start";
 import { nanoid } from "nanoid";
-import { BEDROCK_MODEL_ID, getBedrockClient } from "@/lib/bedrock";
-// NOTE: Do NOT import database functions at module level - causes BUG-017
-// Use lazy imports inside handlers instead
-import {
-  createGenerationSpan,
-  createTrace,
-  finalizeGenerationSpan,
-  flushLangfuse,
-  type TraceMetadata,
-} from "@/lib/langfuse-helpers";
+import type { TraceMetadata } from "@/lib/langfuse-helpers";
 import { getArtifact, upsertArtifact } from "../artifacts/store";
 import type { Artifact } from "../artifacts/types";
 import { $getStepState } from "../planning/infrastructure/server-functions";
+import { GapAnalysisAssessmentSchema } from "../planning/response-schemas";
 import {
   getStepArtifactKey,
   getStepName,
   getStepNumberFromArtifactKey,
-  getStepResponseSchema,
+  getStepZodSchema,
 } from "../planning/step-config";
+import { aiGenerateObject, aiGenerateText } from "./ai-client";
 import { isStructuredOutputEnabled } from "./feature-flags";
 import {
   assertMockArtifactsAllowed,
@@ -35,7 +24,7 @@ import {
   buildInterviewPrompt,
   buildRefinementPrompt,
 } from "./prompts";
-import { type AIProviderContext, logAIProviderError } from "./provider-errors";
+import type { AIProviderContext } from "./provider-errors";
 import { getArtifactName } from "./skills-content";
 
 interface GenerateQuestionOutput {
@@ -48,105 +37,30 @@ interface AssessGapAnalysisNeedOutput {
   confidence: "high" | "medium" | "low";
 }
 
-// Non-streaming helper for generating text from Claude
-// Instrumented with Langfuse for observability (tokens, latency, cost)
+// Non-streaming helper for generating text from Claude.
+// Delegates to the AI SDK wrappers in ai-client.ts (Langfuse observability,
+// token counting, and error normalization are handled there).
 export async function generateText(
   messages: Array<{ role: string; content: string }>,
   stepNumber: number,
   traceMetadata?: TraceMetadata,
   providerContext?: AIProviderContext,
 ): Promise<string> {
-  // Create Langfuse trace (no-op if disabled)
-  const trace = createTrace({
-    name: traceMetadata?.name ?? "generateText",
-    sessionId: traceMetadata?.sessionId,
-    userId: traceMetadata?.userId,
-    metadata: traceMetadata?.metadata,
-  });
-
-  // Create generation span
-  const span = createGenerationSpan(trace, {
-    name: "bedrock-invoke",
-    modelId: BEDROCK_MODEL_ID,
-    input: { messages },
-    maxTokens: 512,
-  });
-
-  const startTime = Date.now();
-
-  // Build request body
-  const body: Record<string, unknown> = {
-    anthropic_version: "bedrock-2023-05-31",
-    max_tokens: 512,
-    messages,
-  };
-
-  // Add JSON Schema constraint if enabled for this step
   if (isStructuredOutputEnabled(stepNumber)) {
-    const schema = getStepResponseSchema(stepNumber);
+    const schema = getStepZodSchema(stepNumber);
     if (schema) {
-      body.response_format = {
-        type: "json_schema",
-        json_schema: {
-          name: "response",
-          schema,
-        },
-      };
+      const result = await aiGenerateObject(messages, schema, {
+        traceMetadata,
+        providerContext,
+      });
+      return JSON.stringify(result);
     }
   }
 
-  const cmd = new InvokeModelCommand({
-    modelId: BEDROCK_MODEL_ID,
-    contentType: "application/json",
-    body: JSON.stringify(body),
+  return aiGenerateText(messages, {
+    traceMetadata,
+    providerContext,
   });
-
-  let res: InvokeModelCommandOutput;
-  try {
-    res = await getBedrockClient().send(cmd);
-  } catch (error) {
-    console.error("[generateText] Bedrock error:", {
-      name: (error as Record<string, unknown>)?.name,
-      message: (error as Record<string, unknown>)?.message,
-      httpStatus: (
-        (error as Record<string, unknown>)?.$metadata as Record<string, unknown>
-      )?.httpStatusCode,
-      requestId: (
-        (error as Record<string, unknown>)?.$metadata as Record<string, unknown>
-      )?.requestId,
-    });
-    throw logAIProviderError(error, {
-      operation: "generateText",
-      stepNumber,
-      ...providerContext,
-    });
-  }
-  const result = JSON.parse(new TextDecoder().decode(res.body));
-  const output = result.content[0].text as string;
-  const latencyMs = Date.now() - startTime;
-
-  // Finalize span with usage data
-  finalizeGenerationSpan(span, {
-    output,
-    usage: result.usage
-      ? {
-          input: result.usage.input_tokens ?? 0,
-          output: result.usage.output_tokens ?? 0,
-          total:
-            (result.usage.input_tokens ?? 0) +
-            (result.usage.output_tokens ?? 0),
-        }
-      : undefined,
-    metadata: {
-      latencyMs,
-      stopReason: result.stop_reason,
-    },
-  });
-
-  // Flush traces asynchronously (don't await to avoid blocking)
-  void flushLangfuse();
-
-  return output;
 }
 
 export const $generateQuestion = createServerFn({ method: "POST" })
@@ -248,48 +162,36 @@ export const $assessGapAnalysisNeed = createServerFn({ method: "POST" })
       data.hasExistingRequirements,
     );
 
-    const response = await generateText(messages, 1, {
-      name: "assess-gap-analysis-need",
-      sessionId: data.projectId,
-      metadata: {
-        projectDescriptionLength: data.projectDescription.length,
-        hasExistingRequirements: data.hasExistingRequirements,
-      },
-    });
-
-    console.log("[assessGapAnalysisNeed] Raw LLM response:", response);
-
-    // Parse JSON response
     try {
-      const parsed = JSON.parse(response) as AssessGapAnalysisNeedOutput;
+      const result = await aiGenerateObject(
+        messages,
+        GapAnalysisAssessmentSchema,
+        {
+          traceMetadata: {
+            name: "assess-gap-analysis-need",
+            sessionId: data.projectId,
+            metadata: {
+              projectDescriptionLength: data.projectDescription.length,
+              hasExistingRequirements: data.hasExistingRequirements,
+            },
+          },
+        },
+      );
 
-      // Validate structure
-      if (
-        typeof parsed.needsGapAnalysis !== "boolean" ||
-        typeof parsed.reasoning !== "string" ||
-        !["high", "medium", "low"].includes(parsed.confidence)
-      ) {
-        throw new Error("Invalid response structure from LLM");
-      }
-
-      console.log("[assessGapAnalysisNeed] ✅ Assessment result:", parsed);
-
-      return parsed;
+      console.log("[assessGapAnalysisNeed] ✅ Assessment result:", result);
+      return result as AssessGapAnalysisNeedOutput;
     } catch (error) {
-      console.error("[assessGapAnalysisNeed] ❌ Failed to parse response:", {
+      console.error("[assessGapAnalysisNeed] ❌ Failed:", {
         error: error instanceof Error ? error.message : String(error),
-        response,
       });
 
       // Fallback to conservative default (skip gap analysis for greenfield)
-      const fallback: AssessGapAnalysisNeedOutput = {
+      return {
         needsGapAnalysis: false,
         reasoning:
           "Failed to parse LLM response. Defaulting to skip gap analysis.",
         confidence: "low",
       };
-
-      return fallback;
     }
   });
 
@@ -312,10 +214,8 @@ export async function generateArtifact(
 
   const content = shouldUseMockArtifacts()
     ? generateMockArtifactContent(stepNumber, answers)
-    : await generateText(
-        buildArtifactPrompt(stepName, stepNumber, answers),
-        stepNumber,
-        {
+    : await aiGenerateText(buildArtifactPrompt(stepName, stepNumber, answers), {
+        traceMetadata: {
           name: "generate-artifact",
           sessionId: projectId,
           metadata: {
@@ -325,13 +225,13 @@ export async function generateArtifact(
             answersCount: answers.length,
           },
         },
-        {
+        providerContext: {
           operation: "generateArtifact",
           projectId,
           stepNumber,
           artifactKey,
         },
-      );
+      });
 
   // Determine format from artifact filename
   const artifactName = getArtifactName(stepNumber);
