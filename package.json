@@ -43,8 +43,10 @@
     "snapshots:stats": "tsx scripts/validate-snapshots.ts --stats"
   },
   "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^4.0.113",
     "@aws-sdk/client-bedrock-runtime": "^3.1044.0",
     "@aws-sdk/client-sts": "^3.1054.0",
+    "@aws-sdk/credential-providers": "^3.1064.0",
     "@base-ui/react": "^1.4.1",
     "@fontsource-variable/bodoni-moda": "^5.2.7",
     "@fontsource-variable/geist": "^5.2.8",
@@ -57,6 +59,7 @@
     "@tanstack/start-plugin-core": "^1.169.19",
     "@types/better-sqlite3": "^7.6.13",
     "@xstate/react": "^5.0.5",
+    "ai": "^6.0.198",
     "better-sqlite3": "^12.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -69,7 +72,8 @@
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.4",
     "tw-animate-css": "^1.4.0",
-    "xstate": "^5.31.0"
+    "xstate": "^5.31.0",
+    "zod": "^4.4.3"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [

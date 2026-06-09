@@ -37,6 +37,9 @@ export default defineConfig({
       "better-sqlite3",
       "@aws-sdk/client-bedrock-runtime",
       "@aws-sdk/client-sts",
+      "@aws-sdk/credential-providers",
+      "ai",
+      "@ai-sdk/amazon-bedrock",
     ],
   },
   plugins: [
