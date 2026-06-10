@@ -72,7 +72,15 @@ const fetchQuestion = fromPromise<
       throw new Error("Server returned empty question");
     }
 
-    // Parse options from markdown in question text
+    // Structured output provides options directly from the server function.
+    // Fall back to parsing markdown options from the question text.
+    if (result.options && result.options.length > 0) {
+      return {
+        question: result.question,
+        options: result.options,
+      };
+    }
+
     const { parseOptions } = await import("../../ai/parse-options");
     const parsedOptions = parseOptions(result.question);
 

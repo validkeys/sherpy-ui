@@ -28,6 +28,7 @@ import { getArtifactName } from "./skills-content";
 
 interface GenerateQuestionOutput {
   question: string;
+  options?: string[];
 }
 
 interface AssessGapAnalysisNeedOutput {
@@ -115,7 +116,7 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       data.previousAnswers,
       projectOverview,
     );
-    const question = await generateText(messages, data.stepNumber, {
+    const rawResult = await generateText(messages, data.stepNumber, {
       name: "interview-question",
       sessionId: data.projectId,
       metadata: {
@@ -125,7 +126,26 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       },
     });
 
-    return { question };
+    // Structured output returns JSON (InterviewQuestionResponse).
+    // Extract question text and option labels for the interview UI.
+    try {
+      const parsed = JSON.parse(rawResult);
+      if (parsed.question) {
+        return {
+          question: parsed.question as string,
+          options: Array.isArray(parsed.options)
+            ? parsed.options.map(
+                (o: { letter: string; title: string }) =>
+                  `${o.letter}. ${o.title}`,
+              )
+            : undefined,
+        };
+      }
+    } catch {
+      // Not JSON — plain text mode (no schema), return as-is
+    }
+
+    return { question: rawResult };
   });
 
 export const $assessGapAnalysisNeed = createServerFn({ method: "POST" })

@@ -28,9 +28,75 @@ function openSeedDatabase() {
   return db;
 }
 
+const SERVER_ONLY_PACKAGES = [
+  "ai",
+  "@ai-sdk/amazon-bedrock",
+  "@aws-sdk/credential-providers",
+  "@aws-sdk/client-bedrock-runtime",
+  "@aws-sdk/client-sts",
+  "langfuse",
+];
+
+const STUB_NAMED_EXPORTS: Record<string, string[]> = {
+  ai: [
+    "generateText",
+    "Output",
+    "streamText",
+    "APICallError",
+    "NoSuchModelError",
+  ],
+  "@ai-sdk/amazon-bedrock": ["createAmazonBedrock"],
+  "@aws-sdk/credential-providers": ["fromNodeProviderChain"],
+  "@aws-sdk/client-bedrock-runtime": [
+    "BedrockRuntimeClient",
+    "InvokeModelCommand",
+    "InvokeModelWithResponseStreamCommand",
+    "ConverseCommand",
+  ],
+  "@aws-sdk/client-sts": ["STSClient"],
+  langfuse: [],
+};
+
+function stubServerOnlyPackages() {
+  return {
+    name: "stub-server-only-packages",
+    enforce: "pre" as const,
+    resolveId(source: string, _importer: unknown, options: { ssr?: boolean }) {
+      if (options.ssr) return null;
+      for (const pkg of SERVER_ONLY_PACKAGES) {
+        if (source === pkg || source.startsWith(`${pkg}/`)) {
+          return `\0server-only-stub:${source}`;
+        }
+      }
+      return null;
+    },
+    load(id: string) {
+      if (id.startsWith("\0server-only-stub:")) {
+        const source = id.replace("\0server-only-stub:", "");
+        const named =
+          STUB_NAMED_EXPORTS[source] ??
+          STUB_NAMED_EXPORTS[source.split("/")[0]] ??
+          [];
+        const exports = named
+          .map((name) => `export const ${name} = () => {};`)
+          .join("\n");
+        return `function StubDefault() {}\nexport default StubDefault;\n${exports}`;
+      }
+      return null;
+    },
+  };
+}
+
 export default defineConfig({
   optimizeDeps: {
-    exclude: ["better-sqlite3"],
+    exclude: [
+      "better-sqlite3",
+      "@aws-sdk/client-bedrock-runtime",
+      "@aws-sdk/client-sts",
+      "@aws-sdk/credential-providers",
+      "ai",
+      "@ai-sdk/amazon-bedrock",
+    ],
   },
   ssr: {
     external: [
@@ -40,9 +106,11 @@ export default defineConfig({
       "@aws-sdk/credential-providers",
       "ai",
       "@ai-sdk/amazon-bedrock",
+      "langfuse",
     ],
   },
   plugins: [
+    stubServerOnlyPackages(),
     tailwindcss(),
     tanstackStart({
       srcDirectory: "app",
@@ -278,19 +346,19 @@ export default defineConfig({
 
                 let stream: ReadableStream<string>;
                 if (USE_MOCK_STREAMING) {
-                  const { createMockStream } = await import(
-                    "./src/features/ai/mock-streaming"
+                  const { createMockStream } = await server.ssrLoadModule(
+                    "/src/features/ai/mock-streaming",
                   );
                   stream = createMockStream(stepNumber, previousAnswers);
                 } else {
-                  const { buildInterviewPrompt } = await import(
-                    "./src/features/ai/prompts"
+                  const { buildInterviewPrompt } = await server.ssrLoadModule(
+                    "/src/features/ai/prompts",
                   );
-                  const { getStepName } = await import(
-                    "./src/features/planning/step-config"
+                  const { getStepName } = await server.ssrLoadModule(
+                    "/src/features/planning/step-config",
                   );
-                  const { streamQuestion } = await import(
-                    "./src/features/ai/streaming"
+                  const { streamQuestion } = await server.ssrLoadModule(
+                    "/src/features/ai/streaming",
                   );
                   const stepName = getStepName(stepNumber);
                   const messages = buildInterviewPrompt(
