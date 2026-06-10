@@ -1,8 +1,6 @@
 import type { TraceMetadata } from "@/lib/langfuse-helpers";
 import { getStepZodSchema } from "../planning/step-config";
-import { aiStreamObject, aiStreamText } from "./ai-client";
-
-type MessageInput = Array<{ role: string; content: string }>;
+import { aiStreamObject, aiStreamText, type MessageInput } from "./ai-client";
 
 // Streaming helper for interview questions.
 // Structured output is always enabled for interview steps (which have a Zod

@@ -37,6 +37,8 @@ const SERVER_ONLY_PACKAGES = [
   "langfuse",
 ];
 
+// MAINTENANCE: When adding new exports from these packages, update this list.
+// Missing exports will cause "X is not a function" errors in browser bundles.
 const STUB_NAMED_EXPORTS: Record<string, string[]> = {
   ai: [
     "generateText",

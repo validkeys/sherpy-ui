@@ -3,10 +3,12 @@ import { z } from "zod";
 
 const mockGenerateText = vi.fn();
 const mockStreamText = vi.fn();
+const mockStreamObject = vi.fn();
 
 vi.mock("ai", () => ({
   generateText: (...args: unknown[]) => mockGenerateText(...args),
   streamText: (...args: unknown[]) => mockStreamText(...args),
+  streamObject: (...args: unknown[]) => mockStreamObject(...args),
   Output: {
     object: (opts: Record<string, unknown>) => ({ type: "object", ...opts }),
   },
@@ -32,7 +34,12 @@ vi.mock("./provider-errors", () => ({
 }));
 
 import { finalizeGenerationSpan, flushLangfuse } from "@/lib/langfuse-helpers";
-import { aiGenerateObject, aiGenerateText, aiStreamText } from "./ai-client";
+import {
+  aiGenerateObject,
+  aiGenerateText,
+  aiStreamObject,
+  aiStreamText,
+} from "./ai-client";
 
 const sampleMessages = [{ role: "user", content: "Hello" }] as Array<{
   role: string;
@@ -322,6 +329,172 @@ describe("aiStreamText", () => {
 
     await expect(aiStreamText(sampleMessages)).rejects.toThrow(
       "Stream connection failed",
+    );
+  });
+});
+
+describe("aiStreamObject", () => {
+  const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    consoleWarnSpy.mockClear();
+  });
+
+  const testSchema = z.object({
+    question: z.string(),
+    options: z.array(z.string()),
+  });
+
+  it("returns stream and object Promise with correct data", async () => {
+    const mockData = { question: "Test?", options: ["A", "B"] };
+
+    async function* textGen() {
+      yield '{"question":"Test?",';
+      yield '"options":["A","B"]}';
+    }
+
+    mockStreamText.mockResolvedValue({
+      textStream: textGen(),
+      output: Promise.resolve(mockData),
+      usage: Promise.resolve({
+        inputTokens: 10,
+        outputTokens: 5,
+        totalTokens: 15,
+      }),
+      finishReason: Promise.resolve("stop"),
+    });
+
+    const result = await aiStreamObject(sampleMessages, testSchema);
+
+    // Verify return structure
+    expect(result).toHaveProperty("stream");
+    expect(result).toHaveProperty("object");
+
+    // Verify object Promise resolves correctly
+    await expect(result.object).resolves.toEqual(mockData);
+
+    // Verify stream produces chunks
+    const chunks: string[] = [];
+    const reader = result.stream.getReader();
+    let done = false;
+    while (!done) {
+      const { value, done: isDone } = await reader.read();
+      done = isDone;
+      if (value) chunks.push(value);
+    }
+    expect(chunks).toEqual(['{"question":"Test?",', '"options":["A","B"]}']);
+  });
+
+  it("creates and finalizes Langfuse spans", async () => {
+    const mockData = { question: "Observed", options: [] };
+
+    async function* textGen() {
+      yield "{}";
+    }
+
+    mockStreamText.mockResolvedValue({
+      textStream: textGen(),
+      output: Promise.resolve(mockData),
+      usage: Promise.resolve({
+        inputTokens: 20,
+        outputTokens: 10,
+        totalTokens: 30,
+      }),
+      finishReason: Promise.resolve("stop"),
+    });
+
+    const result = await aiStreamObject(sampleMessages, testSchema);
+
+    // Drain the stream to complete it
+    const reader = result.stream.getReader();
+    while (!(await reader.read()).done) {
+      /* drain */
+    }
+
+    // Wait for Promise.all to resolve and finalize
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(finalizeGenerationSpan).toHaveBeenCalledWith(
+      "mock-span",
+      expect.objectContaining({
+        usage: { input: 20, output: 10, total: 30 },
+        metadata: expect.objectContaining({
+          streamingEnabled: true,
+          structuredOutput: true,
+        }),
+      }),
+    );
+  });
+
+  it("logs warning when Langfuse finalization fails", async () => {
+    const langfuseError = new Error("Langfuse service unavailable");
+
+    async function* textGen() {
+      yield "{}";
+    }
+
+    // Mock promises that reject to simulate Langfuse error
+    mockStreamText.mockResolvedValue({
+      textStream: textGen(),
+      output: Promise.reject(langfuseError),
+      usage: Promise.resolve({
+        inputTokens: 10,
+        outputTokens: 5,
+        totalTokens: 15,
+      }),
+      finishReason: Promise.resolve("stop"),
+    });
+
+    const result = await aiStreamObject(sampleMessages, testSchema);
+
+    // Drain stream
+    const reader = result.stream.getReader();
+    while (!(await reader.read()).done) {
+      /* drain */
+    }
+
+    // Wait for Promise.all to reject and trigger catch block
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "[aiStreamObject] Langfuse finalization failed:",
+      langfuseError,
+    );
+  });
+
+  it("propagates stream errors to consumer", async () => {
+    const streamError = new Error("Stream processing failed");
+
+    async function* errorGen() {
+      yield "partial";
+      throw streamError;
+    }
+
+    mockStreamText.mockResolvedValue({
+      textStream: errorGen(),
+      output: Promise.resolve({}),
+      usage: Promise.resolve(undefined),
+      finishReason: Promise.resolve("error"),
+    });
+
+    const result = await aiStreamObject(sampleMessages, testSchema);
+    const reader = result.stream.getReader();
+
+    // First read succeeds
+    const first = await reader.read();
+    expect(first.value).toBe("partial");
+
+    // Second read propagates error
+    await expect(reader.read()).rejects.toThrow("Stream processing failed");
+  });
+
+  it("propagates errors through logAIProviderError", async () => {
+    const error = new Error("Object generation failed");
+    mockStreamText.mockRejectedValue(error);
+
+    await expect(aiStreamObject(sampleMessages, testSchema)).rejects.toThrow(
+      "Object generation failed",
     );
   });
 });

@@ -272,7 +272,8 @@ describe("Structured Output Support", () => {
       }),
     );
     expect(mockAiGenerateText).not.toHaveBeenCalled();
-    expect(result).toBe(JSON.stringify(mockObject));
+    // Returns the parsed object directly (no stringify/parse round-trip)
+    expect(result).toEqual(mockObject);
   });
 
   it("uses aiGenerateText when no schema available", async () => {

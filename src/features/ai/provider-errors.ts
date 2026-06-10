@@ -1,3 +1,6 @@
+// IMPORTANT: This module imports from 'ai' package (server-only).
+// Do not import from client-side code — Vite stubs replace these
+// classes with functions, breaking instanceof checks.
 import { APICallError, NoSuchModelError } from "ai";
 import { BEDROCK_MODEL_ID, BEDROCK_REGION } from "@/lib/ai-provider";
 

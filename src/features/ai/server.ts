@@ -45,17 +45,17 @@ export async function generateText(
   stepNumber: number,
   traceMetadata?: TraceMetadata,
   providerContext?: AIProviderContext,
-): Promise<string> {
+): Promise<string | unknown> {
   // Structured output is always enabled for interview steps (which have a
   // Zod schema). The AI SDK uses Bedrock's Converse API with native
   // structured output support, so no feature flag is needed.
   const schema = getStepZodSchema(stepNumber);
   if (schema) {
-    const result = await aiGenerateObject(messages, schema, {
+    // Return the parsed object directly - no need to stringify/parse round-trip
+    return aiGenerateObject(messages, schema, {
       traceMetadata,
       providerContext,
     });
-    return JSON.stringify(result);
   }
 
   return aiGenerateText(messages, {
@@ -126,26 +126,25 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       },
     });
 
-    // Structured output returns JSON (InterviewQuestionResponse).
+    // Structured output returns parsed object (InterviewQuestionResponse).
     // Extract question text and option labels for the interview UI.
-    try {
-      const parsed = JSON.parse(rawResult);
+    if (typeof rawResult === "object" && rawResult !== null) {
+      const parsed = rawResult as {
+        question?: string;
+        options?: Array<{ letter: string; title: string }>;
+      };
       if (parsed.question) {
         return {
-          question: parsed.question as string,
+          question: parsed.question,
           options: Array.isArray(parsed.options)
-            ? parsed.options.map(
-                (o: { letter: string; title: string }) =>
-                  `${o.letter}. ${o.title}`,
-              )
+            ? parsed.options.map((o) => `${o.letter}. ${o.title}`)
             : undefined,
         };
       }
-    } catch {
-      // Not JSON — plain text mode (no schema), return as-is
     }
 
-    return { question: rawResult };
+    // Plain text mode (no schema), return as-is
+    return { question: String(rawResult) };
   });
 
 export const $assessGapAnalysisNeed = createServerFn({ method: "POST" })

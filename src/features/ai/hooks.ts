@@ -148,11 +148,15 @@ export function useStreamingQuestion(
     };
   }, []);
 
-  // Initial fetch on mount, when step changes, or when refetchTrigger increments
+  // Initial fetch on mount, when enabled becomes true, or when refetchTrigger changes.
+  // Design: fetchQuestion reads from paramsRef.current for latest params (stepNumber, previousAnswers).
+  // refetchTrigger is in deps to auto-refetch when step changes (consumer passes stepNumber as trigger).
+  // previousAnswers is NOT in deps to avoid infinite loops (answer → refetch → question → answer).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refetchTrigger needed for auto-refetch on step change
   useEffect(() => {
     if (!params.enabled) return;
     fetchQuestion();
-  }, [params.enabled, fetchQuestion]);
+  }, [params.enabled, params.refetchTrigger, fetchQuestion]);
 
   return { text, loading, error, isComplete, options, refetch: fetchQuestion };
 }

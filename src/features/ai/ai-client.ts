@@ -23,7 +23,7 @@ export interface AIStreamOptions extends AIClientOptions {
   onChunk?: (chunk: string) => void;
 }
 
-type MessageInput = Array<{ role: string; content: string }>;
+export type MessageInput = Array<{ role: string; content: string }>;
 
 export async function aiGenerateText(
   messages: MessageInput,
@@ -244,6 +244,9 @@ export async function aiStreamText(
     });
   }
 
+  // Convert the async iterable to a ReadableStream. The onChunk/onFinish
+  // callbacks above are registered at the SDK level and fire independently
+  // of stream consumption, ensuring Langfuse observability works correctly.
   return new ReadableStream<string>({
     async start(controller) {
       try {
@@ -351,8 +354,9 @@ export async function aiStreamObject<T>(
       });
       void flushLangfuse();
     })
-    .catch(() => {
+    .catch((err) => {
       // Stream errors propagate to the consumer; observability is best-effort.
+      console.warn("[aiStreamObject] Langfuse finalization failed:", err);
     });
 
   return {
