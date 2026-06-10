@@ -9,9 +9,6 @@ global.fetch = mockFetch;
 describe("useStreamingQuestion", () => {
   beforeEach(() => {
     mockFetch.mockClear();
-    // Reset environment variables
-    process.env.USE_STRUCTURED_OUTPUT = "false";
-    process.env.STRUCTURED_OUTPUT_STEPS = "1";
   });
 
   afterEach(() => {
@@ -59,7 +56,8 @@ describe("useStreamingQuestion", () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(result.current.text).toBe(textResponse);
+      // BUG-022 fix: **Options:** section is now stripped from question text
+      expect(result.current.text).toBe("Here's your question:");
       expect(result.current.error).toBeNull();
       expect(onOptionsReady).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -97,11 +95,6 @@ describe("useStreamingQuestion", () => {
   });
 
   describe("JSON Mode (Structured Output)", () => {
-    beforeEach(() => {
-      process.env.USE_STRUCTURED_OUTPUT = "true";
-      process.env.STRUCTURED_OUTPUT_STEPS = "1,2,3";
-    });
-
     it("should parse JSON response into InterviewQuestionResponse", async () => {
       const jsonResponse = JSON.stringify({
         question: "What is your preferred architecture?",
@@ -185,7 +178,7 @@ describe("useStreamingQuestion", () => {
       expect(result.current.text).toBe("Final question");
     });
 
-    it("should fallback to error state on invalid JSON", async () => {
+    it("should fall back to text mode on invalid JSON", async () => {
       const invalidJson = "{ invalid json syntax";
 
       mockFetch.mockResolvedValue(createMockStreamResponse([invalidJson]));
@@ -201,8 +194,9 @@ describe("useStreamingQuestion", () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(result.current.error).toBeInstanceOf(Error);
-      expect(result.current.error?.message).toContain("Invalid JSON response");
+      // No error — falls back to text parsing
+      expect(result.current.error).toBeNull();
+      expect(result.current.text).toContain("invalid json syntax");
     });
 
     it("should handle streaming JSON in chunks", async () => {
@@ -231,11 +225,8 @@ describe("useStreamingQuestion", () => {
     });
   });
 
-  describe("Feature Flag Behavior", () => {
-    it("should use JSON mode when flag enabled for step", async () => {
-      process.env.USE_STRUCTURED_OUTPUT = "true";
-      process.env.STRUCTURED_OUTPUT_STEPS = "1,2";
-
+  describe("Response Mode Detection", () => {
+    it("should use JSON mode when response is valid JSON", async () => {
       const jsonResponse = JSON.stringify({
         question: "JSON mode question",
         options: [{ letter: "A", title: "Option", body: "Body" }],
@@ -258,9 +249,7 @@ describe("useStreamingQuestion", () => {
       expect(result.current.options).toHaveLength(1);
     });
 
-    it("should use text mode when flag disabled", async () => {
-      process.env.USE_STRUCTURED_OUTPUT = "false";
-
+    it("should use text mode when response is not JSON", async () => {
       const textResponse =
         "Text mode question\n**Options:**\n1. Option A - Body A";
 
@@ -277,31 +266,10 @@ describe("useStreamingQuestion", () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(result.current.text).toBe(textResponse);
+      // BUG-022 fix: **Options:** section is now stripped from question text
+      expect(result.current.text).toBe("Text mode question");
       expect(result.current.options).toHaveLength(1);
       expect(result.current.options[0].letter).toBe("1");
-    });
-
-    it("should use text mode when step not in enabled list", async () => {
-      process.env.USE_STRUCTURED_OUTPUT = "true";
-      process.env.STRUCTURED_OUTPUT_STEPS = "1,2"; // Not step 3
-
-      const textResponse = "Text mode\n**Options:**\n1. Option - Body";
-
-      mockFetch.mockResolvedValue(createMockStreamResponse([textResponse]));
-
-      const { result } = renderHook(() =>
-        useStreamingQuestion({
-          projectId: "test-project",
-          stepNumber: 3, // Not in enabled list
-          previousAnswers: [],
-          enabled: true,
-        }),
-      );
-
-      await waitFor(() => expect(result.current.loading).toBe(false));
-
-      expect(result.current.text).toBe(textResponse);
     });
   });
 
@@ -366,13 +334,14 @@ describe("useStreamingQuestion", () => {
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
-      expect(result.current.text).toBe(response1);
+      // BUG-022 fix: **Options:** section is now stripped from question text
+      expect(result.current.text).toBe("First response");
 
       // Trigger refetch
       result.current.refetch();
 
-      // Wait for text to change to the second response
-      await waitFor(() => expect(result.current.text).toBe(response2), {
+      // Wait for text to change to the second response (also stripped)
+      await waitFor(() => expect(result.current.text).toBe("Second response"), {
         timeout: 2000,
       });
       expect(mockFetch).toHaveBeenCalledTimes(2);

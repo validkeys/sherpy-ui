@@ -1,123 +1,14 @@
 /**
  * Integration tests for Structured Output feature
- * Tests JSON Schema validation, feature flag behavior, response parsing, and backward compatibility
+ * Tests response parsing, backward compatibility, and type safety.
+ *
+ * Structured output is always enabled for interview steps via the AI SDK.
+ * JSON Schema constants and feature flags have been removed (M5 cleanup).
  */
 
-import { beforeEach, describe, expect, test } from "vitest";
-import {
-  ARTIFACT_RESPONSE_SCHEMA,
-  INTERVIEW_QUESTION_SCHEMA,
-  type InterviewQuestionResponse,
-} from "../planning/response-schemas";
+import { describe, expect, test } from "vitest";
+import type { InterviewQuestionResponse } from "../planning/response-schemas";
 import type { StepOption } from "../planning/types";
-import { getFeatureFlags, isStructuredOutputEnabled } from "./feature-flags";
-
-describe("Structured Output - JSON Schema Validation", () => {
-  test("INTERVIEW_QUESTION_SCHEMA has required fields", () => {
-    expect(INTERVIEW_QUESTION_SCHEMA).toBeDefined();
-    expect(INTERVIEW_QUESTION_SCHEMA.type).toBe("object");
-    expect(INTERVIEW_QUESTION_SCHEMA.required).toContain("question");
-    expect(INTERVIEW_QUESTION_SCHEMA.required).toContain("options");
-  });
-
-  test("INTERVIEW_QUESTION_SCHEMA matches StepOption interface structure", () => {
-    const optionSchema = INTERVIEW_QUESTION_SCHEMA.properties.options;
-    expect(optionSchema).toBeDefined();
-    expect(optionSchema.type).toBe("array");
-
-    const optionItemSchema = optionSchema.items;
-    expect(optionItemSchema.properties.letter).toBeDefined();
-    expect(optionItemSchema.properties.title).toBeDefined();
-    expect(optionItemSchema.properties.body).toBeDefined();
-    expect(optionItemSchema.properties.recommended).toBeDefined();
-
-    // Ensure types match TypeScript interface
-    expect(optionItemSchema.properties.letter.type).toBe("string");
-    expect(optionItemSchema.properties.title.type).toBe("string");
-    expect(optionItemSchema.properties.body.type).toBe("string");
-    expect(optionItemSchema.properties.recommended.type).toBe("boolean");
-  });
-
-  test("INTERVIEW_QUESTION_SCHEMA has descriptions for LLM guidance", () => {
-    expect(
-      INTERVIEW_QUESTION_SCHEMA.properties.question.description,
-    ).toBeTruthy();
-    expect(
-      INTERVIEW_QUESTION_SCHEMA.properties.options.description,
-    ).toBeTruthy();
-    expect(
-      INTERVIEW_QUESTION_SCHEMA.properties.isComplete.description,
-    ).toBeTruthy();
-  });
-
-  test("ARTIFACT_RESPONSE_SCHEMA has required fields", () => {
-    expect(ARTIFACT_RESPONSE_SCHEMA).toBeDefined();
-    expect(ARTIFACT_RESPONSE_SCHEMA.type).toBe("object");
-    expect(ARTIFACT_RESPONSE_SCHEMA.required).toContain("content");
-    expect(ARTIFACT_RESPONSE_SCHEMA.required).toContain("format");
-  });
-
-  test("ARTIFACT_RESPONSE_SCHEMA has format enum constraint", () => {
-    const formatSchema = ARTIFACT_RESPONSE_SCHEMA.properties.format;
-    expect(formatSchema.enum).toEqual(["yaml", "markdown"]);
-  });
-});
-
-describe("Structured Output - Feature Flag Behavior", () => {
-  beforeEach(() => {
-    // Reset environment variables
-    delete process.env.USE_STRUCTURED_OUTPUT;
-    delete process.env.STRUCTURED_OUTPUT_STEPS;
-  });
-
-  test("feature flag defaults to disabled", () => {
-    const flags = getFeatureFlags();
-    expect(flags.useStructuredOutput).toBe(false);
-  });
-
-  test("feature flag can be enabled via env var", () => {
-    process.env.USE_STRUCTURED_OUTPUT = "true";
-    const flags = getFeatureFlags();
-    expect(flags.useStructuredOutput).toBe(true);
-  });
-
-  test("feature flag defaults to step 1 only when enabled", () => {
-    process.env.USE_STRUCTURED_OUTPUT = "true";
-    const flags = getFeatureFlags();
-    expect(flags.structuredOutputSteps).toEqual([1]);
-  });
-
-  test("feature flag supports multiple steps", () => {
-    process.env.USE_STRUCTURED_OUTPUT = "true";
-    process.env.STRUCTURED_OUTPUT_STEPS = "1,2,3";
-    const flags = getFeatureFlags();
-    expect(flags.structuredOutputSteps).toEqual([1, 2, 3]);
-  });
-
-  test("isStructuredOutputEnabled returns false when flag disabled", () => {
-    process.env.USE_STRUCTURED_OUTPUT = "false";
-    expect(isStructuredOutputEnabled(1)).toBe(false);
-    expect(isStructuredOutputEnabled(2)).toBe(false);
-  });
-
-  test("isStructuredOutputEnabled returns true only for enabled steps", () => {
-    process.env.USE_STRUCTURED_OUTPUT = "true";
-    process.env.STRUCTURED_OUTPUT_STEPS = "1,3";
-    expect(isStructuredOutputEnabled(1)).toBe(true);
-    expect(isStructuredOutputEnabled(2)).toBe(false);
-    expect(isStructuredOutputEnabled(3)).toBe(true);
-  });
-
-  test("feature flag handles invalid step numbers gracefully", () => {
-    process.env.USE_STRUCTURED_OUTPUT = "true";
-    process.env.STRUCTURED_OUTPUT_STEPS = "invalid,1,garbage";
-    const flags = getFeatureFlags();
-    // Should include valid step numbers (NaN values are kept by current implementation)
-    expect(flags.structuredOutputSteps).toContain(1);
-    // Note: Current implementation doesn't filter NaN, which is acceptable
-    // as isStructuredOutputEnabled will handle invalid values
-  });
-});
 
 describe("Structured Output - Response Parsing", () => {
   test("valid JSON response parsed correctly", () => {
@@ -150,7 +41,7 @@ describe("Structured Output - Response Parsing", () => {
 
   test("question text is clean without options section", () => {
     const jsonResponse = JSON.stringify({
-      question: "What is your goal?", // No **Options:** section
+      question: "What is your goal?",
       options: [
         {
           letter: "A",
@@ -231,7 +122,6 @@ describe("Structured Output - Response Parsing", () => {
   test("malformed JSON with missing fields throws or has undefined properties", () => {
     const malformedJson = JSON.stringify({
       question: "Question without options",
-      // Missing options field
     });
 
     const parsed: any = JSON.parse(malformedJson);
@@ -255,7 +145,6 @@ describe("Structured Output - Backward Compatibility", () => {
   });
 
   test("parseOptions fallback available for text mode", async () => {
-    // Import parseOptions to ensure it's still available
     const parseOptionsModule = await import("./parse-options");
     expect(parseOptionsModule.parseOptions).toBeDefined();
     expect(typeof parseOptionsModule.parseOptions).toBe("function");
@@ -269,7 +158,6 @@ describe("Structured Output - Backward Compatibility", () => {
       recommended: true,
     };
 
-    // Ensure properties match expected structure
     expect(option.letter).toBe("A");
     expect(option.title).toBe("Test");
     expect(option.body).toBe("Test body");
@@ -296,15 +184,13 @@ describe("Structured Output - Error Handling", () => {
     const incompleteJson = JSON.stringify({ question: "Test" });
     const parsed: any = JSON.parse(incompleteJson);
 
-    // Validate required fields
     expect(parsed.question).toBeDefined();
-    expect(parsed.options).toBeUndefined(); // Missing required field
+    expect(parsed.options).toBeUndefined();
   });
 
   test("fallback to text mode when JSON parsing fails", () => {
     const textFallback = "Question text\n\n**Options:**\nA) Option A";
 
-    // Attempt JSON parse, fallback to text
     let parsed: InterviewQuestionResponse | null = null;
     let fallbackText = "";
 
@@ -329,7 +215,6 @@ describe("Structured Output - Type Safety", () => {
       isComplete: false,
     };
 
-    // TypeScript should enforce type structure
     expect(response.question).toBeDefined();
     expect(response.options).toBeDefined();
     expect(Array.isArray(response.options)).toBe(true);
@@ -343,66 +228,9 @@ describe("Structured Output - Type Safety", () => {
       recommended: false,
     };
 
-    // Should not accept invalid types
     expect(typeof option.letter).toBe("string");
     expect(typeof option.title).toBe("string");
     expect(typeof option.body).toBe("string");
     expect(typeof option.recommended).toBe("boolean");
-  });
-});
-
-describe("Structured Output - Integration Scenarios", () => {
-  test("Step 1 with structured output enabled returns valid JSON", () => {
-    process.env.USE_STRUCTURED_OUTPUT = "true";
-    process.env.STRUCTURED_OUTPUT_STEPS = "1";
-
-    const mockJsonResponse = JSON.stringify({
-      question: "What problem are you solving?",
-      options: [
-        {
-          letter: "A",
-          title: "Known Problem",
-          body: "We have a clear problem",
-          recommended: true,
-        },
-        {
-          letter: "B",
-          title: "Exploration",
-          body: "We are exploring options",
-          recommended: false,
-        },
-      ],
-      isComplete: false,
-    });
-
-    const parsed: InterviewQuestionResponse = JSON.parse(mockJsonResponse);
-    expect(parsed.question).toBeTruthy();
-    expect(parsed.options.length).toBeGreaterThan(0);
-    expect(isStructuredOutputEnabled(1)).toBe(true);
-  });
-
-  test("Gradual rollout: Step 1 JSON, Step 2 text", () => {
-    process.env.USE_STRUCTURED_OUTPUT = "true";
-    process.env.STRUCTURED_OUTPUT_STEPS = "1";
-
-    expect(isStructuredOutputEnabled(1)).toBe(true);
-    expect(isStructuredOutputEnabled(2)).toBe(false);
-  });
-
-  test("Rollback: disabling flag reverts to text parsing", () => {
-    process.env.USE_STRUCTURED_OUTPUT = "false";
-
-    expect(isStructuredOutputEnabled(1)).toBe(false);
-    expect(isStructuredOutputEnabled(2)).toBe(false);
-    expect(isStructuredOutputEnabled(3)).toBe(false);
-  });
-
-  test("Full rollout: all steps enabled", () => {
-    process.env.USE_STRUCTURED_OUTPUT = "true";
-    process.env.STRUCTURED_OUTPUT_STEPS = "1,2,3,4,5,6,7,8,9,10";
-
-    for (let step = 1; step <= 10; step++) {
-      expect(isStructuredOutputEnabled(step)).toBe(true);
-    }
   });
 });

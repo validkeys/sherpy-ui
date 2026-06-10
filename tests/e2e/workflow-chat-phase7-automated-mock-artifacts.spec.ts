@@ -23,6 +23,11 @@ const automatedStepCases: AutomatedStepCase[] = [
     artifactName: "plan-review.md",
   },
   {
+    step: 7,
+    projectId: "workflow-chat-phase7-step7",
+    artifactName: "architecture-decisions.md",
+  },
+  {
     step: 8,
     projectId: "workflow-chat-phase7-step8",
     artifactName: "delivery-timeline.yaml",
@@ -124,6 +129,8 @@ function getAutomatedStepName(step: number): string {
       return "Style Anchors Collection";
     case 6:
       return "Implementation Plan Review";
+    case 7:
+      return "Architecture Decision Records";
     case 8:
       return "Delivery Timeline";
     case 9:

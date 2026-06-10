@@ -1,29 +1,17 @@
-import {
-  InvokeModelCommand,
-  type InvokeModelCommandOutput,
-} from "@aws-sdk/client-bedrock-runtime";
 import { createServerFn } from "@tanstack/react-start";
 import { nanoid } from "nanoid";
-import { BEDROCK_MODEL_ID, bedrockClient } from "@/lib/bedrock";
-// NOTE: Do NOT import database functions at module level - causes BUG-017
-// Use lazy imports inside handlers instead
-import {
-  createGenerationSpan,
-  createTrace,
-  finalizeGenerationSpan,
-  flushLangfuse,
-  type TraceMetadata,
-} from "@/lib/langfuse-helpers";
+import type { TraceMetadata } from "@/lib/langfuse-helpers";
 import { getArtifact, upsertArtifact } from "../artifacts/store";
 import type { Artifact } from "../artifacts/types";
 import { $getStepState } from "../planning/infrastructure/server-functions";
+import { GapAnalysisAssessmentSchema } from "../planning/response-schemas";
 import {
   getStepArtifactKey,
   getStepName,
   getStepNumberFromArtifactKey,
-  getStepResponseSchema,
+  getStepZodSchema,
 } from "../planning/step-config";
-import { isStructuredOutputEnabled } from "./feature-flags";
+import { aiGenerateObject, aiGenerateText } from "./ai-client";
 import {
   assertMockArtifactsAllowed,
   generateMockArtifactContent,
@@ -35,11 +23,12 @@ import {
   buildInterviewPrompt,
   buildRefinementPrompt,
 } from "./prompts";
-import { type AIProviderContext, logAIProviderError } from "./provider-errors";
+import type { AIProviderContext } from "./provider-errors";
 import { getArtifactName } from "./skills-content";
 
 interface GenerateQuestionOutput {
   question: string;
+  options?: string[];
 }
 
 interface AssessGapAnalysisNeedOutput {
@@ -48,105 +37,31 @@ interface AssessGapAnalysisNeedOutput {
   confidence: "high" | "medium" | "low";
 }
 
-// Non-streaming helper for generating text from Claude
-// Instrumented with Langfuse for observability (tokens, latency, cost)
+// Non-streaming helper for generating text from Claude.
+// Delegates to the AI SDK wrappers in ai-client.ts (Langfuse observability,
+// token counting, and error normalization are handled there).
 export async function generateText(
   messages: Array<{ role: string; content: string }>,
   stepNumber: number,
   traceMetadata?: TraceMetadata,
   providerContext?: AIProviderContext,
-): Promise<string> {
-  // Create Langfuse trace (no-op if disabled)
-  const trace = createTrace({
-    name: traceMetadata?.name ?? "generateText",
-    sessionId: traceMetadata?.sessionId,
-    userId: traceMetadata?.userId,
-    metadata: traceMetadata?.metadata,
-  });
-
-  // Create generation span
-  const span = createGenerationSpan(trace, {
-    name: "bedrock-invoke",
-    modelId: BEDROCK_MODEL_ID,
-    input: { messages },
-    maxTokens: 512,
-  });
-
-  console.log(
-    "[langfuse-debug] LANGFUSE_ENABLED:",
-    process.env.LANGFUSE_ENABLED,
-    "hasPublicKey:",
-    !!process.env.LANGFUSE_PUBLIC_KEY,
-    "baseUrl:",
-    process.env.LANGFUSE_BASEURL,
-    "trace:",
-    !!trace,
-    "span:",
-    !!span,
-  );
-
-  const startTime = Date.now();
-
-  // Build request body
-  const body: any = {
-    anthropic_version: "bedrock-2023-05-31",
-    max_tokens: 512,
-    messages,
-  };
-
-  // Add JSON Schema constraint if enabled for this step
-  if (isStructuredOutputEnabled(stepNumber)) {
-    const schema = getStepResponseSchema(stepNumber);
-    if (schema) {
-      body.response_format = {
-        type: "json_schema",
-        json_schema: schema,
-      };
-    }
-  }
-
-  const cmd = new InvokeModelCommand({
-    modelId: BEDROCK_MODEL_ID,
-    contentType: "application/json",
-    body: JSON.stringify(body),
-  });
-
-  let res: InvokeModelCommandOutput;
-  try {
-    res = await bedrockClient.send(cmd);
-  } catch (error) {
-    throw logAIProviderError(error, {
-      operation: "generateText",
-      stepNumber,
-      ...providerContext,
+): Promise<string | unknown> {
+  // Structured output is always enabled for interview steps (which have a
+  // Zod schema). The AI SDK uses Bedrock's Converse API with native
+  // structured output support, so no feature flag is needed.
+  const schema = getStepZodSchema(stepNumber);
+  if (schema) {
+    // Return the parsed object directly - no need to stringify/parse round-trip
+    return aiGenerateObject(messages, schema, {
+      traceMetadata,
+      providerContext,
     });
   }
-  const result = JSON.parse(new TextDecoder().decode(res.body));
-  const output = result.content[0].text as string;
-  const latencyMs = Date.now() - startTime;
 
-  // Finalize span with usage data
-  finalizeGenerationSpan(span, {
-    output,
-    usage: result.usage
-      ? {
-          input: result.usage.input_tokens ?? 0,
-          output: result.usage.output_tokens ?? 0,
-          total:
-            (result.usage.input_tokens ?? 0) +
-            (result.usage.output_tokens ?? 0),
-        }
-      : undefined,
-    metadata: {
-      latencyMs,
-      stopReason: result.stop_reason,
-    },
+  return aiGenerateText(messages, {
+    traceMetadata,
+    providerContext,
   });
-
-  // Flush traces asynchronously (don't await to avoid blocking)
-  void flushLangfuse();
-
-  return output;
 }
 
 export const $generateQuestion = createServerFn({ method: "POST" })
@@ -201,7 +116,7 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       data.previousAnswers,
       projectOverview,
     );
-    const question = await generateText(messages, data.stepNumber, {
+    const rawResult = await generateText(messages, data.stepNumber, {
       name: "interview-question",
       sessionId: data.projectId,
       metadata: {
@@ -211,7 +126,25 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       },
     });
 
-    return { question };
+    // Structured output returns parsed object (InterviewQuestionResponse).
+    // Extract question text and option labels for the interview UI.
+    if (typeof rawResult === "object" && rawResult !== null) {
+      const parsed = rawResult as {
+        question?: string;
+        options?: Array<{ letter: string; title: string }>;
+      };
+      if (parsed.question) {
+        return {
+          question: parsed.question,
+          options: Array.isArray(parsed.options)
+            ? parsed.options.map((o) => `${o.letter}. ${o.title}`)
+            : undefined,
+        };
+      }
+    }
+
+    // Plain text mode (no schema), return as-is
+    return { question: String(rawResult) };
   });
 
 export const $assessGapAnalysisNeed = createServerFn({ method: "POST" })
@@ -248,48 +181,36 @@ export const $assessGapAnalysisNeed = createServerFn({ method: "POST" })
       data.hasExistingRequirements,
     );
 
-    const response = await generateText(messages, 1, {
-      name: "assess-gap-analysis-need",
-      sessionId: data.projectId,
-      metadata: {
-        projectDescriptionLength: data.projectDescription.length,
-        hasExistingRequirements: data.hasExistingRequirements,
-      },
-    });
-
-    console.log("[assessGapAnalysisNeed] Raw LLM response:", response);
-
-    // Parse JSON response
     try {
-      const parsed = JSON.parse(response) as AssessGapAnalysisNeedOutput;
+      const result = await aiGenerateObject(
+        messages,
+        GapAnalysisAssessmentSchema,
+        {
+          traceMetadata: {
+            name: "assess-gap-analysis-need",
+            sessionId: data.projectId,
+            metadata: {
+              projectDescriptionLength: data.projectDescription.length,
+              hasExistingRequirements: data.hasExistingRequirements,
+            },
+          },
+        },
+      );
 
-      // Validate structure
-      if (
-        typeof parsed.needsGapAnalysis !== "boolean" ||
-        typeof parsed.reasoning !== "string" ||
-        !["high", "medium", "low"].includes(parsed.confidence)
-      ) {
-        throw new Error("Invalid response structure from LLM");
-      }
-
-      console.log("[assessGapAnalysisNeed] ✅ Assessment result:", parsed);
-
-      return parsed;
+      console.log("[assessGapAnalysisNeed] ✅ Assessment result:", result);
+      return result as AssessGapAnalysisNeedOutput;
     } catch (error) {
-      console.error("[assessGapAnalysisNeed] ❌ Failed to parse response:", {
+      console.error("[assessGapAnalysisNeed] ❌ Failed:", {
         error: error instanceof Error ? error.message : String(error),
-        response,
       });
 
       // Fallback to conservative default (skip gap analysis for greenfield)
-      const fallback: AssessGapAnalysisNeedOutput = {
+      return {
         needsGapAnalysis: false,
         reasoning:
           "Failed to parse LLM response. Defaulting to skip gap analysis.",
         confidence: "low",
       };
-
-      return fallback;
     }
   });
 
@@ -312,10 +233,8 @@ export async function generateArtifact(
 
   const content = shouldUseMockArtifacts()
     ? generateMockArtifactContent(stepNumber, answers)
-    : await generateText(
-        buildArtifactPrompt(stepName, stepNumber, answers),
-        stepNumber,
-        {
+    : await aiGenerateText(buildArtifactPrompt(stepName, stepNumber, answers), {
+        traceMetadata: {
           name: "generate-artifact",
           sessionId: projectId,
           metadata: {
@@ -325,13 +244,13 @@ export async function generateArtifact(
             answersCount: answers.length,
           },
         },
-        {
+        providerContext: {
           operation: "generateArtifact",
           projectId,
           stepNumber,
           artifactKey,
         },
-      );
+      });
 
   // Determine format from artifact filename
   const artifactName = getArtifactName(stepNumber);
@@ -356,7 +275,12 @@ export async function generateArtifact(
     const { saveArtifact: saveArtifactToDb } = await import(
       "@/lib/db/artifact"
     );
-    saveArtifactToDb(projectId, stepNumber as any, format, content);
+    saveArtifactToDb(
+      projectId,
+      stepNumber as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10,
+      format,
+      content,
+    );
   } catch (error) {
     console.error("[generateArtifact] Failed to persist to database:", error);
   }
@@ -440,7 +364,7 @@ export const $refineArtifact = createServerFn({ method: "POST" })
         );
         saveArtifactToDb(
           data.projectId,
-          stepNumber as any,
+          stepNumber as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10,
           artifact.format,
           refinedContent,
         );

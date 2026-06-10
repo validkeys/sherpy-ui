@@ -96,16 +96,16 @@ describe("BUG-006: Cannot proceed past step 1", () => {
       },
     });
 
-    // Wait a tick for state to update to submitting
+    // Wait a tick for state to update to assessingNeed
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    const submitting = actor.getSnapshot();
+    const assessing = actor.getSnapshot();
 
-    // Should be in submitting state
-    expect(submitting.value).toEqual({ step1_gapAnalysis: "submitting" });
+    // Should be in assessingNeed state (gap analysis intelligence from Observation #4)
+    expect(assessing.value).toEqual({ step1_gapAnalysis: "assessingNeed" });
 
     // Responses should be stored
-    expect(submitting.context.step1Responses).toEqual({
+    expect(assessing.context.step1Responses).toEqual({
       existingRequirements: "No",
       projectDescription:
         "I want to build a simple html page that when i click anywhere in the page the background fades to a new random color.",

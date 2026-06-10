@@ -1,5 +1,4 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Intake } from "@/components/intake/Intake";
 import { PathCard } from "@/components/intake/PathCard";
@@ -26,7 +25,6 @@ export function CreateProjectFlow({
   const [nameError, setNameError] = useState("");
 
   const { mutate: createProject, isPending } = useCreateProject();
-  const navigate = useNavigate();
 
   function handlePathSelect(path: EntryPath) {
     setEntryPath(path);
@@ -48,12 +46,17 @@ export function CreateProjectFlow({
       { name: name.trim(), entryPath },
       {
         onSuccess: (project) => {
+          // BUG-023 FIX: Navigation is handled by parent component (AppLayout)
+          // via the onCreated callback. We previously had duplicate navigation
+          // here which caused a race condition - under certain timing, both
+          // navigations would fire and potentially interfere with each other.
+          //
+          // By letting the parent handle navigation, we have:
+          // 1. Single source of truth for navigation logic
+          // 2. No race conditions between duplicate navigate() calls
+          // 3. Clearer separation of concerns (child reports success, parent decides action)
           onCreated?.(project.id);
           handleClose();
-          navigate({
-            to: "/project/$projectId/build",
-            params: { projectId: project.id },
-          });
         },
       },
     );

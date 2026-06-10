@@ -19,6 +19,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={(newProjectId) => {
+          // BUG-023 FIX: This is the ONLY place navigation happens after project creation.
+          // CreateProjectFlow no longer navigates internally to avoid race conditions.
+          // We receive the new project ID and navigate to its build page.
           navigate({
             to: "/project/$projectId/build",
             params: { projectId: newProjectId },

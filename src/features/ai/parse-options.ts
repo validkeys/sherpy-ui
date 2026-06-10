@@ -26,6 +26,28 @@ export function parseOptions(questionText: string): StepOption[] {
 }
 
 /**
+ * Removes the **Options:** section from question text to prevent duplicate display.
+ * Used in UI to show only the question, not the markdown options list.
+ *
+ * Example:
+ * Input: "What is your choice?\n\n**Options:**\n1. Option A\n2. Option B"
+ * Output: "What is your choice?"
+ */
+export function stripOptionsSection(questionText: string): string {
+  // Match **Options:** and everything after it (case-insensitive)
+  // Also handles variations like "**options:**" or "** Options: **"
+  const optionsMatch = questionText.match(/\*\*\s*options\s*:\s*\*\*/i);
+
+  if (!optionsMatch) {
+    return questionText.trim();
+  }
+
+  // Return everything before the **Options:** marker
+  const beforeOptions = questionText.substring(0, optionsMatch.index);
+  return beforeOptions.trim();
+}
+
+/**
  * Tier 1: Parse markdown format with **Options:** header
  * Example:
  * **Options:**

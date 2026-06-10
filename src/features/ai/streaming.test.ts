@@ -1,264 +1,116 @@
-import { InvokeModelWithResponseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as bedrockModule from "@/lib/bedrock";
+import { z } from "zod";
+
+const mockAiStreamText = vi.fn();
+const mockAiStreamObject = vi.fn();
+
+// Mock the AI SDK wrappers (the ./ai-client boundary)
+vi.mock("./ai-client", () => ({
+  aiStreamText: (...args: unknown[]) => mockAiStreamText(...args),
+  aiStreamObject: (...args: unknown[]) => mockAiStreamObject(...args),
+}));
+
+// Mock step config — controls whether structured output is used
+vi.mock("../planning/step-config", () => ({
+  getStepZodSchema: vi.fn(() => undefined),
+}));
+
+import { getStepZodSchema } from "../planning/step-config";
 import { streamQuestion } from "./streaming";
 
-// Mock the bedrock client
-vi.mock("@/lib/bedrock", () => ({
-  bedrockClient: {
-    send: vi.fn(),
-  },
-  BEDROCK_MODEL_ID: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-}));
+const sampleMessages = [{ role: "user", content: "Test" }];
 
-// Mock feature flags
-vi.mock("./feature-flags", () => ({
-  isStructuredOutputEnabled: vi.fn(() => false), // Default: disabled
-}));
+function makeTextStream(chunks: string[]): ReadableStream<string> {
+  return new ReadableStream<string>({
+    start(controller) {
+      for (const c of chunks) controller.enqueue(c);
+      controller.close();
+    },
+  });
+}
 
-// Mock step config
-vi.mock("../planning/step-config", () => ({
-  getStepResponseSchema: vi.fn(() => ({
-    type: "object",
-    properties: { question: { type: "string" } },
-  })),
-}));
+async function readStream(stream: ReadableStream<string>): Promise<string[]> {
+  const reader = stream.getReader();
+  const out: string[] = [];
+  let done = false;
+  while (!done) {
+    const { value, done: isDone } = await reader.read();
+    done = isDone;
+    if (value) out.push(value);
+  }
+  return out;
+}
 
 describe("streamQuestion", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getStepZodSchema).mockReturnValue(undefined);
   });
 
-  it("yields chunks from mocked ResponseStream", async () => {
-    // Create async iterator for mocked stream
-    async function* mockStream() {
-      yield {
-        chunk: {
-          bytes: new TextEncoder().encode(
-            JSON.stringify({
-              type: "content_block_delta",
-              delta: { text: "Hello " },
-            }),
-          ),
-        },
-      };
-      yield {
-        chunk: {
-          bytes: new TextEncoder().encode(
-            JSON.stringify({
-              type: "content_block_delta",
-              delta: { text: "world!" },
-            }),
-          ),
-        },
-      };
-    }
+  it("delegates to aiStreamText when no schema available", async () => {
+    const textStream = makeTextStream(["Hello ", "world!"]);
+    mockAiStreamText.mockResolvedValue(textStream);
 
-    const mockResponse = {
-      body: mockStream(),
-    };
+    const stream = await streamQuestion(sampleMessages, 1);
 
-    vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-      mockResponse as never,
-    );
-
-    const messages = [{ role: "user", content: "Test" }];
-    const stream = await streamQuestion(messages, 1);
-
-    // Read chunks from stream
-    const reader = stream.getReader();
-    const chunks: string[] = [];
-
-    let done = false;
-    while (!done) {
-      const { value, done: isDone } = await reader.read();
-      done = isDone;
-      if (value) chunks.push(value);
-    }
-
-    expect(chunks).toEqual(["Hello ", "world!"]);
-    expect(bedrockModule.bedrockClient.send).toHaveBeenCalledWith(
-      expect.any(InvokeModelWithResponseStreamCommand),
-    );
+    expect(await readStream(stream)).toEqual(["Hello ", "world!"]);
+    expect(mockAiStreamText).toHaveBeenCalledWith(sampleMessages, {
+      traceMetadata: undefined,
+    });
+    expect(mockAiStreamObject).not.toHaveBeenCalled();
   });
 
-  it("closes stream when ResponseStream is exhausted", async () => {
-    async function* mockStream() {
-      yield {
-        chunk: {
-          bytes: new TextEncoder().encode(
-            JSON.stringify({
-              type: "content_block_delta",
-              delta: { text: "Done" },
-            }),
-          ),
-        },
-      };
-    }
+  it("passes traceMetadata through to aiStreamText", async () => {
+    mockAiStreamText.mockResolvedValue(makeTextStream(["x"]));
 
-    const mockResponse = {
-      body: mockStream(),
-    };
+    const traceMetadata = { name: "interview-stream", sessionId: "proj-1" };
+    await streamQuestion(sampleMessages, 1, traceMetadata);
 
-    vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-      mockResponse as never,
-    );
-
-    const messages = [{ role: "user", content: "Test" }];
-    const stream = await streamQuestion(messages, 1);
-    const reader = stream.getReader();
-
-    // Read all chunks
-    await reader.read(); // 'Done'
-    const final = await reader.read();
-
-    expect(final.done).toBe(true);
-  });
-
-  it("handles malformed JSON in chunk bytes", async () => {
-    async function* mockStream() {
-      yield {
-        chunk: {
-          bytes: new TextEncoder().encode("invalid json"),
-        },
-      };
-    }
-
-    const mockResponse = {
-      body: mockStream(),
-    };
-
-    vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-      mockResponse as never,
-    );
-
-    const messages = [{ role: "user", content: "Test" }];
-    const stream = await streamQuestion(messages, 1);
-    const reader = stream.getReader();
-
-    // Should error on malformed JSON
-    await expect(reader.read()).rejects.toThrow();
+    expect(mockAiStreamText).toHaveBeenCalledWith(sampleMessages, {
+      traceMetadata,
+    });
   });
 
   describe("Structured Output Support", () => {
-    it("includes response_format when feature flag is enabled", async () => {
-      const { isStructuredOutputEnabled } = await import("./feature-flags");
-      const { getStepResponseSchema } = await import("../planning/step-config");
+    it("delegates to aiStreamObject when schema available", async () => {
+      const schema = z.object({ question: z.string() });
+      vi.mocked(getStepZodSchema).mockReturnValue(schema);
 
-      // Enable structured output for step 1
-      vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
-      vi.mocked(getStepResponseSchema).mockReturnValue({
-        type: "object",
-        properties: {
-          question: { type: "string" },
-          options: { type: "array" },
-        },
+      const objectStream = makeTextStream(['{"question":"Test"}']);
+      mockAiStreamObject.mockResolvedValue({ stream: objectStream });
+
+      const stream = await streamQuestion(sampleMessages, 1);
+
+      expect(await readStream(stream)).toEqual(['{"question":"Test"}']);
+      expect(mockAiStreamObject).toHaveBeenCalledWith(sampleMessages, schema, {
+        traceMetadata: undefined,
       });
-
-      async function* mockStream() {
-        yield {
-          chunk: {
-            bytes: new TextEncoder().encode(
-              JSON.stringify({
-                type: "content_block_delta",
-                delta: { text: '{"question":"Test"}' },
-              }),
-            ),
-          },
-        };
-      }
-
-      const mockResponse = { body: mockStream() };
-      vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-        mockResponse as never,
-      );
-
-      const messages = [{ role: "user", content: "Test" }];
-      await streamQuestion(messages, 1); // stepNumber = 1
-
-      // Verify response_format was added to body
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
-        .calls[0];
-      const command = callArgs[0] as InvokeModelWithResponseStreamCommand;
-      const body = JSON.parse(command.input.body as string);
-
-      expect(body.response_format).toBeDefined();
-      expect(body.response_format.type).toBe("json_schema");
-      expect(body.response_format.json_schema).toBeDefined();
+      expect(mockAiStreamText).not.toHaveBeenCalled();
     });
 
-    it("omits response_format when feature flag is disabled", async () => {
-      const { isStructuredOutputEnabled } = await import("./feature-flags");
+    it("passes traceMetadata through to aiStreamObject", async () => {
+      const schema = z.object({ question: z.string() });
+      vi.mocked(getStepZodSchema).mockReturnValue(schema);
+      mockAiStreamObject.mockResolvedValue({ stream: makeTextStream(["x"]) });
 
-      // Disable structured output
-      vi.mocked(isStructuredOutputEnabled).mockReturnValue(false);
+      const traceMetadata = { name: "interview-stream" };
+      await streamQuestion(sampleMessages, 2, traceMetadata);
 
-      async function* mockStream() {
-        yield {
-          chunk: {
-            bytes: new TextEncoder().encode(
-              JSON.stringify({
-                type: "content_block_delta",
-                delta: { text: "Text mode response" },
-              }),
-            ),
-          },
-        };
-      }
-
-      const mockResponse = { body: mockStream() };
-      vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-        mockResponse as never,
-      );
-
-      const messages = [{ role: "user", content: "Test" }];
-      await streamQuestion(messages, 1);
-
-      // Verify response_format was NOT added
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
-        .calls[0];
-      const command = callArgs[0] as InvokeModelWithResponseStreamCommand;
-      const body = JSON.parse(command.input.body as string);
-
-      expect(body.response_format).toBeUndefined();
+      expect(mockAiStreamObject).toHaveBeenCalledWith(sampleMessages, schema, {
+        traceMetadata,
+      });
     });
 
-    it("omits response_format when schema is not available", async () => {
-      const { isStructuredOutputEnabled } = await import("./feature-flags");
-      const { getStepResponseSchema } = await import("../planning/step-config");
+    it("falls back to aiStreamText when no schema", async () => {
+      vi.mocked(getStepZodSchema).mockReturnValue(undefined);
 
-      // Enable flag but no schema available
-      vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
-      vi.mocked(getStepResponseSchema).mockReturnValue(undefined);
+      mockAiStreamText.mockResolvedValue(makeTextStream(["Fallback"]));
 
-      async function* mockStream() {
-        yield {
-          chunk: {
-            bytes: new TextEncoder().encode(
-              JSON.stringify({
-                type: "content_block_delta",
-                delta: { text: "Fallback" },
-              }),
-            ),
-          },
-        };
-      }
+      const stream = await streamQuestion(sampleMessages, 4);
 
-      const mockResponse = { body: mockStream() };
-      vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-        mockResponse as never,
-      );
-
-      const messages = [{ role: "user", content: "Test" }];
-      await streamQuestion(messages, 4); // Step 4 has no schema
-
-      // Verify response_format was NOT added (schema unavailable)
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
-        .calls[0];
-      const command = callArgs[0] as InvokeModelWithResponseStreamCommand;
-      const body = JSON.parse(command.input.body as string);
-
-      expect(body.response_format).toBeUndefined();
+      expect(await readStream(stream)).toEqual(["Fallback"]);
+      expect(mockAiStreamText).toHaveBeenCalled();
+      expect(mockAiStreamObject).not.toHaveBeenCalled();
     });
   });
 });

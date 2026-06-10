@@ -1,6 +1,5 @@
-import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as bedrockModule from "@/lib/bedrock";
+import { z } from "zod";
 import * as artifactStore from "../artifacts/store";
 import { MOCK_ARTIFACT_PROVENANCE } from "./mock-artifacts";
 import {
@@ -8,32 +7,26 @@ import {
   buildGapAnalysisAssessmentPrompt,
   buildInterviewPrompt,
 } from "./prompts";
-import type { AIProviderError } from "./provider-errors";
 import { generateArtifact, generateText } from "./server";
 
-// Mock the bedrock client
-vi.mock("@/lib/bedrock", () => ({
-  bedrockClient: {
-    send: vi.fn(),
-  },
-  BEDROCK_REGION: "us-east-1",
-  BEDROCK_MODEL_ID: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+// --- Mocks: mock at the ai-client boundary, not at the Bedrock SDK ---
+
+const { mockAiGenerateText, mockAiGenerateObject } = vi.hoisted(() => ({
+  mockAiGenerateText: vi.fn(),
+  mockAiGenerateObject: vi.fn(),
 }));
 
-// Mock feature flags
-vi.mock("./feature-flags", () => ({
-  isStructuredOutputEnabled: vi.fn(() => false), // Default: disabled
+vi.mock("./ai-client", () => ({
+  aiGenerateText: (...args: unknown[]) => mockAiGenerateText(...args),
+  aiGenerateObject: (...args: unknown[]) => mockAiGenerateObject(...args),
 }));
 
-// Mock step config
+// Mock step config — keep real implementations, override getStepZodSchema
 vi.mock("../planning/step-config", async () => {
   const actual = await vi.importActual("../planning/step-config");
   return {
     ...actual,
-    getStepResponseSchema: vi.fn(() => ({
-      type: "object",
-      properties: { question: { type: "string" } },
-    })),
+    getStepZodSchema: vi.fn(() => undefined), // Default: no schema
   };
 });
 
@@ -44,6 +37,8 @@ vi.mock("nanoid", () => ({
 
 // Spy on artifact store
 vi.spyOn(artifactStore, "upsertArtifact");
+
+const sampleMessages = [{ role: "user", content: "Test prompt" }];
 
 describe("buildInterviewPrompt", () => {
   it("includes step name in output", () => {
@@ -112,127 +107,49 @@ describe("buildArtifactPrompt", () => {
 });
 
 describe("generateText", () => {
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  afterEach(() => {
-    consoleErrorSpy.mockRestore();
-  });
+  it("delegates to aiGenerateText for plain text", async () => {
+    mockAiGenerateText.mockResolvedValue("What is your project vision?");
 
-  it("returns question text from Bedrock response", async () => {
-    const mockResponse = {
-      body: new TextEncoder().encode(
-        JSON.stringify({
-          content: [{ text: "What is your project vision?" }],
-        }),
-      ),
-    };
-
-    vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-      mockResponse as never,
-    );
-
-    const messages = [{ role: "user", content: "Test prompt" }];
-    const result = await generateText(messages, 1);
+    const result = await generateText(sampleMessages, 1);
 
     expect(result).toBe("What is your project vision?");
-    expect(bedrockModule.bedrockClient.send).toHaveBeenCalledWith(
-      expect.any(InvokeModelCommand),
+    expect(mockAiGenerateText).toHaveBeenCalledWith(
+      sampleMessages,
+      expect.objectContaining({
+        traceMetadata: undefined,
+        providerContext: undefined,
+      }),
     );
+    expect(mockAiGenerateObject).not.toHaveBeenCalled();
   });
 
-  it("sends correct request shape to Bedrock", async () => {
-    const mockResponse = {
-      body: new TextEncoder().encode(
-        JSON.stringify({
-          content: [{ text: "Response" }],
-        }),
-      ),
+  it("passes traceMetadata and providerContext through", async () => {
+    mockAiGenerateText.mockResolvedValue("response");
+
+    const traceMetadata = { name: "test", sessionId: "proj-1" };
+    const providerContext = {
+      operation: "generateText" as const,
+      stepNumber: 2,
     };
 
-    vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-      mockResponse as never,
-    );
+    await generateText(sampleMessages, 2, traceMetadata, providerContext);
 
-    const messages = [
-      { role: "user", content: "Test" },
-      { role: "assistant", content: "Got it" },
-    ];
-    await generateText(messages, 1);
-
-    const call = vi.mocked(bedrockModule.bedrockClient.send).mock.calls[0];
-    const command = call[0] as InvokeModelCommand;
-    const bodyString =
-      typeof command.input.body === "string"
-        ? command.input.body
-        : new TextDecoder().decode(command.input.body as Uint8Array);
-    const body = JSON.parse(bodyString);
-
-    expect(body.anthropic_version).toBe("bedrock-2023-05-31");
-    expect(body.max_tokens).toBe(512);
-    expect(body.messages).toEqual(messages);
-  });
-
-  it("normalizes invalid Bedrock credentials", async () => {
-    vi.mocked(bedrockModule.bedrockClient.send).mockRejectedValue({
-      name: "UnrecognizedClientException",
-      message: "The security token included in the request is invalid.",
-      $metadata: {
-        httpStatusCode: 400,
-        requestId: "request-123",
-      },
-    } as never);
-
-    await expect(
-      generateText([{ role: "user", content: "Test" }], 2, undefined, {
-        operation: "generateArtifact",
-        projectId: "project-123",
-        artifactKey: "business-requirements",
-      }),
-    ).rejects.toMatchObject({
-      name: "AIProviderError",
-      code: "AI_PROVIDER_AUTH_INVALID",
-      message:
-        "AI provider credentials are invalid or expired. Refresh AWS credentials and rerun the request.",
-    } satisfies Partial<AIProviderError>);
-
-    expect(console.error).toHaveBeenCalledWith(
-      "[ai-provider]",
-      expect.objectContaining({
-        code: "AI_PROVIDER_AUTH_INVALID",
-        provider: "aws-bedrock",
-        modelId: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        operation: "generateArtifact",
-        projectId: "project-123",
-        stepNumber: 2,
-        artifactKey: "business-requirements",
-        providerErrorName: "UnrecognizedClientException",
-        httpStatusCode: 400,
-        requestId: "request-123",
-      }),
-    );
-  });
-
-  it("normalizes Bedrock access denied errors", async () => {
-    vi.mocked(bedrockModule.bedrockClient.send).mockRejectedValue({
-      name: "AccessDeniedException",
-      message: "User is not authorized to perform bedrock:InvokeModel",
-      $metadata: {
-        httpStatusCode: 403,
-      },
-    } as never);
-
-    await expect(
-      generateText([{ role: "user", content: "Test" }], 2),
-    ).rejects.toMatchObject({
-      code: "AI_PROVIDER_ACCESS_DENIED",
-      message:
-        "AI provider access was denied. Confirm IAM permissions and Bedrock model access.",
+    expect(mockAiGenerateText).toHaveBeenCalledWith(sampleMessages, {
+      traceMetadata,
+      providerContext,
     });
+  });
+
+  it("propagates errors from aiGenerateText", async () => {
+    mockAiGenerateText.mockRejectedValue(new Error("Connection failed"));
+
+    await expect(generateText(sampleMessages, 1)).rejects.toThrow(
+      "Connection failed",
+    );
   });
 });
 
@@ -250,17 +167,7 @@ describe("generateArtifact", () => {
 project_vision: Build a collaborative planning tool
 target_audience: Product managers`;
 
-    const mockResponse = {
-      body: new TextEncoder().encode(
-        JSON.stringify({
-          content: [{ text: mockArtifactContent }],
-        }),
-      ),
-    };
-
-    vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-      mockResponse as never,
-    );
+    mockAiGenerateText.mockResolvedValue(mockArtifactContent);
 
     const result = await generateArtifact("test-project", 1, [
       "Build a collaborative planning tool",
@@ -273,6 +180,7 @@ target_audience: Product managers`;
     expect(result.content).toBe(mockArtifactContent);
     expect(result.status).toBe("ready");
     expect(artifactStore.upsertArtifact).toHaveBeenCalledWith(result);
+    expect(mockAiGenerateText).toHaveBeenCalled();
   });
 
   it("throws on invalid step number", async () => {
@@ -282,17 +190,7 @@ target_audience: Product managers`;
   });
 
   it("uses correct artifact key for each step", async () => {
-    const mockResponse = {
-      body: new TextEncoder().encode(
-        JSON.stringify({
-          content: [{ text: "artifact content" }],
-        }),
-      ),
-    };
-
-    vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-      mockResponse as never,
-    );
+    mockAiGenerateText.mockResolvedValue("artifact content");
 
     const result = await generateArtifact("test-project", 3, ["Feature list"]);
 
@@ -300,7 +198,7 @@ target_audience: Product managers`;
     expect(result.label).toBe("Technical Requirements Interview");
   });
 
-  it("generates deterministic mock artifacts without calling Bedrock", async () => {
+  it("generates deterministic mock artifacts without calling AI", async () => {
     vi.stubEnv("USE_MOCK_ARTIFACTS", "true");
     vi.stubEnv("NODE_ENV", "test");
 
@@ -311,7 +209,7 @@ target_audience: Product managers`;
       "This fourth answer should not appear in the preview.",
     ]);
 
-    expect(bedrockModule.bedrockClient.send).not.toHaveBeenCalled();
+    expect(mockAiGenerateText).not.toHaveBeenCalled();
     expect(result.projectId).toBe("test-project");
     expect(result.key).toBe("business-requirements");
     expect(result.label).toBe("Business Requirements Interview");
@@ -341,112 +239,68 @@ target_audience: Product managers`;
       "USE_MOCK_ARTIFACTS=true is not allowed when NODE_ENV=production",
     );
 
-    expect(bedrockModule.bedrockClient.send).not.toHaveBeenCalled();
+    expect(mockAiGenerateText).not.toHaveBeenCalled();
     expect(artifactStore.upsertArtifact).not.toHaveBeenCalled();
   });
+});
 
-  describe("Structured Output Support", () => {
-    it("includes response_format when feature flag is enabled", async () => {
-      const { isStructuredOutputEnabled } = await import("./feature-flags");
-      const { getStepResponseSchema } = await import("../planning/step-config");
+describe("Structured Output Support", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-      // Enable structured output for step 1
-      vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
-      vi.mocked(getStepResponseSchema).mockReturnValue({
-        type: "object",
-        properties: {
-          question: { type: "string" },
-          options: { type: "array" },
-        },
-      });
-
-      const mockResponse = {
-        body: new TextEncoder().encode(
-          JSON.stringify({
-            content: [{ text: '{"question":"Test"}' }],
-          }),
-        ),
-      };
-
-      vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-        mockResponse as never,
-      );
-
-      const messages = [{ role: "user", content: "Test" }];
-      await generateText(messages, 1); // stepNumber = 1
-
-      // Verify response_format was added to body
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
-        .calls[0];
-      const command = callArgs[0] as InvokeModelCommand;
-      const body = JSON.parse(command.input.body as string);
-
-      expect(body.response_format).toBeDefined();
-      expect(body.response_format.type).toBe("json_schema");
-      expect(body.response_format.json_schema).toBeDefined();
+  it("uses aiGenerateObject when schema is available", async () => {
+    const { getStepZodSchema } = await import("../planning/step-config");
+    const mockSchema = z.object({
+      question: z.string(),
+      options: z.array(z.string()),
     });
 
-    it("omits response_format when feature flag is disabled", async () => {
-      const { isStructuredOutputEnabled } = await import("./feature-flags");
+    vi.mocked(getStepZodSchema).mockReturnValue(mockSchema);
 
-      // Disable structured output
-      vi.mocked(isStructuredOutputEnabled).mockReturnValue(false);
+    const mockObject = { question: "Test question", options: ["A", "B"] };
+    mockAiGenerateObject.mockResolvedValue(mockObject);
 
-      const mockResponse = {
-        body: new TextEncoder().encode(
-          JSON.stringify({
-            content: [{ text: "Text mode response" }],
-          }),
-        ),
-      };
+    const result = await generateText(sampleMessages, 1);
 
-      vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-        mockResponse as never,
-      );
+    expect(mockAiGenerateObject).toHaveBeenCalledWith(
+      sampleMessages,
+      mockSchema,
+      expect.objectContaining({
+        traceMetadata: undefined,
+        providerContext: undefined,
+      }),
+    );
+    expect(mockAiGenerateText).not.toHaveBeenCalled();
+    // Returns the parsed object directly (no stringify/parse round-trip)
+    expect(result).toEqual(mockObject);
+  });
 
-      const messages = [{ role: "user", content: "Test" }];
-      await generateText(messages, 1);
+  it("uses aiGenerateText when no schema available", async () => {
+    const { getStepZodSchema } = await import("../planning/step-config");
 
-      // Verify response_format was NOT added
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
-        .calls[0];
-      const command = callArgs[0] as InvokeModelCommand;
-      const body = JSON.parse(command.input.body as string);
+    vi.mocked(getStepZodSchema).mockReturnValue(undefined);
+    mockAiGenerateText.mockResolvedValue("Text mode response");
 
-      expect(body.response_format).toBeUndefined();
-    });
+    const result = await generateText(sampleMessages, 1);
 
-    it("omits response_format when schema is not available", async () => {
-      const { isStructuredOutputEnabled } = await import("./feature-flags");
-      const { getStepResponseSchema } = await import("../planning/step-config");
+    expect(mockAiGenerateText).toHaveBeenCalled();
+    expect(mockAiGenerateObject).not.toHaveBeenCalled();
+    expect(result).toBe("Text mode response");
+  });
 
-      // Enable flag but no schema available
-      vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
-      vi.mocked(getStepResponseSchema).mockReturnValue(undefined);
+  it("falls back to aiGenerateText when no Zod schema for step", async () => {
+    const { getStepZodSchema } = await import("../planning/step-config");
 
-      const mockResponse = {
-        body: new TextEncoder().encode(
-          JSON.stringify({
-            content: [{ text: "Fallback" }],
-          }),
-        ),
-      };
+    vi.mocked(getStepZodSchema).mockReturnValue(undefined);
 
-      vi.mocked(bedrockModule.bedrockClient.send).mockResolvedValue(
-        mockResponse as never,
-      );
+    mockAiGenerateText.mockResolvedValue("Fallback");
 
-      const messages = [{ role: "user", content: "Test" }];
-      await generateText(messages, 4); // Step 4 has no schema
+    const result = await generateText(sampleMessages, 4); // Step 4 has no schema
 
-      // Verify response_format was NOT added (schema unavailable)
-      const callArgs = vi.mocked(bedrockModule.bedrockClient.send).mock
-        .calls[0];
-      const command = callArgs[0] as InvokeModelCommand;
-      const body = JSON.parse(command.input.body as string);
-
-      expect(body.response_format).toBeUndefined();
-    });
+    expect(mockAiGenerateText).toHaveBeenCalled();
+    expect(mockAiGenerateObject).not.toHaveBeenCalled();
+    expect(result).toBe("Fallback");
   });
 });
 

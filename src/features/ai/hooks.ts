@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { InterviewQuestionResponse } from "../planning/response-schemas";
 import type { StepOption } from "../planning/types";
-import { isStructuredOutputEnabled } from "./feature-flags";
-import { parseOptions } from "./parse-options";
+import { parseOptions, stripOptionsSection } from "./parse-options";
 
 interface UseStreamingQuestionParams {
   projectId: string;
@@ -98,40 +97,37 @@ export function useStreamingQuestion(
           setText(accumulatedText);
         }
 
-        // After streaming completes, parse based on mode
+        // After streaming completes, parse the response.
+        // Structured output is always enabled for interview steps, so the
+        // server returns JSON. Mock streaming returns plain text. Try JSON
+        // first, fall back to text parsing for robustness.
         if (!cancelled) {
-          if (isStructuredOutputEnabled(currentParams.stepNumber)) {
-            // JSON mode: parse structured response
-            try {
-              const parsed: InterviewQuestionResponse =
-                JSON.parse(accumulatedText);
-              setText(parsed.question); // Clean question text only
-              setOptions(parsed.options);
-              setIsComplete(parsed.isComplete ?? false);
+          try {
+            const parsed: InterviewQuestionResponse =
+              JSON.parse(accumulatedText);
+            setText(parsed.question);
+            setOptions(parsed.options);
+            setIsComplete(parsed.isComplete ?? false);
 
-              // Notify parent with parsed options (backward compat)
-              if (currentParams.onOptionsReady) {
-                currentParams.onOptionsReady(parsed.options);
-              }
-            } catch (err) {
-              console.error(
-                "[useStreamingQuestion] Failed to parse JSON response:",
-                err,
-              );
-              setError(new Error("Invalid JSON response from AI"));
+            if (currentParams.onOptionsReady) {
+              currentParams.onOptionsReady(parsed.options);
             }
-          } else {
-            // Text mode: legacy parsing
+          } catch {
+            // Text mode fallback (e.g. mock streaming returns plain text)
+            let cleanedText = accumulatedText;
             if (accumulatedText.includes("[STEP_COMPLETE]")) {
               setIsComplete(true);
-              setText(accumulatedText.replace("[STEP_COMPLETE]", "").trim());
-            } else {
-              setText(accumulatedText);
+              cleanedText = accumulatedText
+                .replace("[STEP_COMPLETE]", "")
+                .trim();
             }
 
-            // Parse options from text
-            const parsedOptions = parseOptions(accumulatedText);
+            const parsedOptions = parseOptions(cleanedText);
             setOptions(parsedOptions);
+
+            const questionOnly = stripOptionsSection(cleanedText);
+            setText(questionOnly);
+
             if (currentParams.onOptionsReady) {
               currentParams.onOptionsReady(parsedOptions);
             }
@@ -152,11 +148,15 @@ export function useStreamingQuestion(
     };
   }, []);
 
-  // Initial fetch on mount, when step changes, or when refetchTrigger increments
+  // Initial fetch on mount, when enabled becomes true, or when refetchTrigger changes.
+  // Design: fetchQuestion reads from paramsRef.current for latest params (stepNumber, previousAnswers).
+  // refetchTrigger is in deps to auto-refetch when step changes (consumer passes stepNumber as trigger).
+  // previousAnswers is NOT in deps to avoid infinite loops (answer → refetch → question → answer).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refetchTrigger needed for auto-refetch on step change
   useEffect(() => {
     if (!params.enabled) return;
     fetchQuestion();
-  }, [params.enabled, fetchQuestion]);
+  }, [params.enabled, params.refetchTrigger, fetchQuestion]);
 
   return { text, loading, error, isComplete, options, refetch: fetchQuestion };
 }

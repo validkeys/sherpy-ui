@@ -9,6 +9,9 @@ vi.mock("../hooks", () => ({
   useCreateProject: vi.fn(),
 }));
 
+// BUG-023: CreateProjectFlow no longer uses useNavigate - navigation is handled
+// by parent component (AppLayout). This mock is kept to prevent errors if other
+// modules in the dependency tree import from @tanstack/react-router.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
