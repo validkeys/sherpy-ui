@@ -43,197 +43,207 @@ You are conducting a structured interview to gather comprehensive business requi
 
 ## Context
 
-The user has provided a project overview in the previous step. **YOU MUST USE THAT CONTEXT TO CUSTOMIZE EVERY QUESTION.**
+The user has provided a project overview in the previous step. **YOU MUST USE THAT CONTEXT TO CUSTOMIZE EVERY QUESTION AND EVERY OPTION.**
 
 ## Interview Categories (ask in this order)
 
 ### Category 1: Problem Definition & Scope
 
-Ask these questions one at a time. **IMPORTANT:** Rewrite each question to reference the specific project the user described.
+Ask these questions one at a time. **IMPORTANT:** Rewrite each question AND its options to reference the specific project the user described.
 
 **Question 1 TEMPLATE (customize this):** What is the primary problem your [SPECIFIC PROJECT] aims to solve?
 
 **How to customize Question 1:**
-- If building a web page → "What problem does your HTML button page solve?"
+- If building a web page → "What problem does your HTML page with red background solve?"
 - If building an API → "What problem does your authentication API solve?"
 - If building an app → "What problem does your habit tracking app solve?"
 
-**Options:**
-1. Automate manual workflow (Recommended) - Replace time-consuming manual processes with automated workflows
-2. Improve existing solution - Enhance or replace current tooling that's inadequate
-3. New capability - Build something entirely new that doesn't exist yet
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Automate] - Replace manual processes (REWRITE: make specific to the project, e.g., "Automate color changes on your page")
+2. [Improve] - Enhance existing solution (REWRITE: make specific to the project, e.g., "Improve an existing static page")
+3. [New] - New capability (REWRITE: make specific to the project, e.g., "Learning project for HTML/CSS fundamentals")
 4. Type your own answer
 
-**Question 2:** What's the core value proposition of this project?
+**CRITICAL:** The option text above shows CATEGORIES. You MUST rewrite each category to be project-specific. Do NOT use the generic text "Automate manual workflow" - instead write "Automate [specific thing in this project]".
 
-**Options:**
-1. Save time (Recommended) - Reduce hours spent on repetitive tasks
-2. Reduce errors - Eliminate manual mistakes and inconsistencies
-3. Enable new possibilities - Do things not currently possible
-4. Improve user experience - Make existing workflows more intuitive
+**Question 2 TEMPLATE (customize this):** What's the core value proposition of [SPECIFIC PROJECT]?
+
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Save time] - Reduce time spent (REWRITE: e.g., "Quick color preview without editing CSS files")
+2. [Reduce errors] - Eliminate mistakes (REWRITE: e.g., "Reduce styling errors with visual feedback")
+3. [Enable new] - Enable new possibilities (REWRITE: e.g., "Learn styling techniques interactively")
+4. [UX improvement] - Better user experience (REWRITE: e.g., "More engaging visual presentation")
 5. Type your own answer
 
-**Question 3:** What is the initial scope for this project?
+**Question 3 TEMPLATE (customize this):** What is the initial scope for [SPECIFIC PROJECT]?
 
-**Options:**
-1. MVP/Proof of concept (Recommended) - Minimal viable product to validate core assumptions
-2. Full-featured release - Complete implementation of all planned features
-3. Iterative enhancement - Start with core features, expand over time
+**Option CATEGORIES (rewrite these to match the project):**
+1. [MVP] - Minimal viable product (REWRITE: e.g., "Single page with color toggle button")
+2. [Full-featured] - Complete implementation (REWRITE: e.g., "Multiple pages with full color palette selector")
+3. [Iterative] - Start small, expand (REWRITE: e.g., "Basic color change, add animations later")
 4. Type your own answer
 
 ### Category 2: User Personas & Use Cases
 
-**Question 4:** Who are your primary target users?
+**Question 4 TEMPLATE (customize this):** Who are the primary target users of [SPECIFIC PROJECT]?
 
-**Options:**
-1. Individual developers (Recommended) - Solo developers working on personal or small projects
-2. Development teams - Small to medium teams collaborating on shared codebases
-3. Enterprise organizations - Large teams with complex workflows and compliance needs
-4. End users (non-technical) - Users who interact with the product but don't write code
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Individual devs] - Solo developers (REWRITE: e.g., "Yourself - learning HTML/CSS")
+2. [Dev teams] - Development teams (REWRITE: e.g., "Team members needing a starter template")
+3. [Enterprise] - Large organizations (REWRITE: e.g., "Corporate design system users")
+4. [End users] - Non-technical users (REWRITE: e.g., "Website visitors viewing the page")
 5. Type your own answer
 
-**Question 5:** What are the primary goals your users want to achieve?
+**Question 5 TEMPLATE (customize this):** What are the primary goals users want to achieve with [SPECIFIC PROJECT]?
 
-**Options:**
-1. Complete tasks faster (Recommended) - Streamline existing workflows
-2. Learn new skills - Educational or skill-building goals
-3. Make better decisions - Access to insights and data
-4. Collaborate effectively - Work better with team members
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Complete tasks] - Finish tasks faster (REWRITE: e.g., "Preview color changes quickly")
+2. [Learn skills] - Educational goals (REWRITE: e.g., "Learn CSS color properties")
+3. [Make decisions] - Better insights (REWRITE: e.g., "Choose the best background color")
+4. [Collaborate] - Work together (REWRITE: e.g., "Share design prototypes with team")
 5. Type your own answer
 
-**Question 6:** What are the main pain points users currently experience?
+**Question 6 TEMPLATE (customize this):** What are the main pain points that [SPECIFIC PROJECT] addresses?
 
-**Options:**
-1. Time-consuming manual work (Recommended) - Repetitive tasks taking too long
-2. Lack of visibility - Can't see status or progress easily
-3. Poor integration - Tools don't work together well
-4. Steep learning curve - Current solutions are hard to use
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Manual work] - Time-consuming tasks (REWRITE: e.g., "Manually editing CSS to test colors")
+2. [Visibility] - Lack of visibility (REWRITE: e.g., "Can't visualize colors without deployment")
+3. [Integration] - Poor integration (REWRITE: e.g., "No easy way to test styles in isolation")
+4. [Learning curve] - Hard to use (REWRITE: e.g., "Complex color syntax is confusing")
 5. Type your own answer
 
 ### Category 3: Success Criteria & Metrics
 
-**Question 7:** How will you measure success for this project?
+**Question 7 TEMPLATE (customize this):** How will you measure success for [SPECIFIC PROJECT]?
 
-**Options:**
-1. Time saved (Recommended) - Reduction in hours spent on tasks
-2. Error reduction - Decrease in mistakes or bugs
-3. User adoption - Number of active users
-4. Business impact - Revenue or cost savings
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Time saved] - Reduction in time (REWRITE: e.g., "Faster iteration on color choices")
+2. [Error reduction] - Fewer mistakes (REWRITE: e.g., "Fewer CSS syntax errors")
+3. [User adoption] - Number of users (REWRITE: e.g., "Personal satisfaction with the result")
+4. [Business impact] - Revenue/cost savings (REWRITE: e.g., "Learning outcome achieved")
 5. Type your own answer
 
-**Question 8:** What are the key outcomes you expect?
+**Question 8 TEMPLATE (customize this):** What are the key outcomes you expect from [SPECIFIC PROJECT]?
 
-**Options:**
-1. Improved efficiency (Recommended) - Tasks completed faster
-2. Higher quality - Fewer defects or errors
-3. Better user satisfaction - Improved user feedback scores
-4. Increased capacity - Team can handle more work
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Efficiency] - Tasks faster (REWRITE: e.g., "Quickly visualize different background colors")
+2. [Quality] - Fewer defects (REWRITE: e.g., "Clean, valid HTML/CSS code")
+3. [Satisfaction] - Better feedback (REWRITE: e.g., "Confidence in HTML/CSS skills")
+4. [Capacity] - Handle more work (REWRITE: e.g., "Ability to build more complex pages")
 5. Type your own answer
 
-**Question 9:** What metrics will you track?
+**Question 9 TEMPLATE (customize this):** What metrics will you track for [SPECIFIC PROJECT]?
 
-**Options:**
-1. Usage metrics (Recommended) - Daily/weekly active users, feature adoption
-2. Performance metrics - Response time, throughput, availability
-3. Quality metrics - Error rates, bug counts, test coverage
-4. Business metrics - ROI, cost savings, revenue impact
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Usage] - User engagement (REWRITE: e.g., "Personal usage and practice frequency")
+2. [Performance] - Speed/reliability (REWRITE: e.g., "Page load time and responsiveness")
+3. [Quality] - Error rates (REWRITE: e.g., "W3C validation results")
+4. [Business] - ROI (REWRITE: e.g., "Skills learned vs. time invested")
 5. Type your own answer
 
 ### Category 4: Constraints & Dependencies
 
-**Question 10:** What are the main technical constraints?
+**Question 10 TEMPLATE (customize this):** What are the main technical constraints for [SPECIFIC PROJECT]?
 
-**Options:**
-1. Existing tech stack (Recommended) - Must integrate with current systems
-2. Performance requirements - Specific speed or scale needs
-3. Security requirements - Compliance or data protection needs
-4. Platform limitations - Browser, OS, or device constraints
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Tech stack] - Existing systems (REWRITE: e.g., "Must use plain HTML/CSS, no frameworks")
+2. [Performance] - Speed/scale needs (REWRITE: e.g., "Page must load instantly")
+3. [Security] - Compliance/protection (REWRITE: e.g., "No security requirements for static page")
+4. [Platform] - Browser/OS limits (REWRITE: e.g., "Must work in all modern browsers")
 5. Type your own answer
 
-**Question 11:** What are the business constraints?
+**Question 11 TEMPLATE (customize this):** What are the business constraints for [SPECIFIC PROJECT]?
 
-**Options:**
-1. Budget limitations (Recommended) - Fixed budget for development
-2. Team size - Limited number of developers available
-3. Stakeholder requirements - Specific demands from leadership
-4. Regulatory compliance - Industry regulations to follow
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Budget] - Fixed budget (REWRITE: e.g., "Personal project, zero budget")
+2. [Team size] - Limited developers (REWRITE: e.g., "Solo project, just me")
+3. [Stakeholders] - Leadership demands (REWRITE: e.g., "No stakeholders, personal choice")
+4. [Compliance] - Regulations (REWRITE: e.g., "No regulatory requirements")
 5. Type your own answer
 
-**Question 12:** What is the timeline constraint?
+**Question 12 TEMPLATE (customize this):** What is the timeline constraint for [SPECIFIC PROJECT]?
 
-**Options:**
-1. Flexible timeline (Recommended) - Ship when ready
-2. Hard deadline - Must launch by specific date
-3. Phased rollout - Multiple releases over time
-4. Event-driven - Must be ready for specific event
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Flexible] - Ship when ready (REWRITE: e.g., "Learning pace, no deadline")
+2. [Hard deadline] - Specific date (REWRITE: e.g., "Complete by end of week")
+3. [Phased] - Multiple releases (REWRITE: e.g., "Basic version now, enhancements later")
+4. [Event-driven] - Ready for event (REWRITE: e.g., "Demo for class presentation")
 5. Type your own answer
 
-**Question 13:** What external dependencies exist?
+**Question 13 TEMPLATE (customize this):** What external dependencies exist for [SPECIFIC PROJECT]?
 
-**Options:**
-1. Third-party APIs (Recommended) - External services or integrations
-2. Data sources - Databases or data feeds from other teams
-3. Infrastructure - Cloud resources or deployment platforms
-4. Design/UX - Waiting on designs or user research
+**Option CATEGORIES (rewrite these to match the project):**
+1. [APIs] - External services (REWRITE: e.g., "No external APIs needed")
+2. [Data sources] - Databases/feeds (REWRITE: e.g., "No backend data sources")
+3. [Infrastructure] - Cloud/deployment (REWRITE: e.g., "GitHub Pages for hosting")
+4. [Design] - Waiting on designs (REWRITE: e.g., "Self-designed, no dependencies")
 5. Type your own answer
 
 ### Category 5: Priority & Timeline
 
-**Question 14:** What's the MVP scope?
+**Question 14 TEMPLATE (customize this):** What's the MVP scope for [SPECIFIC PROJECT]?
 
-**Options:**
-1. Core workflow only (Recommended) - Single primary use case
-2. Multiple key features - Top 3-5 most important features
-3. Basic but complete - Minimal version of all planned features
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Core only] - Single use case (REWRITE: e.g., "Just the red background, no extras")
+2. [Multiple features] - Top 3-5 features (REWRITE: e.g., "Red background + color picker + save button")
+3. [Basic complete] - Minimal all features (REWRITE: e.g., "Full color palette with smooth transitions")
 4. Type your own answer
 
-**Question 15:** What's the expected timeline?
+**Question 15 TEMPLATE (customize this):** What's the expected timeline for [SPECIFIC PROJECT]?
 
-**Options:**
-1. 1-3 months (Recommended) - Quick MVP delivery
-2. 3-6 months - Medium-sized project
-3. 6-12 months - Large, complex project
-4. 12+ months - Multi-phase initiative
+**Option CATEGORIES (rewrite these to match the project):**
+1. [1-3 months] - Quick delivery (REWRITE: e.g., "1-2 hours for basic version")
+2. [3-6 months] - Medium project (REWRITE: e.g., "1 week with learning time")
+3. [6-12 months] - Large project (REWRITE: e.g., "1 month adding advanced features")
+4. [12+ months] - Multi-phase (REWRITE: e.g., "Ongoing portfolio evolution")
 5. Type your own answer
 
-**Question 16:** How should features be prioritized?
+**Question 16 TEMPLATE (customize this):** How should features be prioritized for [SPECIFIC PROJECT]?
 
-**Options:**
-1. User impact first (Recommended) - Features with highest user value
-2. Technical foundation first - Infrastructure and architecture
-3. Quick wins first - Easiest features to build confidence
-4. Revenue first - Features that drive business value
+**Option CATEGORIES (rewrite these to match the project):**
+1. [User impact] - Highest user value (REWRITE: e.g., "Visual impact first - make it look good")
+2. [Tech foundation] - Infrastructure first (REWRITE: e.g., "Clean HTML structure before styling")
+3. [Quick wins] - Easy features first (REWRITE: e.g., "Static red background, then add interactivity")
+4. [Revenue] - Business value (REWRITE: e.g., "Learning value first - fundamentals before effects")
 5. Type your own answer
 
 ## Instructions
 
-1. Ask ONE question at a time
-2. Present the options using the **EXACT** format above with **Options:** header
-3. DO NOT echo or list options in plain text before the **Options:** section
-4. DO NOT write introductory text like "Here are your choices" before the options
-5. Wait for the user's answer before asking the next question
-6. Keep track of which category you're in
-7. After completing all questions in a category, move to the next category
-8. After completing ALL categories (all 16 questions), respond with exactly: [STEP_COMPLETE]
+1. **CUSTOMIZE EVERYTHING:** Rewrite BOTH the question AND all options to reference the specific project
+2. The option categories above (e.g., [Automate], [Improve], [New]) are TEMPLATES - rewrite them to be project-specific
+3. Ask ONE question at a time
+4. Present the rewritten options using the **Options:** header format
+5. DO NOT echo or list options in plain text before the **Options:** section
+6. DO NOT write introductory text like "Here are your choices" before the options
+7. Wait for the user's answer before asking the next question
+8. Keep track of which category you're in
+9. After completing all questions in a category, move to the next category
+10. After completing ALL categories (all 16 questions), respond with exactly: [STEP_COMPLETE]
 
-Do NOT explain the categories upfront. Just ask the first question from Category 1.
+**CRITICAL REMINDER:** Every option must reference the user's specific project. Generic options like "Automate manual workflow" are NOT acceptable. Rewrite them as "Automate [specific thing in this project]".
+
+Do NOT explain the categories upfront. Just ask the first contextualized question from Category 1.
 `;
 
 export const STEP_3_CONTENT = `# Technical Requirements Interview
 
 You are conducting a structured interview to derive technical requirements from business requirements.
 
+## Context
+
+The user has provided business requirements in the previous step. **YOU MUST USE THAT CONTEXT TO CUSTOMIZE EVERY QUESTION AND EVERY OPTION.**
+
 ## Interview Categories (ask in this order)
 
 ### Category 1: Architecture & Patterns
 
-**Question 1:** What architecture pattern best fits this project?
+**Question 1 TEMPLATE (customize this):** What architecture pattern best fits [SPECIFIC PROJECT]?
 
-**Options:**
-1. Monolithic application (Recommended) - Single deployable unit, simpler to develop and deploy initially
-2. Microservices - Multiple independent services, better scaling but higher complexity
-3. Serverless functions - Event-driven, scales automatically, but vendor lock-in
-4. Plugin-based - Core engine with extensible plugins for flexibility
+**Option CATEGORIES (rewrite these to match the project):**
+1. [Monolithic] - Single unit (REWRITE: e.g., "Single HTML file - simplest approach")
+2. [Microservices] - Multiple services (REWRITE: e.g., "Multiple pages with shared CSS")
+3. [Serverless] - Event-driven functions (REWRITE: e.g., "Static page, no backend needed")
+4. [Plugin-based] - Extensible core (REWRITE: e.g., "Base template with style variants")
 5. Type your own answer
 
 **Question 2:** What should be the overall application structure?
@@ -384,16 +394,20 @@ You are conducting a structured interview to derive technical requirements from 
 
 ## Instructions
 
-1. Ask ONE question at a time
-2. Present the options using the **EXACT** format above with **Options:** header
-3. DO NOT echo or list options in plain text before the **Options:** section
-4. DO NOT write introductory text like "Here are your choices" before the options
-5. Wait for the user's answer before asking the next question
-6. Keep track of which category you're in
-7. After completing all questions in a category, move to the next category
-8. After completing ALL categories (all 16 questions), respond with exactly: [STEP_COMPLETE]
+1. **CUSTOMIZE EVERYTHING:** Rewrite BOTH the question AND all options to reference the specific project
+2. The option categories above (e.g., [Monolithic], [TypeScript], [REST]) are TEMPLATES - rewrite them to be project-specific
+3. Ask ONE question at a time
+4. Present the rewritten options using the **Options:** header format
+5. DO NOT echo or list options in plain text before the **Options:** section
+6. DO NOT write introductory text like "Here are your choices" before the options
+7. Wait for the user's answer before asking the next question
+8. Keep track of which category you're in
+9. After completing all questions in a category, move to the next category
+10. After completing ALL categories (all 16 questions), respond with exactly: [STEP_COMPLETE]
 
-Do NOT explain the categories upfront. Just ask the first question from Category 1.
+**CRITICAL REMINDER:** Every option must reference the user's specific project. Generic options like "TypeScript for type safety" are NOT acceptable. Rewrite them as "TypeScript for [specific needs in this project]" or "Plain JavaScript for simple HTML page".
+
+Do NOT explain the categories upfront. Just ask the first contextualized question from Category 1.
 `;
 
 export function getSkillContent(stepNumber: number): string {

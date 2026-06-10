@@ -37,17 +37,36 @@ The user is building: "${projectOverview}"
 
 1. **REWRITE EVERY QUESTION** to explicitly reference this specific project
    - ❌ BAD: "What is the primary problem your project aims to solve?"
-   - ✅ GOOD: "What problem does your HTML button page solve for users?"
+   - ✅ GOOD: "What problem does your HTML page with red background solve for users?"
 
-2. **CUSTOMIZE ALL OPTIONS** to match the project type
-   - For web pages: mention buttons, layout, styling, user interactions
-   - For APIs: mention endpoints, authentication, data models, security
-   - For mobile apps: mention screens, notifications, data persistence, platform features
+2. **REWRITE ALL OPTIONS** to match the specific project type and context
+   - The skill content provides option CATEGORIES (e.g., "Automate", "Improve", "New capability")
+   - You MUST rewrite each option's title AND description to reference the user's specific project
+   - Keep the category intent, but make it project-specific
 
-3. **USE PROJECT-SPECIFIC LANGUAGE**
-   - If they said "HTML page with buttons" → ask about "the buttons on your page"
-   - If they said "REST API" → ask about "your API endpoints"
-   - If they said "iOS app" → ask about "your app screens"
+   **Option Rewriting Examples:**
+
+   For "HTML page with red background" project:
+   ❌ Generic: "1. Automate manual workflow - Replace time-consuming manual processes"
+   ✅ Contextual: "1. Automate color changes - Dynamically change background colors based on user actions or time"
+
+   ❌ Generic: "2. Improve existing solution - Enhance current tooling"
+   ✅ Contextual: "2. Improve existing page - Replace a plain HTML page with styled, interactive content"
+
+   ❌ Generic: "3. New capability - Build something entirely new"
+   ✅ Contextual: "3. Learning project - Practice HTML/CSS fundamentals with a simple example"
+
+   For "REST API for authentication" project:
+   ❌ Generic: "1. Automate manual workflow"
+   ✅ Contextual: "1. Automate login verification - Replace manual credential checking with API-based auth"
+
+   ❌ Generic: "2. Improve existing solution"
+   ✅ Contextual: "2. Replace legacy auth system - Modernize outdated authentication infrastructure"
+
+3. **USE PROJECT-SPECIFIC LANGUAGE** throughout
+   - If they said "HTML page with red background" → ask about "your page's styling and interactivity"
+   - If they said "REST API" → ask about "your API endpoints and authentication"
+   - If they said "iOS app" → ask about "your app screens and features"
 
 4. **SKIP IRRELEVANT QUESTIONS** entirely
    - Don't ask about API design for a static HTML page
@@ -55,22 +74,31 @@ The user is building: "${projectOverview}"
    - Don't ask about database schemas for a pure frontend project
 
 **VERIFICATION CHECK:**
-Before asking each question, verify: "Does this question reference '${projectOverview}'?"
-If NO, rewrite it until it does.
+Before presenting each question AND its options, verify:
+- "Does this question reference '${projectOverview}'?"
+- "Do ALL options reference the specific project context?"
+If NO to either, rewrite until both are project-specific.
 
-**EXAMPLES OF PROPER CONTEXTUALIZATION:**
+**FULL CONTEXTUALIZATION EXAMPLE:**
 
-Example 1 - HTML Page Project:
-❌ Generic: "What is the primary problem your project aims to solve?"
-✅ Contextual: "What problem does your HTML button page solve for users? Will the buttons trigger actions, navigate to sections, or submit data?"
+Project: "HTML page with red background"
 
-Example 2 - API Project:
-❌ Generic: "Who are your primary target users?"
-✅ Contextual: "Who will be calling your authentication API? Will it be frontend apps, mobile clients, or other backend services?"
+❌ WRONG (generic question, generic options):
+"What is the primary problem your project aims to solve?
 
-Example 3 - Mobile App:
-❌ Generic: "What are the main technical constraints?"
-✅ Contextual: "What technical constraints affect your iOS habit tracking app? Consider notification permissions, background refresh, or local data storage limits."
+**Options:**
+1. Automate manual workflow - Replace time-consuming manual processes
+2. Improve existing solution - Enhance current tooling
+3. New capability - Build something entirely new"
+
+✅ CORRECT (contextualized question AND options):
+"What problem does your HTML page with red background aim to solve?
+
+**Options:**
+1. Learning project (Recommended) - Practice HTML/CSS fundamentals with color styling
+2. Template for future pages - Create a reusable styled page template
+3. Visual testing ground - Experiment with different background effects and colors
+4. Type your own answer"
 
 ---
 
