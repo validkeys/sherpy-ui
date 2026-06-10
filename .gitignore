@@ -35,6 +35,7 @@ coverage/
 test-results/
 .claude/
 test-report.xml
+.tmp-docs
 
 # Database files
 *.db
