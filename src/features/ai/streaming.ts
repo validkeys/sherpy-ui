@@ -1,26 +1,25 @@
 import type { TraceMetadata } from "@/lib/langfuse-helpers";
 import { getStepZodSchema } from "../planning/step-config";
 import { aiStreamObject, aiStreamText } from "./ai-client";
-import { isStructuredOutputEnabled } from "./feature-flags";
 
 type MessageInput = Array<{ role: string; content: string }>;
 
 // Streaming helper for interview questions.
-// Delegates to the AI SDK wrappers in ai-client.ts (Langfuse observability,
-// token counting, and error normalization are handled there).
+// Structured output is always enabled for interview steps (which have a Zod
+// schema). The AI SDK uses Bedrock's Converse API with native structured
+// output support. When no schema is available (e.g. mock streaming), falls
+// back to plain text streaming.
 export async function streamQuestion(
   messages: MessageInput,
   stepNumber: number,
   traceMetadata?: TraceMetadata,
 ): Promise<ReadableStream<string>> {
-  if (isStructuredOutputEnabled(stepNumber)) {
-    const schema = getStepZodSchema(stepNumber);
-    if (schema) {
-      const { stream } = await aiStreamObject(messages, schema, {
-        traceMetadata,
-      });
-      return stream;
-    }
+  const schema = getStepZodSchema(stepNumber);
+  if (schema) {
+    const { stream } = await aiStreamObject(messages, schema, {
+      traceMetadata,
+    });
+    return stream;
   }
 
   return aiStreamText(messages, { traceMetadata });

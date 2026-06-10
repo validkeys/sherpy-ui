@@ -10,18 +10,12 @@ vi.mock("./ai-client", () => ({
   aiStreamObject: (...args: unknown[]) => mockAiStreamObject(...args),
 }));
 
-// Mock feature flags
-vi.mock("./feature-flags", () => ({
-  isStructuredOutputEnabled: vi.fn(() => false), // Default: disabled
-}));
-
-// Mock step config — returns a Zod schema by default
+// Mock step config — controls whether structured output is used
 vi.mock("../planning/step-config", () => ({
   getStepZodSchema: vi.fn(() => undefined),
 }));
 
 import { getStepZodSchema } from "../planning/step-config";
-import { isStructuredOutputEnabled } from "./feature-flags";
 import { streamQuestion } from "./streaming";
 
 const sampleMessages = [{ role: "user", content: "Test" }];
@@ -50,11 +44,10 @@ async function readStream(stream: ReadableStream<string>): Promise<string[]> {
 describe("streamQuestion", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(isStructuredOutputEnabled).mockReturnValue(false);
     vi.mocked(getStepZodSchema).mockReturnValue(undefined);
   });
 
-  it("delegates to aiStreamText when structured output is disabled", async () => {
+  it("delegates to aiStreamText when no schema available", async () => {
     const textStream = makeTextStream(["Hello ", "world!"]);
     mockAiStreamText.mockResolvedValue(textStream);
 
@@ -79,8 +72,7 @@ describe("streamQuestion", () => {
   });
 
   describe("Structured Output Support", () => {
-    it("delegates to aiStreamObject when flag enabled and schema available", async () => {
-      vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
+    it("delegates to aiStreamObject when schema available", async () => {
       const schema = z.object({ question: z.string() });
       vi.mocked(getStepZodSchema).mockReturnValue(schema);
 
@@ -97,7 +89,6 @@ describe("streamQuestion", () => {
     });
 
     it("passes traceMetadata through to aiStreamObject", async () => {
-      vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
       const schema = z.object({ question: z.string() });
       vi.mocked(getStepZodSchema).mockReturnValue(schema);
       mockAiStreamObject.mockResolvedValue({ stream: makeTextStream(["x"]) });
@@ -110,8 +101,7 @@ describe("streamQuestion", () => {
       });
     });
 
-    it("falls back to aiStreamText when flag enabled but no schema", async () => {
-      vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
+    it("falls back to aiStreamText when no schema", async () => {
       vi.mocked(getStepZodSchema).mockReturnValue(undefined);
 
       mockAiStreamText.mockResolvedValue(makeTextStream(["Fallback"]));

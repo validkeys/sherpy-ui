@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+// Standalone Bedrock health check.
+// Intentionally uses the raw AWS SDK (not the Vercel AI SDK) so that health
+// checks bypass AI SDK abstractions and test the underlying InvokeModel API
+// directly. This isolates connectivity/credential issues from AI SDK behavior.
+
 import {
   BedrockRuntimeClient,
   InvokeModelCommand,

@@ -12,7 +12,6 @@ import {
   getStepZodSchema,
 } from "../planning/step-config";
 import { aiGenerateObject, aiGenerateText } from "./ai-client";
-import { isStructuredOutputEnabled } from "./feature-flags";
 import {
   assertMockArtifactsAllowed,
   generateMockArtifactContent,
@@ -46,15 +45,16 @@ export async function generateText(
   traceMetadata?: TraceMetadata,
   providerContext?: AIProviderContext,
 ): Promise<string> {
-  if (isStructuredOutputEnabled(stepNumber)) {
-    const schema = getStepZodSchema(stepNumber);
-    if (schema) {
-      const result = await aiGenerateObject(messages, schema, {
-        traceMetadata,
-        providerContext,
-      });
-      return JSON.stringify(result);
-    }
+  // Structured output is always enabled for interview steps (which have a
+  // Zod schema). The AI SDK uses Bedrock's Converse API with native
+  // structured output support, so no feature flag is needed.
+  const schema = getStepZodSchema(stepNumber);
+  if (schema) {
+    const result = await aiGenerateObject(messages, schema, {
+      traceMetadata,
+      providerContext,
+    });
+    return JSON.stringify(result);
   }
 
   return aiGenerateText(messages, {

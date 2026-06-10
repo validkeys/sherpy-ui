@@ -21,11 +21,6 @@ vi.mock("./ai-client", () => ({
   aiGenerateObject: (...args: unknown[]) => mockAiGenerateObject(...args),
 }));
 
-// Mock feature flags
-vi.mock("./feature-flags", () => ({
-  isStructuredOutputEnabled: vi.fn(() => false), // Default: disabled
-}));
-
 // Mock step config — keep real implementations, override getStepZodSchema
 vi.mock("../planning/step-config", async () => {
   const actual = await vi.importActual("../planning/step-config");
@@ -254,15 +249,13 @@ describe("Structured Output Support", () => {
     vi.clearAllMocks();
   });
 
-  it("uses aiGenerateObject when feature flag is enabled", async () => {
-    const { isStructuredOutputEnabled } = await import("./feature-flags");
+  it("uses aiGenerateObject when schema is available", async () => {
     const { getStepZodSchema } = await import("../planning/step-config");
     const mockSchema = z.object({
       question: z.string(),
       options: z.array(z.string()),
     });
 
-    vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
     vi.mocked(getStepZodSchema).mockReturnValue(mockSchema);
 
     const mockObject = { question: "Test question", options: ["A", "B"] };
@@ -282,10 +275,10 @@ describe("Structured Output Support", () => {
     expect(result).toBe(JSON.stringify(mockObject));
   });
 
-  it("uses aiGenerateText when feature flag is disabled", async () => {
-    const { isStructuredOutputEnabled } = await import("./feature-flags");
+  it("uses aiGenerateText when no schema available", async () => {
+    const { getStepZodSchema } = await import("../planning/step-config");
 
-    vi.mocked(isStructuredOutputEnabled).mockReturnValue(false);
+    vi.mocked(getStepZodSchema).mockReturnValue(undefined);
     mockAiGenerateText.mockResolvedValue("Text mode response");
 
     const result = await generateText(sampleMessages, 1);
@@ -295,11 +288,9 @@ describe("Structured Output Support", () => {
     expect(result).toBe("Text mode response");
   });
 
-  it("falls back to aiGenerateText when no Zod schema available", async () => {
-    const { isStructuredOutputEnabled } = await import("./feature-flags");
+  it("falls back to aiGenerateText when no Zod schema for step", async () => {
     const { getStepZodSchema } = await import("../planning/step-config");
 
-    vi.mocked(isStructuredOutputEnabled).mockReturnValue(true);
     vi.mocked(getStepZodSchema).mockReturnValue(undefined);
 
     mockAiGenerateText.mockResolvedValue("Fallback");

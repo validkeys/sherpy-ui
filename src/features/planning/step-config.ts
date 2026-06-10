@@ -15,10 +15,7 @@
  */
 
 import type { z } from "zod";
-import {
-  INTERVIEW_QUESTION_SCHEMA,
-  InterviewQuestionSchema,
-} from "./response-schemas";
+import { InterviewQuestionSchema } from "./response-schemas";
 
 export type StepType = "automated" | "interview";
 
@@ -26,7 +23,6 @@ export interface StepConfig {
   name: string;
   type: StepType;
   artifactKey: string;
-  responseSchema?: object; // JSON Schema (legacy — used by streaming.ts, remove in M5)
   zodSchema?: z.ZodSchema; // Zod schema for AI SDK structured output
 }
 
@@ -35,21 +31,18 @@ export const STEP_CONFIG: Record<number, StepConfig> = {
     name: "Gap Analysis Worksheet",
     type: "interview",
     artifactKey: "gap-analysis",
-    responseSchema: INTERVIEW_QUESTION_SCHEMA,
     zodSchema: InterviewQuestionSchema,
   },
   2: {
     name: "Business Requirements Interview",
     type: "interview",
     artifactKey: "business-requirements",
-    responseSchema: INTERVIEW_QUESTION_SCHEMA,
     zodSchema: InterviewQuestionSchema,
   },
   3: {
     name: "Technical Requirements Interview",
     type: "interview",
     artifactKey: "technical-requirements",
-    responseSchema: INTERVIEW_QUESTION_SCHEMA,
     zodSchema: InterviewQuestionSchema,
   },
   4: {
@@ -123,10 +116,6 @@ export function isInterviewStep(stepNumber: number): boolean {
 
 export function isAutomatedStep(stepNumber: number): boolean {
   return STEP_CONFIG[stepNumber]?.type === "automated";
-}
-
-export function getStepResponseSchema(stepNumber: number): object | undefined {
-  return STEP_CONFIG[stepNumber]?.responseSchema;
 }
 
 export function getStepZodSchema(stepNumber: number): z.ZodSchema | undefined {
