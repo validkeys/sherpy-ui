@@ -427,7 +427,7 @@ describe("BUG-012: PlanningMachineContext Cleanup Behavior", () => {
     // In this case, the actor is in step1_gapAnalysis.collecting state
     // which accepts SUBMIT_FORM events
     const currentState = actor.getSnapshot().value as any;
-    expect(currentState.step1_gapAnalysis).toBe("collecting");
+    expect(currentState.step1_gapAnalysis).toBe("collectingInfo");
     const canReceiveEvents = actor.getSnapshot().can({
       type: "SUBMIT_FORM",
       stepNumber: 1,

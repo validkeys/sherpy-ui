@@ -41,10 +41,14 @@ vi.mock("../../ai/server", () => ({
     content: "# Mock Artifact",
     generatedAt: new Date().toISOString(),
   })),
-  $askQuestion: vi.fn(async () => ({
+  $generateQuestion: vi.fn(async () => ({
     question: "Mock question?",
     options: ["Option A", "Option B"],
-    isComplete: false,
+  })),
+  $assessGapAnalysisNeed: vi.fn(async () => ({
+    needsGapAnalysis: true,
+    reasoning: "Mock assessment",
+    confidence: "high" as const,
   })),
   $answerQuestion: vi.fn(async () => ({
     question: "Next question?",

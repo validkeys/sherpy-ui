@@ -32,16 +32,23 @@ vi.mock("../ai/server", () => ({
     content: `# Mock Artifact for Step ${data.stepNumber}\n\nGenerated from: ${JSON.stringify(data.answers)}`,
     generatedAt: new Date().toISOString(),
   })),
-  $askQuestion: vi.fn(async () => ({
+  $generateQuestion: vi.fn(async () => ({
     question: "Mock question?",
     options: ["Option A", "Option B", "Option C"],
-    isComplete: false,
   })),
-  $answerQuestion: vi.fn(async () => ({
-    question: "Next mock question?",
-    options: ["Choice 1", "Choice 2", "Choice 3"],
-    isComplete: false,
+  $assessGapAnalysisNeed: vi.fn(async () => ({
+    needsGapAnalysis: true,
+    reasoning: "Mock assessment",
+    confidence: "high" as const,
   })),
+}));
+
+// Mock infrastructure/persistence layer
+vi.mock("./infrastructure/server-functions", () => ({
+  $savePlanningState: vi.fn().mockResolvedValue({ success: true }),
+  $loadPlanningState: vi.fn().mockResolvedValue(null),
+  $saveInterviewAnswer: vi.fn().mockResolvedValue({ success: true }),
+  $saveFormResponses: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 describe("Full Planning Workflow Integration", () => {

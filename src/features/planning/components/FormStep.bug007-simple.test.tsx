@@ -15,6 +15,15 @@ vi.mock("../../ai/server", () => ({
     content: "# Gap Analysis\n\nTest content",
     generatedAt: new Date().toISOString(),
   }),
+  $generateQuestion: vi.fn().mockResolvedValue({
+    question: "Mock question?",
+    options: ["Option A", "Option B"],
+  }),
+  $assessGapAnalysisNeed: vi.fn().mockResolvedValue({
+    needsGapAnalysis: true,
+    reasoning: "Mock assessment",
+    confidence: "high",
+  }),
 }));
 
 describe("BUG-007: Simplified Diagnostic", () => {
