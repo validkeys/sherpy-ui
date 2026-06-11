@@ -20,6 +20,12 @@ import React, {
   useEffect,
 } from "react";
 import { createActor, type SnapshotFrom } from "xstate";
+import { parseOptions } from "../../ai/parse-options";
+import {
+  $assessGapAnalysisNeed,
+  $generateArtifact,
+  $generateQuestion,
+} from "../../ai/server";
 import {
   trackCacheHit,
   trackError,
@@ -27,8 +33,24 @@ import {
 } from "../infrastructure/metrics";
 import { StatePersistence } from "../infrastructure/persistence";
 import { $loadPlanningState } from "../infrastructure/server-functions";
-import { planningMachine } from "./planningMachine";
+import { createPlanningMachine } from "./planning-machine-factory";
 import type { PlanningInput } from "./types";
+
+// ─────────────────────────────────────────────────────────────
+// MACHINE CREATION
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Create planning machine with injected server functions.
+ * Server functions are imported at module level (server-side safe in TanStack Start).
+ * Dependencies are injected at machine creation time for better performance and testability.
+ */
+const planningMachine = createPlanningMachine({
+  $generateQuestion,
+  $assessGapAnalysisNeed,
+  $generateArtifact,
+  parseOptions,
+});
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -175,9 +197,13 @@ export function PlanningMachineProvider({
         status: snapshot.status,
       });
 
-      // DO NOT provide `input` when restoring from snapshot.
-      // The snapshot already contains the complete context.
+      // When restoring from snapshot, we still need to provide input for type safety,
+      // but the snapshot's context will take precedence over the input's initial values.
       const newActor = createActor(planningMachine, {
+        input: {
+          projectId: snapshot.context.projectId,
+          entryPath: snapshot.context.entryPath,
+        },
         snapshot: snapshot as SnapshotType,
       });
 
