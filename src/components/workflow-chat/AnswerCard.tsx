@@ -22,9 +22,13 @@
  * - Form fields: text inputs and textareas
  * - Submit button for forms
  * - Hover states on options
+ *
+ * Performance:
+ * - Wrapped in React.memo to prevent re-renders when props unchanged
+ * - Optimizes when parent ChatMessage re-renders
  */
 
-import { useId, useState } from "react";
+import { memo, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type FormValues = Record<string, string>;
@@ -46,7 +50,7 @@ interface AnswerCardProps {
   onSubmitForm?: (values: FormValues) => void;
 }
 
-export function AnswerCard({
+function AnswerCardComponent({
   options,
   formFields,
   selectedOption,
@@ -171,3 +175,8 @@ export function AnswerCard({
     </div>
   );
 }
+
+// Memoize to prevent re-renders when props unchanged
+// Optimizes when parent ChatMessage re-renders
+export const AnswerCard = memo(AnswerCardComponent);
+AnswerCard.displayName = "AnswerCard";

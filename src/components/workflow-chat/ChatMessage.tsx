@@ -16,9 +16,14 @@
  * - Avatar (left): Sparkles for assistant, "U" for user
  * - Content (right): Name, timestamp, message body
  * - Max width: 720px, centered
+ *
+ * Performance:
+ * - Wrapped in React.memo to prevent re-renders when props unchanged
+ * - Optimizes list rendering (30+ messages)
  */
 
 import { Sparkles } from "lucide-react";
+import { memo } from "react";
 import { AnswerCard } from "./AnswerCard";
 import { ArtifactPill } from "./ArtifactPill";
 import { StageDivider } from "./StageDivider";
@@ -35,7 +40,7 @@ interface ChatMessageProps {
   isSubmitting?: boolean;
 }
 
-export function ChatMessage({
+function ChatMessageComponent({
   message,
   onArtifactClick,
   canOpenArtifact,
@@ -165,3 +170,8 @@ export function ChatMessage({
     </div>
   );
 }
+
+// Memoize to prevent re-renders when props unchanged
+// Critical for list performance with 30+ messages
+export const ChatMessage = memo(ChatMessageComponent);
+ChatMessage.displayName = "ChatMessage";
