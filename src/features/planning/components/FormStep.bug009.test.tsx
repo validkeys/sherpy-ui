@@ -25,6 +25,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { FormStep } from "./FormStep";
 
@@ -132,7 +133,7 @@ describe("BUG-009: XState Machine Not Initializing", () => {
         storageKey={STORAGE_KEY}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="active"
         />
@@ -215,7 +216,7 @@ describe("BUG-009: XState Machine Not Initializing", () => {
           storageKey={STORAGE_KEY}
         >
           <FormStep
-            stepKey="step1_gapAnalysis"
+            stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
             stepName="Gap Analysis"
             status="active"
           />
@@ -311,7 +312,7 @@ describe("BUG-009: XState Machine Not Initializing", () => {
         storageKey={STORAGE_KEY}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="active"
         />

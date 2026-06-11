@@ -34,6 +34,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createActor } from "xstate";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import { planningMachine } from "../machines/planningMachine";
 import type { PlanningContext } from "../machines/types";
 

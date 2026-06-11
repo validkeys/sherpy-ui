@@ -8,6 +8,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { FormStep } from "./FormStep";
 
@@ -60,7 +61,7 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -128,7 +129,7 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -178,7 +179,7 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -195,7 +196,7 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
         input={{ ...defaultInput, projectId: "LcINIWVz" }}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -251,7 +252,7 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />

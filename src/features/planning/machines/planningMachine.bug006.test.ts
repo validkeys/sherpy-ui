@@ -16,6 +16,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createActor } from "xstate";
+import { EVENT_TYPES, STEP_KEYS } from "./constants";
 import { planningMachine } from "./planningMachine";
 
 // Mock the generateArtifact actor to avoid API calls
@@ -72,7 +73,7 @@ describe("BUG-006: Cannot proceed past step 1", () => {
     expect(canGoNext).toBe(false);
 
     // The machine also doesn't accept NEXT event in this state
-    expect(snapshot.can({ type: "NEXT" })).toBe(false);
+    expect(snapshot.can({ type: EVENT_TYPES.NEXT })).toBe(false);
   });
 
   it("correct workflow: Form submission stores responses and triggers artifact generation", async () => {
@@ -87,7 +88,7 @@ describe("BUG-006: Cannot proceed past step 1", () => {
 
     // User fills form and clicks Submit button (not Next button)
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         existingRequirements: "No",

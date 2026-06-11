@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createActor } from "xstate";
+import { EVENT_TYPES, STEP_KEYS } from "./constants";
 import { planningMachine } from "./planningMachine";
 
 // Mock global fetch for API calls
@@ -148,15 +149,15 @@ describe("planningMachine structure", () => {
     // Machine definition has all required states
     const machineStates = planningMachine.config.states;
     expect(machineStates).toHaveProperty("idle");
-    expect(machineStates).toHaveProperty("step1_gapAnalysis");
-    expect(machineStates).toHaveProperty("step2_businessReqs");
-    expect(machineStates).toHaveProperty("step3_techReqs");
-    expect(machineStates).toHaveProperty("step4_styleAnchors");
-    expect(machineStates).toHaveProperty("step5_implPlanner");
-    expect(machineStates).toHaveProperty("step6_definitionOfDone");
-    expect(machineStates).toHaveProperty("step7_archDecisions");
-    expect(machineStates).toHaveProperty("step8_deliveryTimeline");
-    expect(machineStates).toHaveProperty("step9_qaTestPlan");
+    expect(machineStates).toHaveProperty(STEP_KEYS.STEP_1_GAP_ANALYSIS);
+    expect(machineStates).toHaveProperty(STEP_KEYS.STEP_2_BUSINESS_REQS);
+    expect(machineStates).toHaveProperty(STEP_KEYS.STEP_3_TECH_REQS);
+    expect(machineStates).toHaveProperty(STEP_KEYS.STEP_4_STYLE_ANCHORS);
+    expect(machineStates).toHaveProperty(STEP_KEYS.STEP_5_IMPL_PLANNER);
+    expect(machineStates).toHaveProperty(STEP_KEYS.STEP_6_DEFINITION_OF_DONE);
+    expect(machineStates).toHaveProperty(STEP_KEYS.STEP_7_ARCH_DECISIONS);
+    expect(machineStates).toHaveProperty(STEP_KEYS.STEP_8_DELIVERY_TIMELINE);
+    expect(machineStates).toHaveProperty(STEP_KEYS.STEP_9_QA_TEST_PLAN);
     expect(machineStates).toHaveProperty("step10_summaries");
     expect(machineStates).toHaveProperty("complete");
   });
@@ -176,7 +177,7 @@ describe("Step 1: Gap Analysis Form", () => {
     actor.send({ type: "START_PLANNING" });
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.matches("step1_gapAnalysis")).toBe(true);
+    expect(snapshot.matches(STEP_KEYS.STEP_1_GAP_ANALYSIS)).toBe(true);
     expect(snapshot.matches({ step1_gapAnalysis: "collecting" })).toBe(true);
   });
 
@@ -188,7 +189,7 @@ describe("Step 1: Gap Analysis Form", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         existingReqs: "Yes",
@@ -211,7 +212,7 @@ describe("Step 1: Gap Analysis Form", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         projectDescription: "Test project",
@@ -234,7 +235,7 @@ describe("Step 1: Gap Analysis Form", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test project" },
     });
@@ -245,7 +246,7 @@ describe("Step 1: Gap Analysis Form", () => {
     const snapshot = actor.getSnapshot();
     // After artifact generation completes, should transition to step2
     expect(
-      snapshot.matches("step2_businessReqs") ||
+      snapshot.matches(STEP_KEYS.STEP_2_BUSINESS_REQS) ||
         snapshot.matches({ step1_gapAnalysis: "submitting" }),
     ).toBe(true);
   });
@@ -258,7 +259,7 @@ describe("Step 1: Gap Analysis Form", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test project" },
     });
@@ -282,7 +283,7 @@ describe("Step 1: Gap Analysis Form", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         projectDescription: "Test project",
@@ -294,7 +295,7 @@ describe("Step 1: Gap Analysis Form", () => {
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.matches("step2_businessReqs")).toBe(true);
+    expect(snapshot.matches(STEP_KEYS.STEP_2_BUSINESS_REQS)).toBe(true);
   });
 
   it("should skip gap analysis for greenfield projects (Observation #3)", async () => {
@@ -305,7 +306,7 @@ describe("Step 1: Gap Analysis Form", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         projectDescription: "Build a todo list app from scratch",
@@ -323,7 +324,7 @@ describe("Step 1: Gap Analysis Form", () => {
     expect(snapshot.context.step1GapAnalysisReasoning).toBeTruthy();
 
     // Should skip directly to Step 2 without generating artifact
-    expect(snapshot.matches("step2_businessReqs")).toBe(true);
+    expect(snapshot.matches(STEP_KEYS.STEP_2_BUSINESS_REQS)).toBe(true);
     expect(snapshot.context.artifacts[1]).toBeUndefined();
   });
 
@@ -335,7 +336,7 @@ describe("Step 1: Gap Analysis Form", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         projectDescription:
@@ -355,7 +356,7 @@ describe("Step 1: Gap Analysis Form", () => {
 
     // Should generate gap analysis artifact before moving to Step 2
     expect(snapshot.context.artifacts[1]).toBeDefined();
-    expect(snapshot.matches("step2_businessReqs")).toBe(true);
+    expect(snapshot.matches(STEP_KEYS.STEP_2_BUSINESS_REQS)).toBe(true);
   });
 
   it("should store assessment reasoning in context", async () => {
@@ -366,7 +367,7 @@ describe("Step 1: Gap Analysis Form", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         projectDescription: "Build a new app",
@@ -396,7 +397,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -405,7 +406,7 @@ describe("Step 2: Business Requirements Interview", () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.matches("step2_businessReqs")).toBe(true);
+    expect(snapshot.matches(STEP_KEYS.STEP_2_BUSINESS_REQS)).toBe(true);
   });
 
   it("should invoke fetchQuestion actor in asking state", async () => {
@@ -416,7 +417,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -440,7 +441,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -463,7 +464,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -472,7 +473,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     // Submit an answer
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 2,
       question: "What is the goal?",
       answer: "Build a great product",
@@ -496,7 +497,7 @@ describe("Step 2: Business Requirements Interview", () => {
     // Start planning and complete step 1
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -506,7 +507,7 @@ describe("Step 2: Business Requirements Interview", () => {
     // Submit 10 answers
     for (let i = 0; i < 10; i++) {
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Question ${i + 1}?`,
         answer: `Answer ${i + 1}`,
@@ -532,7 +533,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     // Should have automatically advanced to step 3, not stuck in step 2 interview loop
     expect(snapshot.context.currentStepNumber).toBe(3);
-    expect(snapshot.value).toHaveProperty("step3_techReqs");
+    expect(snapshot.value).toHaveProperty(STEP_KEYS.STEP_3_TECH_REQS);
   });
 
   it("should clear current question and options after SUBMIT_ANSWER", async () => {
@@ -543,7 +544,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -551,7 +552,7 @@ describe("Step 2: Business Requirements Interview", () => {
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 2,
       question: "Test question",
       answer: "Test answer",
@@ -570,7 +571,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -579,7 +580,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     // Submit 1 answer (less than 10)
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 2,
       question: "Q1",
       answer: "A1",
@@ -604,7 +605,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -615,7 +616,7 @@ describe("Step 2: Business Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Question ${i}`,
         answer: `Answer ${i}`,
@@ -629,7 +630,7 @@ describe("Step 2: Business Requirements Interview", () => {
     // Should be generating artifact or moved to step3
     expect(
       snapshot.matches({ step2_businessReqs: "generatingArtifact" }) ||
-        snapshot.matches("step3_techReqs"),
+        snapshot.matches(STEP_KEYS.STEP_3_TECH_REQS),
     ).toBe(true);
   });
 
@@ -641,7 +642,7 @@ describe("Step 2: Business Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -652,7 +653,7 @@ describe("Step 2: Business Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Question ${i}`,
         answer: `Answer ${i}`,
@@ -663,7 +664,7 @@ describe("Step 2: Business Requirements Interview", () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.matches("step3_techReqs")).toBe(true);
+    expect(snapshot.matches(STEP_KEYS.STEP_3_TECH_REQS)).toBe(true);
     expect(snapshot.context.artifacts[2]).toBeDefined();
   });
 });
@@ -681,7 +682,7 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -692,7 +693,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Question ${i}`,
         answer: `Answer ${i}`,
@@ -703,7 +704,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.matches("step3_techReqs")).toBe(true);
+    expect(snapshot.matches(STEP_KEYS.STEP_3_TECH_REQS)).toBe(true);
   });
 
   it("should invoke fetchQuestion actor in asking state", async () => {
@@ -714,7 +715,7 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -725,7 +726,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -751,7 +752,7 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -762,7 +763,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -787,7 +788,7 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -798,7 +799,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -809,7 +810,7 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     // Submit an answer for step3
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 3,
       question: "What is the architecture?",
       answer: "Microservices",
@@ -832,7 +833,7 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -843,7 +844,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -853,7 +854,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     await new Promise((resolve) => setTimeout(resolve, 250));
 
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 3,
       question: "Test question",
       answer: "Test answer",
@@ -872,7 +873,7 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -883,7 +884,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -894,7 +895,7 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     // Submit 1 answer for step3 (less than 10)
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 3,
       question: "Q1",
       answer: "A1",
@@ -919,7 +920,7 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -930,7 +931,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -943,7 +944,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Question ${i}`,
         answer: `Answer ${i}`,
@@ -957,9 +958,9 @@ describe("Step 3: Technical Requirements Interview", () => {
     // Should be generating artifact or moved to step4 (or even step5 if fast)
     expect(
       snapshot.matches({ step3_techReqs: "generatingArtifact" }) ||
-        snapshot.matches("step4_styleAnchors") ||
+        snapshot.matches(STEP_KEYS.STEP_4_STYLE_ANCHORS) ||
         snapshot.matches({ step4_styleAnchors: "generating" }) ||
-        snapshot.matches("step5_implPlanner"),
+        snapshot.matches(STEP_KEYS.STEP_5_IMPL_PLANNER),
     ).toBe(true);
   });
 
@@ -971,7 +972,7 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -982,7 +983,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -995,7 +996,7 @@ describe("Step 3: Technical Requirements Interview", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Question ${i}`,
         answer: `Answer ${i}`,
@@ -1007,8 +1008,8 @@ describe("Step 3: Technical Requirements Interview", () => {
 
     const snapshot = actor.getSnapshot();
     expect(
-      snapshot.matches("step4_styleAnchors") ||
-        snapshot.matches("step5_implPlanner"),
+      snapshot.matches(STEP_KEYS.STEP_4_STYLE_ANCHORS) ||
+        snapshot.matches(STEP_KEYS.STEP_5_IMPL_PLANNER),
     ).toBe(true);
     expect(snapshot.context.artifacts[3]).toBeDefined();
   });
@@ -1028,7 +1029,7 @@ describe("Step 4: Style Anchors (Automated)", () => {
     // Complete steps 1-3
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -1037,7 +1038,7 @@ describe("Step 4: Style Anchors (Automated)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1048,7 +1049,7 @@ describe("Step 4: Style Anchors (Automated)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1058,9 +1059,9 @@ describe("Step 4: Style Anchors (Automated)", () => {
 
     const snapshot = actor.getSnapshot();
     expect(
-      snapshot.matches("step4_styleAnchors") ||
+      snapshot.matches(STEP_KEYS.STEP_4_STYLE_ANCHORS) ||
         snapshot.matches({ step4_styleAnchors: "generating" }) ||
-        snapshot.matches("step5_implPlanner"),
+        snapshot.matches(STEP_KEYS.STEP_5_IMPL_PLANNER),
     ).toBe(true);
   });
 
@@ -1073,7 +1074,7 @@ describe("Step 4: Style Anchors (Automated)", () => {
     // Complete steps 1-3
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -1082,7 +1083,7 @@ describe("Step 4: Style Anchors (Automated)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1093,7 +1094,7 @@ describe("Step 4: Style Anchors (Automated)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1102,7 +1103,7 @@ describe("Step 4: Style Anchors (Automated)", () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.matches("step5_implPlanner")).toBe(true);
+    expect(snapshot.matches(STEP_KEYS.STEP_5_IMPL_PLANNER)).toBe(true);
     expect(snapshot.context.artifacts[4]).toBeDefined();
   });
 });
@@ -1121,7 +1122,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     // Complete steps 1-4
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -1130,7 +1131,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1141,7 +1142,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1162,7 +1163,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     // Complete steps 1-4
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -1171,7 +1172,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1182,7 +1183,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1191,7 +1192,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 5,
       responses: { deployment: "Vercel", techStack: "React + TypeScript" },
     });
@@ -1213,7 +1214,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     // Complete steps 1-4
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -1222,7 +1223,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1233,7 +1234,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1242,7 +1243,7 @@ describe("Step 5: Implementation Planner (Form)", () => {
     await new Promise((resolve) => setTimeout(resolve, 350));
 
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 5,
       responses: { deployment: "Vercel", techStack: "React + TypeScript" },
     });
@@ -1250,8 +1251,8 @@ describe("Step 5: Implementation Planner (Form)", () => {
 
     const snapshot = actor.getSnapshot();
     expect(
-      snapshot.matches("step6_definitionOfDone") ||
-        snapshot.matches("step7_archDecisions"),
+      snapshot.matches(STEP_KEYS.STEP_6_DEFINITION_OF_DONE) ||
+        snapshot.matches(STEP_KEYS.STEP_7_ARCH_DECISIONS),
     ).toBe(true);
     expect(snapshot.context.artifacts[5]).toBeDefined();
   });
@@ -1271,7 +1272,7 @@ describe("Steps 6, 8, 9, 10: Automated Steps", () => {
     // Complete steps 1-5
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -1280,7 +1281,7 @@ describe("Steps 6, 8, 9, 10: Automated Steps", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1291,7 +1292,7 @@ describe("Steps 6, 8, 9, 10: Automated Steps", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1299,11 +1300,11 @@ describe("Steps 6, 8, 9, 10: Automated Steps", () => {
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    actor.send({ type: "SUBMIT_FORM", stepNumber: 5, responses: {} });
+    actor.send({ type: EVENT_TYPES.SUBMIT_FORM, stepNumber: 5, responses: {} });
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.matches("step7_archDecisions")).toBe(true);
+    expect(snapshot.matches(STEP_KEYS.STEP_7_ARCH_DECISIONS)).toBe(true);
     expect(snapshot.context.artifacts[6]).toBeDefined();
   });
 });
@@ -1322,7 +1323,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     // Complete steps 1-6
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -1331,7 +1332,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1342,7 +1343,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1350,7 +1351,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    actor.send({ type: "SUBMIT_FORM", stepNumber: 5, responses: {} });
+    actor.send({ type: EVENT_TYPES.SUBMIT_FORM, stepNumber: 5, responses: {} });
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     const snapshot = actor.getSnapshot();
@@ -1366,7 +1367,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     // Complete steps 1-6
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -1375,7 +1376,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1386,7 +1387,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1394,7 +1395,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    actor.send({ type: "SUBMIT_FORM", stepNumber: 5, responses: {} });
+    actor.send({ type: EVENT_TYPES.SUBMIT_FORM, stepNumber: 5, responses: {} });
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     actor.send({
@@ -1416,7 +1417,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     // Complete steps 1-6
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -1425,7 +1426,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1436,7 +1437,7 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1444,13 +1445,13 @@ describe("Step 7: Architecture Decisions (Artifact-Only)", () => {
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    actor.send({ type: "SUBMIT_FORM", stepNumber: 5, responses: {} });
+    actor.send({ type: EVENT_TYPES.SUBMIT_FORM, stepNumber: 5, responses: {} });
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     actor.send({ type: "APPROVE_ARTIFACT", stepNumber: 7 });
 
     const snapshot = actor.getSnapshot();
-    expect(snapshot.matches("step8_deliveryTimeline")).toBe(true);
+    expect(snapshot.matches(STEP_KEYS.STEP_8_DELIVERY_TIMELINE)).toBe(true);
   });
 });
 
@@ -1468,7 +1469,7 @@ describe("Full Workflow (Steps 1-10)", () => {
     // Step 1
     actor.send({ type: "START_PLANNING" });
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { overview: "Test" },
     });
@@ -1478,7 +1479,7 @@ describe("Full Workflow (Steps 1-10)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 2,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1490,7 +1491,7 @@ describe("Full Workflow (Steps 1-10)", () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       actor.send({
-        type: "SUBMIT_ANSWER",
+        type: EVENT_TYPES.SUBMIT_ANSWER,
         stepNumber: 3,
         question: `Q${i}`,
         answer: `A${i}`,
@@ -1499,7 +1500,7 @@ describe("Full Workflow (Steps 1-10)", () => {
     await new Promise((resolve) => setTimeout(resolve, 300)); // Step 4 auto-generates
 
     // Step 5
-    actor.send({ type: "SUBMIT_FORM", stepNumber: 5, responses: {} });
+    actor.send({ type: EVENT_TYPES.SUBMIT_FORM, stepNumber: 5, responses: {} });
     await new Promise((resolve) => setTimeout(resolve, 200)); // Step 6 auto-generates
 
     // Step 7

@@ -553,7 +553,7 @@ describe("parseSnapshot", () => {
       artifacts: {},
       updatedAt: new Date().toISOString(),
     },
-    value: "step1_gapAnalysis",
+    value: STEP_KEYS.STEP_1_GAP_ANALYSIS,
     status: "active",
   };
 

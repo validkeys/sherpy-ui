@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import type { ProjectStepState } from "../types";
 import { ProjectIntake } from "./ProjectIntake";
 

@@ -5,6 +5,7 @@
 
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { ArtifactOnlyStep } from "./ArtifactOnlyStep";
 
@@ -15,7 +16,7 @@ describe("ArtifactOnlyStep", () => {
   };
 
   const step7Props = {
-    stepKey: "step7_archDecisions",
+    stepKey: STEP_KEYS.STEP_7_ARCH_DECISIONS,
     stepName: "Architecture Decisions",
   };
 

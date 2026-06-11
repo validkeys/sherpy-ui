@@ -16,6 +16,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { StepContainer } from "../components/StepContainer";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import {
   PlanningMachineProvider,
   useSelector,

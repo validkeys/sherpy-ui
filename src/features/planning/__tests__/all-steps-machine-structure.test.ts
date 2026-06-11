@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import { planningMachine } from "../machines/planningMachine";
 
 describe("Planning Machine: All Steps Structure", () => {
@@ -212,11 +213,11 @@ describe("Planning Machine: All Steps Structure", () => {
   describe("All Automated Steps (4, 6, 7, 8, 9, 10)", () => {
     it("should all start with artifact generation", () => {
       const automatedSteps = [
-        { number: 4, key: "step4_styleAnchors" },
-        { number: 6, key: "step6_definitionOfDone" },
-        { number: 7, key: "step7_archDecisions" },
-        { number: 8, key: "step8_deliveryTimeline" },
-        { number: 9, key: "step9_qaTestPlan" },
+        { number: 4, key: STEP_KEYS.STEP_4_STYLE_ANCHORS },
+        { number: 6, key: STEP_KEYS.STEP_6_DEFINITION_OF_DONE },
+        { number: 7, key: STEP_KEYS.STEP_7_ARCH_DECISIONS },
+        { number: 8, key: STEP_KEYS.STEP_8_DELIVERY_TIMELINE },
+        { number: 9, key: STEP_KEYS.STEP_9_QA_TEST_PLAN },
         { number: 10, key: "step10_summaries" },
       ];
 
@@ -248,8 +249,8 @@ describe("Planning Machine: All Steps Structure", () => {
   describe("All Interview Steps (2, 3)", () => {
     it("should all follow the same pattern: ask, answer, check, generate", () => {
       const interviewSteps = [
-        { number: 2, key: "step2_businessReqs" },
-        { number: 3, key: "step3_techReqs" },
+        { number: 2, key: STEP_KEYS.STEP_2_BUSINESS_REQS },
+        { number: 3, key: STEP_KEYS.STEP_3_TECH_REQS },
       ];
 
       for (const step of interviewSteps) {
@@ -277,8 +278,8 @@ describe("Planning Machine: All Steps Structure", () => {
   describe("All Form Steps (1, 5)", () => {
     it("should all follow the same pattern: collect, submit", () => {
       const formSteps = [
-        { number: 1, key: "step1_gapAnalysis" },
-        { number: 5, key: "step5_implPlanner" },
+        { number: 1, key: STEP_KEYS.STEP_1_GAP_ANALYSIS },
+        { number: 5, key: STEP_KEYS.STEP_5_IMPL_PLANNER },
       ];
 
       for (const step of formSteps) {

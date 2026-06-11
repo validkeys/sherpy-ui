@@ -15,6 +15,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { stepStateQueryKey } from "../application/queries";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import type { ProjectStepState } from "../types";
 import {
   useCompleteStepMutation,

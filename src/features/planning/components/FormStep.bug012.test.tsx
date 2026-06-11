@@ -16,6 +16,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { FormStep } from "./FormStep";
 
@@ -65,7 +66,7 @@ describe("BUG-012: FormStep StrictMode Compatibility", () => {
           storageKey={storageKey}
         >
           <FormStep
-            stepKey="step1_gapAnalysis"
+            stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
             stepName="Gap Analysis"
             status="collecting"
           />
@@ -167,7 +168,7 @@ describe("BUG-012: FormStep StrictMode Compatibility", () => {
         storageKey={storageKey}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -222,7 +223,7 @@ describe("BUG-012: FormStep StrictMode Compatibility", () => {
           storageKey={storageKey}
         >
           <FormStep
-            stepKey="step1_gapAnalysis"
+            stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
             stepName="Gap Analysis"
             status="collecting"
           />
@@ -239,7 +240,7 @@ describe("BUG-012: FormStep StrictMode Compatibility", () => {
             storageKey={storageKey}
           >
             <FormStep
-              stepKey="step1_gapAnalysis"
+              stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
               stepName="Gap Analysis"
               status="collecting"
             />
@@ -297,7 +298,7 @@ describe("BUG-012: FormStep StrictMode Compatibility", () => {
           storageKey={storageKey}
         >
           <FormStep
-            stepKey="step1_gapAnalysis"
+            stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
             stepName="Gap Analysis"
             status="collecting"
           />
@@ -318,7 +319,7 @@ describe("BUG-012: FormStep StrictMode Compatibility", () => {
           storageKey={storageKey}
         >
           <FormStep
-            stepKey="step1_gapAnalysis"
+            stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
             stepName="Gap Analysis"
             status="collecting"
           />
@@ -429,7 +430,7 @@ describe("BUG-012: PlanningMachineContext Cleanup Behavior", () => {
     const currentState = actor.getSnapshot().value as any;
     expect(currentState.step1_gapAnalysis).toBe("collectingInfo");
     const canReceiveEvents = actor.getSnapshot().can({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {},
     });

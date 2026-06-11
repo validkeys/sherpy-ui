@@ -9,6 +9,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { FormStep } from "./FormStep";
 
@@ -73,7 +74,7 @@ describe("BUG-010 Fix: DOM value recovery on submit", () => {
         storageKey={STORAGE_KEY}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -193,7 +194,7 @@ describe("BUG-010 Fix: DOM value recovery on submit", () => {
         storageKey={STORAGE_KEY}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -250,7 +251,7 @@ describe("BUG-010 Fix: DOM value recovery on submit", () => {
         storageKey={STORAGE_KEY}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />

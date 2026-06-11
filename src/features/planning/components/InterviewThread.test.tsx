@@ -24,6 +24,7 @@ import {
   useSubmitAnswer,
   useUpdateStepOptions,
 } from "../hooks";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 
 const mockMutate = vi.fn();
 
