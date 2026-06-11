@@ -233,23 +233,25 @@ export class StatePersistence {
       );
 
       // Persist Step 2 & 3 interview answers (UPSERT via server function)
+      // biome-ignore lint/suspicious/noExplicitAny: Context typing from XState snapshot (type-safe in M1)
       const step2Promises = snapshot.context.step2Answers.map((answer: any) =>
         $saveInterviewAnswer({
           data: {
             projectId: this.projectId,
             stepNumber: 2,
             question: answer.question,
-            answer: answer.answer,
+            answer: answer.value, // BUG-027: Use 'value' field from InterviewAnswer type
           },
         }),
       );
+      // biome-ignore lint/suspicious/noExplicitAny: Context typing from XState snapshot (type-safe in M1)
       const step3Promises = snapshot.context.step3Answers.map((answer: any) =>
         $saveInterviewAnswer({
           data: {
             projectId: this.projectId,
             stepNumber: 3,
             question: answer.question,
-            answer: answer.answer,
+            answer: answer.value, // BUG-027: Use 'value' field from InterviewAnswer type
           },
         }),
       );
@@ -306,11 +308,13 @@ export class StatePersistence {
    * short-lived and don't need to be persisted.
    */
   private isTransientState(snapshot: SnapshotType): boolean {
+    // biome-ignore lint/suspicious/noExplicitAny: XState value can be string or nested object (type-safe in M1)
     const stateValue = snapshot.value as any;
     if (typeof stateValue !== "object" || stateValue === null) {
       return false;
     }
 
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic state value checking (type-safe in M1)
     return Object.values(stateValue).some(
       (v: any) => v === "submitting" || v === "generatingArtifact",
     );

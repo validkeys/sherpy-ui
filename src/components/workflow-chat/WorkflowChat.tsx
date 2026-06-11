@@ -21,11 +21,13 @@
  * - mode: Legacy prop, ignored (kept for backwards compat)
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAutoScroll } from "../../hooks/useAutoScroll";
 import { ArtifactDialog } from "./ArtifactDialog";
 import { ArtifactsList } from "./ArtifactsList";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessage } from "./ChatMessage";
+import { ScrollToBottomButton } from "./ScrollToBottomButton";
 import type { Artifact, CreatedArtifact, Message } from "./types";
 
 export interface WorkflowChatProps {
@@ -51,6 +53,36 @@ export function WorkflowChat({
   const [selectedArtifact, setSelectedArtifact] =
     useState<CreatedArtifact | null>(null);
 
+  // Auto-scroll hook for chat messages
+  const { scrollRef, scrollToBottom, shouldShowScrollButton } = useAutoScroll(
+    messages,
+    {
+      enabled: !disabled,
+      threshold: 100,
+      scrollDelay: 100,
+      behavior: "smooth",
+    },
+  );
+
+  // Track new messages for scroll button badge
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  const lastSeenMessageCount = useRef(messages.length);
+
+  // Update new message count when not at bottom
+  useEffect(() => {
+    const currentCount = messages.length;
+    const newMessages = currentCount - lastSeenMessageCount.current;
+
+    if (newMessages > 0 && shouldShowScrollButton) {
+      setNewMessageCount((prev) => prev + newMessages);
+    }
+
+    if (!shouldShowScrollButton) {
+      setNewMessageCount(0);
+      lastSeenMessageCount.current = currentCount;
+    }
+  }, [messages.length, shouldShowScrollButton]);
+
   const isViewableArtifact = (
     artifact: Artifact | undefined,
   ): artifact is CreatedArtifact =>
@@ -71,6 +103,12 @@ export function WorkflowChat({
   const handleSubmitMessage = (message: string) => {
     onSubmitMessage?.(message);
     setComposerValue("");
+  };
+
+  const handleScrollToBottom = () => {
+    scrollToBottom();
+    setNewMessageCount(0);
+    lastSeenMessageCount.current = messages.length;
   };
 
   const isComposerDisabled = disabled || !onSubmitMessage;
@@ -107,7 +145,10 @@ export function WorkflowChat({
         data-testid="workflow-chat-messages"
       >
         <div className="flex-1 min-h-0 relative">
-          <div className="absolute inset-0 overflow-y-auto pb-32">
+          <div
+            ref={scrollRef}
+            className="absolute inset-0 overflow-y-auto pb-32"
+          >
             <div className="flex flex-col gap-7 py-8">
               {messages.map((message) => (
                 <ChatMessage
@@ -123,6 +164,13 @@ export function WorkflowChat({
               ))}
             </div>
           </div>
+
+          {/* Scroll to bottom button */}
+          <ScrollToBottomButton
+            onClick={handleScrollToBottom}
+            visible={shouldShowScrollButton}
+            newMessageCount={newMessageCount}
+          />
           <ChatComposer
             value={composerValue}
             onChange={setComposerValue}

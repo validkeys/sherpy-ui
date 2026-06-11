@@ -57,10 +57,10 @@ export const $saveInterviewAnswer = createServerFn({ method: "POST" })
     if (stepNumber !== 2 && stepNumber !== 3) {
       throw new Error("stepNumber must be 2 or 3");
     }
-    if (typeof d.question !== "string") {
+    if (typeof d.question !== "string" || !d.question) {
       throw new Error("question required");
     }
-    if (typeof d.answer !== "string") {
+    if (typeof d.answer !== "string" || !d.answer) {
       throw new Error("answer required");
     }
     return {
@@ -187,10 +187,10 @@ export const $submitAnswer = createServerFn({ method: "POST" })
     if (typeof d.stepNumber !== "number") {
       throw new Error("stepNumber required");
     }
-    if (typeof d.question !== "string") {
+    if (typeof d.question !== "string" || !d.question) {
       throw new Error("question required");
     }
-    if (typeof d.answer !== "string") {
+    if (typeof d.answer !== "string" || !d.answer) {
       throw new Error("answer required");
     }
     return {
@@ -288,10 +288,10 @@ export const $submitAnswerAndComplete = createServerFn({ method: "POST" })
     if (typeof d.stepNumber !== "number") {
       throw new Error("stepNumber required");
     }
-    if (typeof d.question !== "string") {
+    if (typeof d.question !== "string" || !d.question) {
       throw new Error("question required");
     }
-    if (typeof d.answer !== "string") {
+    if (typeof d.answer !== "string" || !d.answer) {
       throw new Error("answer required");
     }
     return {
