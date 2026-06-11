@@ -11,6 +11,7 @@
 
 import { assign, fromPromise, setup } from "xstate";
 import { createInterviewAnswer } from "../domain/step-commands";
+import { EVENT_TYPES, STEP_KEYS, STEP_STATES } from "./constants";
 import type {
   Artifact,
   PlanningContext,
@@ -336,7 +337,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
     },
   }).createMachine({
     id: "planning",
-    initial: "step1_gapAnalysis",
+    initial: STEP_KEYS.STEP_1_GAP_ANALYSIS,
     context: ({ input }: { input: PlanningInput }) => ({
       projectId: input.projectId,
       entryPath: input.entryPath,
@@ -361,16 +362,16 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
 
     on: {
       // Global navigation handlers - explicit transitions based on current step
-      NEXT: [
+      [EVENT_TYPES.NEXT]: [
         {
           guard: ({ context }) =>
             context.currentStepNumber === 1 && isStepComplete(context, 1),
-          target: ".step2_businessReqs",
+          target: `.${STEP_KEYS.STEP_2_BUSINESS_REQS}`,
         },
         {
           guard: ({ context }) =>
             context.currentStepNumber === 2 && isStepComplete(context, 2),
-          target: ".step3_techReqs",
+          target: `.${STEP_KEYS.STEP_3_TECH_REQS}`,
         },
         {
           guard: ({ context }) =>
@@ -408,7 +409,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           target: ".step10_monitoring",
         },
       ],
-      BACK: [
+      [EVENT_TYPES.BACK]: [
         {
           guard: ({ context }) => context.currentStepNumber === 10,
           target: ".step9_deployment",
@@ -435,22 +436,22 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
         },
         {
           guard: ({ context }) => context.currentStepNumber === 4,
-          target: ".step3_techReqs",
+          target: `.${STEP_KEYS.STEP_3_TECH_REQS}`,
         },
         {
           guard: ({ context }) => context.currentStepNumber === 3,
-          target: ".step2_businessReqs",
+          target: `.${STEP_KEYS.STEP_2_BUSINESS_REQS}`,
         },
         {
           guard: ({ context }) => context.currentStepNumber === 2,
-          target: ".step1_gapAnalysis",
+          target: `.${STEP_KEYS.STEP_1_GAP_ANALYSIS}`,
         },
       ],
 
-      RESTORE_SNAPSHOT: {
+      [EVENT_TYPES.RESTORE_SNAPSHOT]: {
         actions: assign(({ event }) => {
           // XState's type system narrows the event type based on the handler key
-          if (event.type === "RESTORE_SNAPSHOT") {
+          if (event.type === EVENT_TYPES.RESTORE_SNAPSHOT) {
             return event.snapshot.context;
           }
           return {};
@@ -462,18 +463,18 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
       // ───────────────────────────────────────────────────────
       // STEP 1: Gap Analysis
       // ───────────────────────────────────────────────────────
-      step1_gapAnalysis: {
-        initial: "collectingInfo",
+      [STEP_KEYS.STEP_1_GAP_ANALYSIS]: {
+        initial: STEP_STATES.STEP_1.COLLECTING_INFO,
         entry: assign({
           currentStepNumber: 1,
           updatedAt: () => new Date().toISOString(),
         }),
 
         states: {
-          collectingInfo: {
+          [STEP_STATES.STEP_1.COLLECTING_INFO]: {
             on: {
-              SUBMIT_FORM: {
-                target: "assessingNeed",
+              [EVENT_TYPES.SUBMIT_FORM]: {
+                target: STEP_STATES.STEP_1.ASSESSING_NEED,
                 actions: assign({
                   step1Responses: ({ event }) => event.responses,
                   updatedAt: () => new Date().toISOString(),
@@ -482,7 +483,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
             },
           },
 
-          assessingNeed: {
+          [STEP_STATES.STEP_1.ASSESSING_NEED]: {
             invoke: {
               src: "assessGapAnalysisNeed",
               input: ({ context }) => ({
@@ -493,7 +494,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                   context.step1Responses.existingRequirements || "",
               }),
               onDone: {
-                target: "complete",
+                target: STEP_STATES.STEP_1.COMPLETE,
                 actions: assign({
                   step1GapAnalysisNeeded: ({ event }) =>
                     event.output.needsGapAnalysis,
@@ -507,7 +508,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
               onError: {
-                target: "collectingInfo",
+                target: STEP_STATES.STEP_1.COLLECTING_INFO,
                 actions: assign({
                   error: ({ event }) =>
                     event.error instanceof Error
@@ -518,7 +519,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
             },
           },
 
-          complete: {
+          [STEP_STATES.STEP_1.COMPLETE]: {
             type: "final",
           },
         },
@@ -527,15 +528,15 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
       // ───────────────────────────────────────────────────────
       // STEP 2: Business Requirements (Interview)
       // ───────────────────────────────────────────────────────
-      step2_businessReqs: {
-        initial: "fetchingQuestion",
+      [STEP_KEYS.STEP_2_BUSINESS_REQS]: {
+        initial: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
         entry: assign({
           currentStepNumber: 2,
           updatedAt: () => new Date().toISOString(),
         }),
 
         states: {
-          fetchingQuestion: {
+          [STEP_STATES.INTERVIEW.FETCHING_QUESTION]: {
             invoke: {
               src: "fetchQuestion",
               input: ({ context }) => ({
@@ -545,7 +546,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 projectContext: buildProjectContext(context),
               }),
               onDone: {
-                target: "awaitingAnswer",
+                target: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
                 actions: assign({
                   step2CurrentQuestion: ({ event }) => event.output.question,
                   step2CurrentOptions: ({ event }) =>
@@ -554,7 +555,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
               onError: {
-                target: "error",
+                target: STEP_STATES.INTERVIEW.ERROR,
                 actions: assign({
                   error: ({ event }) =>
                     event.error instanceof Error
@@ -565,10 +566,10 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
             },
           },
 
-          awaitingAnswer: {
+          [STEP_STATES.INTERVIEW.AWAITING_ANSWER]: {
             on: {
-              SUBMIT_ANSWER: {
-                target: "fetchingQuestion",
+              [EVENT_TYPES.SUBMIT_ANSWER]: {
+                target: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
                 actions: assign({
                   step2Answers: ({ context, event }) => [
                     ...context.step2Answers,
@@ -580,12 +581,12 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
               FINISH_INTERVIEW: {
-                target: "generatingArtifact",
+                target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
               },
             },
           },
 
-          generatingArtifact: {
+          [STEP_STATES.INTERVIEW.GENERATING_ARTIFACT]: {
             invoke: {
               src: "generateArtifact",
               input: ({ context }) => ({
@@ -596,7 +597,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 },
               }),
               onDone: {
-                target: "complete",
+                target: STEP_STATES.INTERVIEW.COMPLETE,
                 actions: assign({
                   artifacts: ({ context, event }) => ({
                     ...context.artifacts,
@@ -610,7 +611,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
               onError: {
-                target: "error",
+                target: STEP_STATES.INTERVIEW.ERROR,
                 actions: assign({
                   error: ({ event }) =>
                     event.error instanceof Error
@@ -621,13 +622,13 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
             },
           },
 
-          error: {
+          [STEP_STATES.INTERVIEW.ERROR]: {
             on: {
-              RETRY: "fetchingQuestion",
+              RETRY: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
             },
           },
 
-          complete: {
+          [STEP_STATES.INTERVIEW.COMPLETE]: {
             type: "final",
           },
         },
@@ -636,15 +637,15 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
       // ───────────────────────────────────────────────────────
       // STEP 3: Technical Requirements (Interview)
       // ───────────────────────────────────────────────────────
-      step3_techReqs: {
-        initial: "fetchingQuestion",
+      [STEP_KEYS.STEP_3_TECH_REQS]: {
+        initial: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
         entry: assign({
           currentStepNumber: 3,
           updatedAt: () => new Date().toISOString(),
         }),
 
         states: {
-          fetchingQuestion: {
+          [STEP_STATES.INTERVIEW.FETCHING_QUESTION]: {
             invoke: {
               src: "fetchQuestion",
               input: ({ context }) => ({
@@ -654,7 +655,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 projectContext: buildProjectContext(context),
               }),
               onDone: {
-                target: "awaitingAnswer",
+                target: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
                 actions: assign({
                   step3CurrentQuestion: ({ event }) => event.output.question,
                   step3CurrentOptions: ({ event }) =>
@@ -663,7 +664,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
               onError: {
-                target: "error",
+                target: STEP_STATES.INTERVIEW.ERROR,
                 actions: assign({
                   error: ({ event }) =>
                     event.error instanceof Error
@@ -674,10 +675,10 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
             },
           },
 
-          awaitingAnswer: {
+          [STEP_STATES.INTERVIEW.AWAITING_ANSWER]: {
             on: {
-              SUBMIT_ANSWER: {
-                target: "fetchingQuestion",
+              [EVENT_TYPES.SUBMIT_ANSWER]: {
+                target: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
                 actions: assign({
                   step3Answers: ({ context, event }) => [
                     ...context.step3Answers,
@@ -689,12 +690,12 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
               FINISH_INTERVIEW: {
-                target: "generatingArtifact",
+                target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
               },
             },
           },
 
-          generatingArtifact: {
+          [STEP_STATES.INTERVIEW.GENERATING_ARTIFACT]: {
             invoke: {
               src: "generateArtifact",
               input: ({ context }) => ({
@@ -705,7 +706,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 },
               }),
               onDone: {
-                target: "complete",
+                target: STEP_STATES.INTERVIEW.COMPLETE,
                 actions: assign({
                   artifacts: ({ context, event }) => ({
                     ...context.artifacts,
@@ -719,7 +720,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
               onError: {
-                target: "error",
+                target: STEP_STATES.INTERVIEW.ERROR,
                 actions: assign({
                   error: ({ event }) =>
                     event.error instanceof Error
@@ -730,13 +731,13 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
             },
           },
 
-          error: {
+          [STEP_STATES.INTERVIEW.ERROR]: {
             on: {
-              RETRY: "fetchingQuestion",
+              RETRY: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
             },
           },
 
-          complete: {
+          [STEP_STATES.INTERVIEW.COMPLETE]: {
             type: "final",
           },
         },

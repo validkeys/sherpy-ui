@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createActor, waitFor } from "xstate";
+import { EVENT_TYPES, STEP_KEYS, STEP_STATES } from "./constants";
 import {
   createPlanningMachine,
   type ServerFunctions,
@@ -59,7 +60,7 @@ describe("createPlanningMachine", () => {
 
     // Navigate to step 2 which triggers fetchQuestion
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         projectDescription: "Test project",
@@ -69,15 +70,19 @@ describe("createPlanningMachine", () => {
 
     // Wait for gap analysis to complete
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step1_gapAnalysis.complete"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_1_GAP_ANALYSIS}.${STEP_STATES.STEP_1.COMPLETE}`,
+      ),
     );
 
     // Navigate to step 2
-    actor.send({ type: "NEXT" });
+    actor.send({ type: EVENT_TYPES.NEXT });
 
     // Wait for question to be fetched
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step2_businessReqs.awaitingAnswer"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_2_BUSINESS_REQS}.${STEP_STATES.INTERVIEW.AWAITING_ANSWER}`,
+      ),
     );
 
     // Verify injected function was called
@@ -102,7 +107,7 @@ describe("createPlanningMachine", () => {
 
     // Submit gap analysis form
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         projectDescription: "Test project description",
@@ -112,7 +117,9 @@ describe("createPlanningMachine", () => {
 
     // Wait for assessment to complete
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step1_gapAnalysis.complete"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_1_GAP_ANALYSIS}.${STEP_STATES.STEP_1.COMPLETE}`,
+      ),
     );
 
     // Verify injected function was called
@@ -137,25 +144,29 @@ describe("createPlanningMachine", () => {
 
     // Complete step 1
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { projectDescription: "Test", existingRequirements: "None" },
     });
 
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step1_gapAnalysis.complete"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_1_GAP_ANALYSIS}.${STEP_STATES.STEP_1.COMPLETE}`,
+      ),
     );
 
     // Navigate to step 2
-    actor.send({ type: "NEXT" });
+    actor.send({ type: EVENT_TYPES.NEXT });
 
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step2_businessReqs.awaitingAnswer"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_2_BUSINESS_REQS}.${STEP_STATES.INTERVIEW.AWAITING_ANSWER}`,
+      ),
     );
 
     // Submit one answer
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 2,
       question: "What is your goal?",
       answer: "To test this",
@@ -163,14 +174,18 @@ describe("createPlanningMachine", () => {
 
     // Finish interview to trigger artifact generation
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step2_businessReqs.awaitingAnswer"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_2_BUSINESS_REQS}.${STEP_STATES.INTERVIEW.AWAITING_ANSWER}`,
+      ),
     );
 
     actor.send({ type: "FINISH_INTERVIEW" });
 
     // Wait for artifact generation to complete
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step2_businessReqs.complete"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_2_BUSINESS_REQS}.${STEP_STATES.INTERVIEW.COMPLETE}`,
+      ),
     );
 
     // Verify injected function was called
@@ -204,19 +219,23 @@ describe("createPlanningMachine", () => {
 
     // Complete step 1 and navigate to step 2
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { projectDescription: "Test", existingRequirements: "None" },
     });
 
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step1_gapAnalysis.complete"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_1_GAP_ANALYSIS}.${STEP_STATES.STEP_1.COMPLETE}`,
+      ),
     );
 
-    actor.send({ type: "NEXT" });
+    actor.send({ type: EVENT_TYPES.NEXT });
 
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step2_businessReqs.awaitingAnswer"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_2_BUSINESS_REQS}.${STEP_STATES.INTERVIEW.AWAITING_ANSWER}`,
+      ),
     );
 
     // Verify parseOptions was called
@@ -242,21 +261,25 @@ describe("createPlanningMachine", () => {
 
     // Complete step 1
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { projectDescription: "Test", existingRequirements: "None" },
     });
 
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step1_gapAnalysis.complete"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_1_GAP_ANALYSIS}.${STEP_STATES.STEP_1.COMPLETE}`,
+      ),
     );
 
     // Navigate to step 2 (will trigger error)
-    actor.send({ type: "NEXT" });
+    actor.send({ type: EVENT_TYPES.NEXT });
 
     // Wait for error state
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step2_businessReqs.error"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_2_BUSINESS_REQS}.${STEP_STATES.INTERVIEW.ERROR}`,
+      ),
     );
 
     const snapshot = actor.getSnapshot();
@@ -275,7 +298,7 @@ describe("createPlanningMachine", () => {
 
     // Complete step 1 with specific data
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         projectDescription: "Specific project description",
@@ -284,7 +307,9 @@ describe("createPlanningMachine", () => {
     });
 
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step1_gapAnalysis.complete"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_1_GAP_ANALYSIS}.${STEP_STATES.STEP_1.COMPLETE}`,
+      ),
     );
 
     // Verify exact parameters passed
@@ -297,10 +322,12 @@ describe("createPlanningMachine", () => {
     });
 
     // Navigate to step 2
-    actor.send({ type: "NEXT" });
+    actor.send({ type: EVENT_TYPES.NEXT });
 
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step2_businessReqs.awaitingAnswer"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_2_BUSINESS_REQS}.${STEP_STATES.INTERVIEW.AWAITING_ANSWER}`,
+      ),
     );
 
     // Verify project context is passed to generateQuestion
@@ -325,33 +352,41 @@ describe("createPlanningMachine", () => {
     actor.start();
 
     // Verify initial state (nested state value)
-    expect(actor.getSnapshot().matches("step1_gapAnalysis")).toBe(true);
+    expect(actor.getSnapshot().matches(STEP_KEYS.STEP_1_GAP_ANALYSIS)).toBe(
+      true,
+    );
     expect(actor.getSnapshot().context.currentStepNumber).toBe(1);
 
     // Complete workflow through step 2
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: { projectDescription: "Test", existingRequirements: "None" },
     });
 
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step1_gapAnalysis.complete"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_1_GAP_ANALYSIS}.${STEP_STATES.STEP_1.COMPLETE}`,
+      ),
     );
 
     expect(actor.getSnapshot().context.completedSteps).toContain(1);
     expect(actor.getSnapshot().context.step1GapAnalysisNeeded).toBe(false);
 
     // Navigate forward
-    actor.send({ type: "NEXT" });
+    actor.send({ type: EVENT_TYPES.NEXT });
     await waitFor(actor, (snapshot) =>
-      snapshot.matches("step2_businessReqs.awaitingAnswer"),
+      snapshot.matches(
+        `${STEP_KEYS.STEP_2_BUSINESS_REQS}.${STEP_STATES.INTERVIEW.AWAITING_ANSWER}`,
+      ),
     );
     expect(actor.getSnapshot().context.currentStepNumber).toBe(2);
 
     // Navigate backward
-    actor.send({ type: "BACK" });
-    await waitFor(actor, (snapshot) => snapshot.matches("step1_gapAnalysis"));
+    actor.send({ type: EVENT_TYPES.BACK });
+    await waitFor(actor, (snapshot) =>
+      snapshot.matches(STEP_KEYS.STEP_1_GAP_ANALYSIS),
+    );
     expect(actor.getSnapshot().context.currentStepNumber).toBe(1);
 
     actor.stop();
@@ -369,7 +404,7 @@ describe("createPlanningMachine", () => {
 
     // Modify context
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         projectDescription: "Modified",
@@ -379,7 +414,7 @@ describe("createPlanningMachine", () => {
 
     // Restore original snapshot
     actor.send({
-      type: "RESTORE_SNAPSHOT",
+      type: EVENT_TYPES.RESTORE_SNAPSHOT,
       snapshot: {
         context: originalSnapshot.context,
         value: originalSnapshot.value,
