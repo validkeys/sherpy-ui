@@ -6,46 +6,47 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 ---
 
-## 🏗️ MAGIC STRINGS ELIMINATION: Phase 1 Complete (2026-06-11)
+## 🏗️ MAGIC STRINGS ELIMINATION: Phase 2 Complete (2026-06-11)
 
 **Context:** BUG-029 investigation revealed 160+ magic strings causing state name mismatch bugs.
 
-**Phase 1 Status:** ✅ COMPLETE (2 hours)
+**Phase 1 Status:** ✅ COMPLETE (2 hours - Commit 688e0cf)
+- Created `src/features/planning/machines/constants.ts` (+578 lines)
+- 8 constant categories + 8 TypeScript types + 4 validation utilities
 
-**What Was Created:**
-- `src/features/planning/machines/constants.ts` (+547 lines)
-- 8 constant categories: step keys, state names, events, form fields, context keys, messages, field types, artifacts
-- 8 TypeScript types for type safety
-- 4 validation utilities (type guards, converters)
-- Comprehensive JSDoc documentation
+**Phase 2 Status:** ✅ COMPLETE (1.5 hours - Commit a1e926a)
+- Updated `planning-machine-factory.ts` to use constants
+- Replaced all magic strings: state keys, state names, event types
+- Updated 10 test cases for consistency
+- ✅ All 10 tests passing (zero regressions)
 
-**Key Features:**
-- ✅ Type-safe constants (compile-time error on typo)
-- ✅ IntelliSense autocomplete
-- ✅ Refactoring safety (rename in one place → propagates everywhere)
-- ✅ Self-documenting code (semantic names vs magic strings)
-- ✅ Runtime validation utilities
+**What Changed in Phase 2:**
+- Imported `EVENT_TYPES`, `STEP_KEYS`, `STEP_STATES` from constants
+- State keys: `step1_gapAnalysis:` → `[STEP_KEYS.STEP_1_GAP_ANALYSIS]:`
+- State names: `"collectingInfo"` → `STEP_STATES.STEP_1.COLLECTING_INFO`
+- Event types: `SUBMIT_FORM:` → `[EVENT_TYPES.SUBMIT_FORM]:`
+- Test assertions: `snapshot.matches("step1_gapAnalysis.complete")` → `` snapshot.matches(`${STEP_KEYS.STEP_1_GAP_ANALYSIS}.${STEP_STATES.STEP_1.COMPLETE}`) ``
 
-**Critical Fix for BUG-029:**
-```typescript
-// Machine uses "collectingInfo", adapter checks for "collecting" ❌
-// Solution: Both import STEP_STATES.STEP_1.COLLECTING_INFO ✅
-```
+**Benefits Achieved:**
+- ✅ Compile-time type checking (typos caught by TypeScript)
+- ✅ IntelliSense autocomplete for state/event names
+- ✅ Refactoring safety (rename propagates everywhere)
+- ✅ Self-documenting code (semantic names)
+- ✅ Test consistency (same constants in tests and implementation)
 
-**Files Created:**
-- `src/features/planning/machines/constants.ts` (implementation)
-- `.tmp-docs/planning/006-eliminate-magic-strings/PHASE-1-COMPLETE.md` (summary)
+**Files Changed:**
+- `src/features/planning/machines/planning-machine-factory.ts` (+103/-83 lines)
+- `src/features/planning/machines/planning-machine-factory.test.ts` (+73/-73 lines)
 
 **Next Steps:**
-- Phase 2: Update `planning-machine-factory.ts` (3 hours)
 - Phase 3: Update `machine-to-messages.adapter.ts` (2 hours) → **Fixes BUG-029**
 - Phase 4: Update components (3 hours)
 - Phase 5: Update hooks + infrastructure (3 hours)
 - Phase 6: Update tests (2 hours)
 
-**Total Remaining:** 13 hours across Phases 2-6
+**Total Remaining:** 10 hours across Phases 3-6
 
-**Status:** Phase 1 complete, ready for Phase 2
+**Status:** Phase 2 complete, ready for Phase 3 (BUG-029 fix)
 
 ---
 
