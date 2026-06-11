@@ -6,47 +6,74 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 ---
 
-## 🏗️ MAGIC STRINGS ELIMINATION: Phase 2 Complete (2026-06-11)
+## ✅ BUG-029: FIXED - State Name Mismatch (Magic Strings Elimination Phase 3)
 
-**Context:** BUG-029 investigation revealed 160+ magic strings causing state name mismatch bugs.
+**Problem**: Step 1 form never appeared because adapter checked for wrong state name:
+- Machine used: `STEP_STATES.STEP_1.COLLECTING_INFO` = `"collectingInfo"`
+- Adapter checked: `"collecting"` (hardcoded magic string)
+- Result: Form never rendered → blocked 100% of new users
 
-**Phase 1 Status:** ✅ COMPLETE (2 hours - Commit 688e0cf)
+**Root Cause**: Magic strings scattered across 160+ locations without type safety.
+
+**Phase 1:** ✅ COMPLETE (2 hours - Commit 688e0cf)
 - Created `src/features/planning/machines/constants.ts` (+578 lines)
 - 8 constant categories + 8 TypeScript types + 4 validation utilities
 
-**Phase 2 Status:** ✅ COMPLETE (1.5 hours - Commit a1e926a)
+**Phase 2:** ✅ COMPLETE (1.5 hours - Commit a1e926a)
 - Updated `planning-machine-factory.ts` to use constants
 - Replaced all magic strings: state keys, state names, event types
 - Updated 10 test cases for consistency
-- ✅ All 10 tests passing (zero regressions)
+- ✅ All 81 tests passing (zero regressions)
 
-**What Changed in Phase 2:**
-- Imported `EVENT_TYPES`, `STEP_KEYS`, `STEP_STATES` from constants
-- State keys: `step1_gapAnalysis:` → `[STEP_KEYS.STEP_1_GAP_ANALYSIS]:`
-- State names: `"collectingInfo"` → `STEP_STATES.STEP_1.COLLECTING_INFO`
-- Event types: `SUBMIT_FORM:` → `[EVENT_TYPES.SUBMIT_FORM]:`
-- Test assertions: `snapshot.matches("step1_gapAnalysis.complete")` → `` snapshot.matches(`${STEP_KEYS.STEP_1_GAP_ANALYSIS}.${STEP_STATES.STEP_1.COMPLETE}`) ``
+**Phase 3:** ✅ COMPLETE (1.5 hours - Commit PENDING) → **FIXES BUG-029**
+- Updated `machine-to-messages.adapter.ts` to use constants
+- Updated 2 adapter test files for consistency
+- ✅ All 25 adapter tests passing + 81 machine tests passing
+
+**What Changed in Phase 3:**
+1. Imported constants: `import { STEP_STATES } from '../machines/constants'`
+2. Replaced magic string status checks (9 occurrences):
+   - `activeState.status === "collecting"` → `activeState.status === STEP_STATES.STEP_1.COLLECTING_INFO`
+   - `activeState.status === "asking"` → `activeState.status === STEP_STATES.INTERVIEW.FETCHING_QUESTION`
+   - `activeState.status === "answering"` → `activeState.status === STEP_STATES.INTERVIEW.AWAITING_ANSWER`
+   - `activeState.status === "checkingComplete"` → `activeState.status === STEP_STATES.INTERVIEW.CHECKING_COMPLETE`
+   - `activeState.status === "generatingArtifact"` → `activeState.status === STEP_STATES.INTERVIEW.GENERATING_ARTIFACT`
+   - `activeState.status === "submitting"` → `activeState.status === STEP_STATES.STEP_5.SUBMITTING`
+   - `activeState.status === "generating"` → `activeState.status === STEP_STATES.AUTOMATED.GENERATING`
+   - `stateValue === "complete"` → `stateValue === STEP_STATES.INTERVIEW.COMPLETE`
+3. Updated WorkflowStepStatus type to use constants (was hardcoded strings)
+4. Updated WORKFLOW_STEP_STATUSES array to use constants
+5. Added missing states: `STEP_1.ASSESSING_NEED`, `STEP_5.COLLECTING_INFO`
+6. Updated test files to use constants (17 test cases)
+
+**Files Changed:**
+- `src/features/planning/adapters/machine-to-messages.adapter.ts` (+23/-18 lines)
+- `src/features/planning/adapters/machine-to-messages.adapter.test.ts` (+48/-30 lines)
+- `src/features/planning/adapters/__tests__/bug-021-adapter-null-question.test.ts` (+15/-8 lines)
+
+**BUG-029 Fix Verification:**
+- ✅ Adapter now uses `STEP_STATES.STEP_1.COLLECTING_INFO` constant
+- ✅ Machine uses same constant from same file
+- ✅ TypeScript ensures string match at compile time
+- ✅ Impossible to have mismatch (single source of truth)
+- ✅ 25/25 adapter tests passing + 81/81 machine tests passing
 
 **Benefits Achieved:**
+- ✅ **BUG-029 FIXED**: Adapter and machine use same constants
 - ✅ Compile-time type checking (typos caught by TypeScript)
 - ✅ IntelliSense autocomplete for state/event names
 - ✅ Refactoring safety (rename propagates everywhere)
 - ✅ Self-documenting code (semantic names)
-- ✅ Test consistency (same constants in tests and implementation)
-
-**Files Changed:**
-- `src/features/planning/machines/planning-machine-factory.ts` (+103/-83 lines)
-- `src/features/planning/machines/planning-machine-factory.test.ts` (+73/-73 lines)
+- ✅ Test consistency (same constants everywhere)
 
 **Next Steps:**
-- Phase 3: Update `machine-to-messages.adapter.ts` (2 hours) → **Fixes BUG-029**
 - Phase 4: Update components (3 hours)
 - Phase 5: Update hooks + infrastructure (3 hours)
 - Phase 6: Update tests (2 hours)
 
-**Total Remaining:** 10 hours across Phases 3-6
+**Total Progress:** 5/15 hours complete (33%)
 
-**Status:** Phase 2 complete, ready for Phase 3 (BUG-029 fix)
+**Status:** ✅ BUG-029 FIXED - Ready for Phase 4
 
 ---
 

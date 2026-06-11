@@ -10,6 +10,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { STEP_STATES } from "../../machines/constants";
 import type { PlanningContext } from "../../machines/types";
 import { adaptMachineSnapshotToMessages } from "../machine-to-messages.adapter";
 
@@ -50,7 +51,9 @@ describe("BUG-021: Adapter with Null Question", () => {
         step2CurrentOptions: null,
       });
 
-      const stateValue = { step2_businessReqs: "answering" };
+      const stateValue = {
+        step2_businessReqs: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
+      };
 
       const messages = adaptMachineSnapshotToMessages({
         context,
@@ -77,7 +80,9 @@ describe("BUG-021: Adapter with Null Question", () => {
         ],
       });
 
-      const stateValue = { step2_businessReqs: "answering" };
+      const stateValue = {
+        step2_businessReqs: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
+      };
 
       const messages = adaptMachineSnapshotToMessages({
         context,
@@ -107,7 +112,9 @@ describe("BUG-021: Adapter with Null Question", () => {
         step2CurrentOptions: null,
       });
 
-      const stateValue = { step2_businessReqs: "asking" };
+      const stateValue = {
+        step2_businessReqs: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+      };
 
       const messages = adaptMachineSnapshotToMessages({
         context,
@@ -132,7 +139,9 @@ describe("BUG-021: Adapter with Null Question", () => {
         step2CurrentOptions: null,
       });
 
-      const stateValue = { step2_businessReqs: "answering" };
+      const stateValue = {
+        step2_businessReqs: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
+      };
 
       const messages = adaptMachineSnapshotToMessages({
         context,
@@ -158,7 +167,9 @@ describe("BUG-021: Adapter with Null Question", () => {
         step3CurrentOptions: null,
       });
 
-      const stateValue = { step3_technicalReqs: "answering" };
+      const stateValue = {
+        step3_technicalReqs: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
+      };
 
       const messages = adaptMachineSnapshotToMessages({
         context,
@@ -196,7 +207,9 @@ describe("BUG-021: Adapter with Null Question", () => {
         },
       });
 
-      const stateValue = { step3_technicalReqs: "answering" };
+      const stateValue = {
+        step3_technicalReqs: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
+      };
 
       const messages = adaptMachineSnapshotToMessages({
         context,

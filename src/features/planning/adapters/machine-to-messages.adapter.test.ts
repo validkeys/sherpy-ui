@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { STEP_STATES } from "../machines/constants";
 import type { PlanningContext } from "../machines/types";
 import { adaptMachineSnapshotToMessages } from "./machine-to-messages.adapter";
 
@@ -31,7 +32,7 @@ describe("adaptMachineSnapshotToMessages", () => {
   it("creates a current form question for an unanswered form step", () => {
     const messages = adaptMachineSnapshotToMessages({
       context: createContext(),
-      stateValue: { step1_gapAnalysis: "collecting" },
+      stateValue: { step1_gapAnalysis: STEP_STATES.STEP_1.COLLECTING_INFO },
     });
 
     expect(messages).toEqual([
@@ -90,7 +91,9 @@ describe("adaptMachineSnapshotToMessages", () => {
         step2CurrentQuestion: "Who is the primary user?",
         step2CurrentOptions: ["Product teams", "Solo founders"],
       }),
-      stateValue: { step2_businessReqs: "answering" },
+      stateValue: {
+        step2_businessReqs: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
+      },
     });
 
     expect(messages).toContainEqual({
@@ -129,7 +132,9 @@ describe("adaptMachineSnapshotToMessages", () => {
     expect(
       adaptMachineSnapshotToMessages({
         context: createContext({ currentStepNumber: 2 }),
-        stateValue: { step2_businessReqs: "asking" },
+        stateValue: {
+          step2_businessReqs: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+        },
       }),
     ).toContainEqual({
       type: "loading",
@@ -141,11 +146,27 @@ describe("adaptMachineSnapshotToMessages", () => {
   });
 
   it.each([
-    [4, { step4_styleAnchors: "generating" }, "Style Anchors Collection"],
-    [6, { step6_definitionOfDone: "generating" }, "Implementation Plan Review"],
-    [8, { step8_deliveryTimeline: "generating" }, "Delivery Timeline"],
-    [9, { step9_qaTestPlan: "generating" }, "QA Test Plan"],
-    [10, { step10_summaries: "generating" }, "Generate Summaries"],
+    [
+      4,
+      { step4_styleAnchors: STEP_STATES.AUTOMATED.GENERATING },
+      "Style Anchors Collection",
+    ],
+    [
+      6,
+      { step6_definitionOfDone: STEP_STATES.AUTOMATED.GENERATING },
+      "Implementation Plan Review",
+    ],
+    [
+      8,
+      { step8_deliveryTimeline: STEP_STATES.AUTOMATED.GENERATING },
+      "Delivery Timeline",
+    ],
+    [9, { step9_qaTestPlan: STEP_STATES.AUTOMATED.GENERATING }, "QA Test Plan"],
+    [
+      10,
+      { step10_summaries: STEP_STATES.AUTOMATED.GENERATING },
+      "Generate Summaries",
+    ],
   ] as const)("shows artifact loading while automated step %s generates content", (stepNumber, stateValue, stepName) => {
     expect(
       adaptMachineSnapshotToMessages({
@@ -174,7 +195,7 @@ describe("adaptMachineSnapshotToMessages", () => {
           },
         },
       }),
-      stateValue: { step3_techReqs: "asking" },
+      stateValue: { step3_techReqs: STEP_STATES.INTERVIEW.FETCHING_QUESTION },
     });
 
     expect(messages).toContainEqual({
@@ -196,7 +217,7 @@ describe("adaptMachineSnapshotToMessages", () => {
           projectDescription: "A planning assistant",
         },
       }),
-      stateValue: { step1_gapAnalysis: "submitting" },
+      stateValue: { step1_gapAnalysis: STEP_STATES.STEP_1.ASSESSING_NEED },
     });
 
     expect(messages).toContainEqual({
@@ -225,7 +246,7 @@ describe("adaptMachineSnapshotToMessages", () => {
           techStack: "React and XState",
         },
       }),
-      stateValue: { step5_implPlanner: "submitting" },
+      stateValue: { step5_implPlanner: STEP_STATES.STEP_5.SUBMITTING },
     });
 
     expect(messages).toContainEqual({
@@ -257,7 +278,9 @@ describe("adaptMachineSnapshotToMessages", () => {
           },
         ],
       }),
-      stateValue: { step2_businessReqs: "generatingArtifact" },
+      stateValue: {
+        step2_businessReqs: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+      },
     });
 
     expect(messages).toContainEqual({
@@ -279,7 +302,7 @@ describe("adaptMachineSnapshotToMessages", () => {
   it("shows interview progress loading while checking completion", () => {
     const messages = adaptMachineSnapshotToMessages({
       context: createContext({ currentStepNumber: 3 }),
-      stateValue: { step3_techReqs: "checkingComplete" },
+      stateValue: { step3_techReqs: STEP_STATES.INTERVIEW.CHECKING_COMPLETE },
     });
 
     expect(messages).toContainEqual({
@@ -294,7 +317,7 @@ describe("adaptMachineSnapshotToMessages", () => {
   it("shows architecture decision generation loading while step 7 generates", () => {
     const messages = adaptMachineSnapshotToMessages({
       context: createContext({ currentStepNumber: 7 }),
-      stateValue: { step7_archDecisions: "generating" },
+      stateValue: { step7_archDecisions: STEP_STATES.AUTOMATED.GENERATING },
     });
 
     expect(messages).toContainEqual({
@@ -318,7 +341,7 @@ describe("adaptMachineSnapshotToMessages", () => {
           },
         },
       }),
-      stateValue: { step7_archDecisions: "reviewing" },
+      stateValue: { step7_archDecisions: "reviewing" }, // TODO: This state not in constants yet
     });
 
     expect(messages).toContainEqual({
@@ -352,7 +375,9 @@ describe("adaptMachineSnapshotToMessages", () => {
           },
         },
       }),
-      stateValue: { step2_businessReqs: "asking" },
+      stateValue: {
+        step2_businessReqs: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+      },
     });
 
     expect(messages).toContainEqual({

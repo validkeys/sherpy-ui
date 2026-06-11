@@ -2,6 +2,7 @@ import type {
   Message,
   QuestionMessage,
 } from "@/components/workflow-chat/types";
+import { STEP_STATES } from "../machines/constants";
 import type { InterviewAnswer, PlanningContext } from "../machines/types";
 import { getStepName } from "../step-config";
 import {
@@ -61,16 +62,21 @@ export type WorkflowChatAdapterInput = {
   stateValue: unknown;
 };
 
+/**
+ * Normalized workflow step statuses.
+ * Maps XState machine states to simplified status values for the adapter.
+ */
 type WorkflowStepStatus =
-  | "collecting"
-  | "submitting"
-  | "asking"
-  | "answering"
-  | "checkingComplete"
-  | "generatingArtifact"
-  | "generating"
-  | "reviewing"
-  | "complete"
+  | typeof STEP_STATES.STEP_1.COLLECTING_INFO // "collectingInfo"
+  | typeof STEP_STATES.STEP_1.ASSESSING_NEED // "assessingNeed"
+  | typeof STEP_STATES.STEP_5.COLLECTING_INFO // "collectingInfo"
+  | typeof STEP_STATES.STEP_5.SUBMITTING // "submitting"
+  | typeof STEP_STATES.INTERVIEW.FETCHING_QUESTION // "fetchingQuestion"
+  | typeof STEP_STATES.INTERVIEW.AWAITING_ANSWER // "awaitingAnswer"
+  | typeof STEP_STATES.INTERVIEW.CHECKING_COMPLETE // "checkingComplete"
+  | typeof STEP_STATES.INTERVIEW.GENERATING_ARTIFACT // "generatingArtifact"
+  | typeof STEP_STATES.AUTOMATED.GENERATING // "generating"
+  | typeof STEP_STATES.INTERVIEW.COMPLETE // "complete"
   | "unknown";
 
 type NormalizedWorkflowState = {
@@ -92,17 +98,18 @@ const STEP_STATE_NAMES = {
 } as const satisfies Record<string, WorkflowStepNumber>;
 
 const WORKFLOW_STEP_STATUSES: readonly WorkflowStepStatus[] = [
-  "collecting",
-  "submitting",
-  "asking",
-  "answering",
-  "checkingComplete",
-  "generatingArtifact",
-  "generating",
-  "reviewing",
-  "complete",
+  STEP_STATES.STEP_1.COLLECTING_INFO,
+  STEP_STATES.STEP_1.ASSESSING_NEED,
+  STEP_STATES.STEP_5.COLLECTING_INFO,
+  STEP_STATES.STEP_5.SUBMITTING,
+  STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+  STEP_STATES.INTERVIEW.AWAITING_ANSWER,
+  STEP_STATES.INTERVIEW.CHECKING_COMPLETE,
+  STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+  STEP_STATES.AUTOMATED.GENERATING,
+  STEP_STATES.INTERVIEW.COMPLETE,
   "unknown",
-];
+] as const;
 
 export function adaptMachineSnapshotToMessages({
   context,
@@ -172,7 +179,7 @@ function createStepMessages(
     );
     if (
       isActiveStep &&
-      activeState.status === "collecting" &&
+      activeState.status === STEP_STATES.STEP_1.COLLECTING_INFO &&
       Object.keys(context.step1Responses).length === 0
     ) {
       messages.push(createFormQuestionMessage(context, stepNumber));
@@ -203,7 +210,7 @@ function createStepMessages(
     );
     if (
       isActiveStep &&
-      activeState.status === "collecting" &&
+      activeState.status === STEP_STATES.STEP_5.COLLECTING_INFO &&
       Object.keys(context.step5Responses).length === 0
     ) {
       messages.push(createFormQuestionMessage(context, stepNumber));
@@ -316,7 +323,10 @@ function createCurrentInterviewMessages(
       ? context.step2CurrentOptions
       : context.step3CurrentOptions;
 
-  if (activeState.status === "asking" && !currentQuestion) {
+  if (
+    activeState.status === STEP_STATES.INTERVIEW.FETCHING_QUESTION &&
+    !currentQuestion
+  ) {
     return [
       {
         type: "loading",
@@ -328,7 +338,7 @@ function createCurrentInterviewMessages(
     ];
   }
 
-  if (activeState.status === "checkingComplete") {
+  if (activeState.status === STEP_STATES.INTERVIEW.CHECKING_COMPLETE) {
     return [
       {
         type: "loading",
@@ -340,7 +350,7 @@ function createCurrentInterviewMessages(
     ];
   }
 
-  if (activeState.status === "generatingArtifact") {
+  if (activeState.status === STEP_STATES.INTERVIEW.GENERATING_ARTIFACT) {
     return [
       {
         type: "loading",
@@ -372,7 +382,9 @@ function createLoadingMessage(
   activeState: NormalizedWorkflowState,
 ): Message | null {
   const shouldShowArtifactGeneration =
-    activeState.status === "submitting" || activeState.status === "generating";
+    activeState.status === STEP_STATES.STEP_1.ASSESSING_NEED ||
+    activeState.status === STEP_STATES.STEP_5.SUBMITTING ||
+    activeState.status === STEP_STATES.AUTOMATED.GENERATING;
 
   if (!shouldShowArtifactGeneration) return null;
 
@@ -386,8 +398,8 @@ function createLoadingMessage(
 }
 
 function normalizeWorkflowState(stateValue: unknown): NormalizedWorkflowState {
-  if (stateValue === "complete") {
-    return { stepNumber: null, status: "complete" };
+  if (stateValue === STEP_STATES.INTERVIEW.COMPLETE) {
+    return { stepNumber: null, status: STEP_STATES.INTERVIEW.COMPLETE };
   }
 
   if (!isRecord(stateValue)) {
