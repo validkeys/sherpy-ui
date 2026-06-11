@@ -28,7 +28,7 @@
  * - Optimizes when parent ChatMessage re-renders
  */
 
-import { memo, useId, useState } from "react";
+import { memo, useCallback, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type FormValues = Record<string, string>;
@@ -72,22 +72,25 @@ function AnswerCardComponent({
     !disabled &&
     !isSubmitting;
 
-  const handleFormValueChange = (fieldId: string, value: string) => {
-    if (!formValues) {
-      setInternalFormValues((current) => ({ ...current, [fieldId]: value }));
-    }
-    onFormValueChange?.(fieldId, value);
-    // Clear error for this field when user starts typing
-    if (errors[fieldId]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[fieldId];
-        return next;
-      });
-    }
-  };
+  const handleFormValueChange = useCallback(
+    (fieldId: string, value: string) => {
+      if (!formValues) {
+        setInternalFormValues((current) => ({ ...current, [fieldId]: value }));
+      }
+      onFormValueChange?.(fieldId, value);
+      // Clear error for this field when user starts typing
+      if (errors[fieldId]) {
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next[fieldId];
+          return next;
+        });
+      }
+    },
+    [formValues, onFormValueChange, errors],
+  );
 
-  const handleFormSubmit = () => {
+  const handleFormSubmit = useCallback(() => {
     // Validate all fields before submit (WCAG 3.3.1 - Error Identification)
     const newErrors: Record<string, string> = {};
     fields.forEach((field) => {
@@ -105,7 +108,7 @@ function AnswerCardComponent({
     setErrors({});
     if (!canSubmitForm) return;
     onSubmitForm?.(values);
-  };
+  }, [fields, values, canSubmitForm, onSubmitForm]);
 
   return (
     <div className="border border-border-1 rounded-md bg-surface p-3.5 mt-1 flex flex-col gap-2.5">
@@ -119,40 +122,48 @@ function AnswerCardComponent({
           role="radiogroup"
           aria-label="Answer options"
         >
-          {options.map((option, i) => (
-            <label
-              key={i}
-              className={`flex items-start gap-2.5 p-2.5 border rounded-sm bg-page transition-colors text-left ${
-                selectedOption === i
-                  ? "border-fg-1"
-                  : disabled || isSubmitting
-                    ? "border-border-1"
-                    : "border-border-1 hover:border-fg-1"
-              }`}
-            >
-              <input
-                type="radio"
-                name={optionGroupName}
-                value={option}
-                checked={selectedOption === i}
-                disabled={disabled || isSubmitting}
-                aria-label={option}
-                data-testid={`answer-option-${i}`}
-                onChange={() => onSelectOption?.(option, i)}
-                className="sr-only"
-              />
-              <span className="font-mono text-[11px] text-fg-4 mt-0.5">
-                {String.fromCharCode(65 + i)}
-              </span>
-              <span className="text-[13px] text-fg-1 flex-1">{option}</span>
-            </label>
-          ))}
+          {options.map((option, i) => {
+            const handleOptionSelect = () => onSelectOption?.(option, i);
+            return (
+              <label
+                key={i}
+                className={`flex items-start gap-2.5 p-2.5 border rounded-sm bg-page transition-colors text-left ${
+                  selectedOption === i
+                    ? "border-fg-1"
+                    : disabled || isSubmitting
+                      ? "border-border-1"
+                      : "border-border-1 hover:border-fg-1"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={optionGroupName}
+                  value={option}
+                  checked={selectedOption === i}
+                  disabled={disabled || isSubmitting}
+                  aria-label={option}
+                  data-testid={`answer-option-${i}`}
+                  onChange={handleOptionSelect}
+                  className="sr-only"
+                />
+                <span className="font-mono text-[11px] text-fg-4 mt-0.5">
+                  {String.fromCharCode(65 + i)}
+                </span>
+                <span className="text-[13px] text-fg-1 flex-1">{option}</span>
+              </label>
+            );
+          })}
         </div>
       ) : formFields ? (
         <div className="flex flex-col gap-3">
           {formFields.map((field) => {
             const hasError = !!errors[field.id];
             const errorId = `${field.id}-error`;
+            const handleChange = (
+              event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+            ) => {
+              handleFormValueChange(field.id, event.target.value);
+            };
 
             return (
               <div key={field.id} className="flex flex-col gap-1.5">
@@ -169,9 +180,7 @@ function AnswerCardComponent({
                     placeholder={field.placeholder}
                     value={values[field.id] ?? ""}
                     disabled={disabled || isSubmitting}
-                    onChange={(event) =>
-                      handleFormValueChange(field.id, event.target.value)
-                    }
+                    onChange={handleChange}
                     aria-invalid={hasError}
                     aria-describedby={hasError ? errorId : undefined}
                     aria-required="true"
@@ -184,9 +193,7 @@ function AnswerCardComponent({
                     placeholder={field.placeholder}
                     value={values[field.id] ?? ""}
                     disabled={disabled || isSubmitting}
-                    onChange={(event) =>
-                      handleFormValueChange(field.id, event.target.value)
-                    }
+                    onChange={handleChange}
                     aria-invalid={hasError}
                     aria-describedby={hasError ? errorId : undefined}
                     aria-required="true"

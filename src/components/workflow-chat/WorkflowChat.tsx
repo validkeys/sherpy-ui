@@ -21,7 +21,7 @@
  * - mode: Legacy prop, ignored (kept for backwards compat)
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAutoScroll } from "../../hooks/useAutoScroll";
 import { ArtifactDialog } from "./ArtifactDialog";
 import { ArtifactsList } from "./ArtifactsList";
@@ -83,33 +83,43 @@ export function WorkflowChat({
     }
   }, [messages.length, shouldShowScrollButton]);
 
-  const isViewableArtifact = (
-    artifact: Artifact | undefined,
-  ): artifact is CreatedArtifact =>
-    artifact?.status === "created" && artifact.content.trim().length > 0;
+  const isViewableArtifact = useCallback(
+    (artifact: Artifact | undefined): artifact is CreatedArtifact =>
+      artifact?.status === "created" && artifact.content.trim().length > 0,
+    [],
+  );
 
-  const canOpenArtifact = (artifactId: string) =>
-    isViewableArtifact(
-      artifacts.find((artifact) => artifact.id === artifactId),
-    );
+  const canOpenArtifact = useCallback(
+    (artifactId: string) =>
+      isViewableArtifact(
+        artifacts.find((artifact) => artifact.id === artifactId),
+      ),
+    [artifacts, isViewableArtifact],
+  );
 
-  const handleArtifactClick = (artifactId: string) => {
-    const artifact = artifacts.find((a) => a.id === artifactId);
-    if (isViewableArtifact(artifact)) {
-      setSelectedArtifact(artifact);
-    }
-  };
+  const handleArtifactClick = useCallback(
+    (artifactId: string) => {
+      const artifact = artifacts.find((a) => a.id === artifactId);
+      if (isViewableArtifact(artifact)) {
+        setSelectedArtifact(artifact);
+      }
+    },
+    [artifacts, isViewableArtifact],
+  );
 
-  const handleSubmitMessage = (message: string) => {
-    onSubmitMessage?.(message);
-    setComposerValue("");
-  };
+  const handleSubmitMessage = useCallback(
+    (message: string) => {
+      onSubmitMessage?.(message);
+      setComposerValue("");
+    },
+    [onSubmitMessage],
+  );
 
-  const handleScrollToBottom = () => {
+  const handleScrollToBottom = useCallback(() => {
     scrollToBottom();
     setNewMessageCount(0);
     lastSeenMessageCount.current = messages.length;
-  };
+  }, [scrollToBottom, messages.length]);
 
   const isComposerDisabled = disabled || !onSubmitMessage;
   const composerPlaceholder = onSubmitMessage

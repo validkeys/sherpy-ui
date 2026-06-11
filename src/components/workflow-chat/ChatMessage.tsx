@@ -23,7 +23,7 @@
  */
 
 import { Sparkles } from "lucide-react";
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import { AnswerCard } from "./AnswerCard";
 import { ArtifactPill } from "./ArtifactPill";
 import { StageDivider } from "./StageDivider";
@@ -49,6 +49,35 @@ function ChatMessageComponent({
   disabled = false,
   isSubmitting = false,
 }: ChatMessageProps) {
+  const handleSelectOption = useCallback(
+    (option: string, index: number) => {
+      if (message.type === "question") {
+        onSelectOption?.(message.question, option, index);
+      }
+    },
+    [message, onSelectOption],
+  );
+
+  const handleSubmitForm = useCallback(
+    (values: Record<string, string>) => {
+      if (message.type === "question") {
+        onSubmitForm?.(message.question, values);
+      }
+    },
+    [message, onSubmitForm],
+  );
+
+  const handleArtifactClick = useCallback(() => {
+    if (
+      message.type === "artifact" &&
+      onArtifactClick &&
+      message.artifactId &&
+      canOpenArtifact?.(message.artifactId)
+    ) {
+      onArtifactClick(message.artifactId);
+    }
+  }, [message, onArtifactClick, canOpenArtifact]);
+
   if (message.type === "divider") {
     return (
       <StageDivider
@@ -114,12 +143,8 @@ function ChatMessageComponent({
                 Boolean(message.formFields && !onSubmitForm)
               }
               isSubmitting={isSubmitting}
-              onSelectOption={(option, index) =>
-                onSelectOption?.(message.question, option, index)
-              }
-              onSubmitForm={(values) =>
-                onSubmitForm?.(message.question, values)
-              }
+              onSelectOption={handleSelectOption}
+              onSubmitForm={handleSubmitForm}
             />
           </>
         )}
@@ -154,15 +179,7 @@ function ChatMessageComponent({
             <ArtifactPill
               name={message.artifactName}
               disabled={!canOpenArtifact?.(message.artifactId)}
-              onClick={() => {
-                if (
-                  onArtifactClick &&
-                  message.artifactId &&
-                  canOpenArtifact?.(message.artifactId)
-                ) {
-                  onArtifactClick(message.artifactId);
-                }
-              }}
+              onClick={handleArtifactClick}
             />
           </>
         )}
