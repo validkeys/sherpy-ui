@@ -66,7 +66,7 @@ export function ChatMessage({
       <div
         className={`w-[26px] h-[26px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
           isAssistant
-            ? "bg-inverse text-fg-1"
+            ? "bg-inverse text-fg-on-inverse"
             : "bg-surface border border-border-2 text-fg-1"
         }`}
       >

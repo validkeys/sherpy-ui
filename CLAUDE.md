@@ -6,6 +6,84 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 ---
 
+## ✅ BUG-028: FIXED - Sherpy Avatar Unreadable in Dark Mode (2026-06-10)
+
+**Problem**: Sherpy avatar in WorkflowChat had same background and text color in dark mode, making sparkles icon invisible.
+
+**Root Cause**: ChatMessage component used `bg-inverse text-fg-1` class combination. In dark mode, both `bg-inverse` and `fg-1` resolve to `#F2EEE5`, creating zero contrast.
+
+**Solution**: Changed `text-fg-1` to `text-fg-on-inverse` (line 69). This semantic token pair ensures proper contrast in both themes:
+- Light mode: `#FBF9F4` (ivory) on `#1F1C18` (near-black) ✅
+- Dark mode: `#1A1814` (dark) on `#F2EEE5` (light) ✅
+
+**Fix Verification (2026-06-10)**:
+- ✅ 5/5 WorkflowChat tests pass
+- ✅ Build succeeds
+- ✅ Pattern follows 10+ existing components
+
+**Files Changed:**
+- `src/components/workflow-chat/ChatMessage.tsx` (line 69)
+
+**Documentation:**
+- `.tmp-docs/bug-reports/028-sherpy-avatar-unreadable-dark-mode.md`
+
+**Key Learning**: Always pair `bg-inverse` with `text-fg-on-inverse` (not `text-fg-1`). The design system provides semantic token pairs for proper contrast across themes.
+
+**Status**: ✅ FIXED - Ready for production
+
+---
+
+## ✅ BUG-027: FIXED - Answer Field Mismatch in Persistence Layer (2026-06-10)
+
+**Problem**: When answering the first business question in Step 2, console error occurred:
+```
+[StatePersistence] Auxiliary table persistence failed: Error: answer required
+```
+
+**Root Cause**: Field name mismatch between domain layer and persistence layer:
+- Domain layer (`step-commands.ts`) creates `InterviewAnswer` objects with `{ question, value, timestamp }`
+- Persistence layer (`persistence.ts` lines 242, 252) incorrectly accessed `answer.answer` instead of `answer.value`
+- Result: `undefined` passed to server function → validation error
+
+**Type Definition**:
+```typescript
+export type InterviewAnswer = {
+  question: string;
+  value: string;     // ✅ Correct field name (NOT "answer")
+  timestamp: string;
+};
+```
+
+**Solution**: 
+1. Fixed field access in persistence layer (lines 242, 252): `answer.answer` → `answer.value`
+2. Strengthened validation to reject empty strings: `typeof d.answer !== "string"` → `typeof d.answer !== "string" || !d.answer`
+
+**Fix Verification (2026-06-10)**:
+- ✅ Build succeeds
+- ✅ 350/360 tests pass (41 test files)
+- ⏳ Manual E2E testing required
+
+**Files Changed:**
+- `src/features/planning/infrastructure/persistence.ts` (lines 242, 252) - Use `answer.value` instead of `answer.answer`
+- `src/features/planning/infrastructure/server-functions.ts` (3 occurrences) - Strengthen validation to reject empty strings
+
+**Documentation:**
+- `.tmp-docs/bug-reports/027-answer-field-mismatch/bug-report.md` - Complete analysis
+- `.tmp-docs/bug-reports/027-answer-field-mismatch/verification-test.ts` - Standalone verification
+
+**Testing Instructions:**
+1. Create new project
+2. Complete Step 1 (Gap Analysis)
+3. Answer first Step 2 question
+4. Verify no console errors
+5. Check database: `SELECT * FROM interview_answers WHERE project_id = '<id>' AND step_number = 2;`
+
+**Impact**: Interview answers now persist correctly to auxiliary tables without validation errors.
+
+**Status**: ✅ FIXED - Awaiting E2E validation
+
+---
+
 ## ✅ BUG-026: FIXED - Generic Interview Options Not Contextualized (2026-06-10)
 
 **Problem**: Interview questions in Step 2 (Business Requirements) were customized to reference the user's specific project, but the multiple-choice options remained generic and not relevant to the project context.
