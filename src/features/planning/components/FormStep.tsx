@@ -106,6 +106,7 @@ export function FormStep({ stepKey, stepName, status }: Props) {
     existingResponses || {},
   );
   const [isLocallySubmitting, setIsLocallySubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Sync form data when existing responses change (e.g., loaded from localStorage)
   useEffect(() => {
@@ -156,6 +157,14 @@ export function FormStep({ stepKey, stepName, status }: Props) {
       console.log("[FormStep] Updated formData:", next);
       return next;
     });
+    // Clear error for this field when user starts typing
+    if (errors[id]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -204,6 +213,13 @@ export function FormStep({ stepKey, stepName, status }: Props) {
     });
 
     if (missingFields.length > 0) {
+      // Set error messages for missing fields (WCAG 3.3.1 - Error Identification)
+      const newErrors: Record<string, string> = {};
+      missingFields.forEach((field) => {
+        newErrors[field.id] = `${field.label} is required`;
+      });
+      setErrors(newErrors);
+
       console.error(
         "[FormStep] ❌ DEFENSIVE CHECK FAILED: form data incomplete despite enabled button",
         {
@@ -216,6 +232,9 @@ export function FormStep({ stepKey, stepName, status }: Props) {
       );
       return; // Block submission
     }
+
+    // Clear errors on successful validation
+    setErrors({});
 
     setIsLocallySubmitting(true);
 
@@ -303,42 +322,65 @@ export function FormStep({ stepKey, stepName, status }: Props) {
     <div className="form-step">
       <h2>{stepName}</h2>
       <form onSubmit={handleSubmit}>
-        {questions.map((question) => (
-          <div key={question.id} className="form-field">
-            <label htmlFor={question.id}>{question.label}</label>
-            {question.type === "textarea" ? (
-              <textarea
-                id={question.id}
-                value={formData[question.id] || ""}
-                onChange={(e) => handleChange(question.id, e.target.value)}
-                disabled={isLoading}
-                rows={5}
-              />
-            ) : question.type === "select" ? (
-              <select
-                id={question.id}
-                value={formData[question.id] || ""}
-                onChange={(e) => handleChange(question.id, e.target.value)}
-                disabled={isLoading}
-              >
-                <option value="">Select...</option>
-                {question.options?.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id={question.id}
-                type="text"
-                value={formData[question.id] || ""}
-                onChange={(e) => handleChange(question.id, e.target.value)}
-                disabled={isLoading}
-              />
-            )}
-          </div>
-        ))}
+        {questions.map((question) => {
+          const hasError = !!errors[question.id];
+          const errorId = `${question.id}-error`;
+
+          return (
+            <div key={question.id} className="form-field">
+              <label htmlFor={question.id}>{question.label}</label>
+              {question.type === "textarea" ? (
+                <textarea
+                  id={question.id}
+                  value={formData[question.id] || ""}
+                  onChange={(e) => handleChange(question.id, e.target.value)}
+                  disabled={isLoading}
+                  rows={5}
+                  aria-invalid={hasError}
+                  aria-describedby={hasError ? errorId : undefined}
+                  aria-required="true"
+                />
+              ) : question.type === "select" ? (
+                <select
+                  id={question.id}
+                  value={formData[question.id] || ""}
+                  onChange={(e) => handleChange(question.id, e.target.value)}
+                  disabled={isLoading}
+                  aria-invalid={hasError}
+                  aria-describedby={hasError ? errorId : undefined}
+                  aria-required="true"
+                >
+                  <option value="">Select...</option>
+                  {question.options?.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id={question.id}
+                  type="text"
+                  value={formData[question.id] || ""}
+                  onChange={(e) => handleChange(question.id, e.target.value)}
+                  disabled={isLoading}
+                  aria-invalid={hasError}
+                  aria-describedby={hasError ? errorId : undefined}
+                  aria-required="true"
+                />
+              )}
+              {hasError && (
+                <div
+                  id={errorId}
+                  role="alert"
+                  className="text-red-600 text-sm mt-1"
+                >
+                  {errors[question.id]}
+                </div>
+              )}
+            </div>
+          );
+        })}
         <button type="submit" disabled={isLoading || !isFormValid}>
           {isLoading ? "Submitting..." : "Submit"}
         </button>

@@ -63,6 +63,7 @@ function AnswerCardComponent({
 }: AnswerCardProps) {
   const optionGroupName = useId();
   const [internalFormValues, setInternalFormValues] = useState<FormValues>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const values = formValues ?? internalFormValues;
   const fields = formFields ?? [];
   const canSubmitForm =
@@ -76,9 +77,32 @@ function AnswerCardComponent({
       setInternalFormValues((current) => ({ ...current, [fieldId]: value }));
     }
     onFormValueChange?.(fieldId, value);
+    // Clear error for this field when user starts typing
+    if (errors[fieldId]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[fieldId];
+        return next;
+      });
+    }
   };
 
   const handleFormSubmit = () => {
+    // Validate all fields before submit (WCAG 3.3.1 - Error Identification)
+    const newErrors: Record<string, string> = {};
+    fields.forEach((field) => {
+      if (!values[field.id]?.trim()) {
+        newErrors[field.id] = `${field.label} is required`;
+      }
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    // Clear errors and submit
+    setErrors({});
     if (!canSubmitForm) return;
     onSubmitForm?.(values);
   };
@@ -126,41 +150,61 @@ function AnswerCardComponent({
         </div>
       ) : formFields ? (
         <div className="flex flex-col gap-3">
-          {formFields.map((field) => (
-            <div key={field.id} className="flex flex-col gap-1.5">
-              <label
-                htmlFor={field.id}
-                className="text-[13px] text-fg-2 font-medium"
-              >
-                {field.label}
-              </label>
-              {field.type === "textarea" ? (
-                <textarea
-                  id={field.id}
-                  rows={3}
-                  placeholder={field.placeholder}
-                  value={values[field.id] ?? ""}
-                  disabled={disabled || isSubmitting}
-                  onChange={(event) =>
-                    handleFormValueChange(field.id, event.target.value)
-                  }
-                  className="w-full px-3 py-2 text-sm bg-sunken border border-border-1 rounded-sm text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-fg-1"
-                />
-              ) : (
-                <input
-                  type="text"
-                  id={field.id}
-                  placeholder={field.placeholder}
-                  value={values[field.id] ?? ""}
-                  disabled={disabled || isSubmitting}
-                  onChange={(event) =>
-                    handleFormValueChange(field.id, event.target.value)
-                  }
-                  className="w-full px-3 py-2 text-sm bg-sunken border border-border-1 rounded-sm text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-fg-1"
-                />
-              )}
-            </div>
-          ))}
+          {formFields.map((field) => {
+            const hasError = !!errors[field.id];
+            const errorId = `${field.id}-error`;
+
+            return (
+              <div key={field.id} className="flex flex-col gap-1.5">
+                <label
+                  htmlFor={field.id}
+                  className="text-[13px] text-fg-2 font-medium"
+                >
+                  {field.label}
+                </label>
+                {field.type === "textarea" ? (
+                  <textarea
+                    id={field.id}
+                    rows={3}
+                    placeholder={field.placeholder}
+                    value={values[field.id] ?? ""}
+                    disabled={disabled || isSubmitting}
+                    onChange={(event) =>
+                      handleFormValueChange(field.id, event.target.value)
+                    }
+                    aria-invalid={hasError}
+                    aria-describedby={hasError ? errorId : undefined}
+                    aria-required="true"
+                    className="w-full px-3 py-2 text-sm bg-sunken border border-border-1 rounded-sm text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-fg-1"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    id={field.id}
+                    placeholder={field.placeholder}
+                    value={values[field.id] ?? ""}
+                    disabled={disabled || isSubmitting}
+                    onChange={(event) =>
+                      handleFormValueChange(field.id, event.target.value)
+                    }
+                    aria-invalid={hasError}
+                    aria-describedby={hasError ? errorId : undefined}
+                    aria-required="true"
+                    className="w-full px-3 py-2 text-sm bg-sunken border border-border-1 rounded-sm text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-fg-1"
+                  />
+                )}
+                {hasError && (
+                  <div
+                    id={errorId}
+                    role="alert"
+                    className="text-[12px] text-red-600 mt-0.5"
+                  >
+                    {errors[field.id]}
+                  </div>
+                )}
+              </div>
+            );
+          })}
           <Button
             size="sm"
             className="self-end"
