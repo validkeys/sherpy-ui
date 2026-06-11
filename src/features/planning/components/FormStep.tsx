@@ -5,6 +5,7 @@
 
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import {
   usePlanningMachine,
   useSelector,
@@ -91,7 +92,7 @@ export function FormStep({ stepKey, stepName, status }: Props) {
     actor.getSnapshot().status,
   );
 
-  const stepNumber = stepKey === "step1_gapAnalysis" ? 1 : 5;
+  const stepNumber = stepKey === STEP_KEYS.STEP_1_GAP_ANALYSIS ? 1 : 5;
   const questions = stepNumber === 1 ? STEP1_QUESTIONS : STEP5_QUESTIONS;
 
   // Select existing responses
@@ -243,7 +244,7 @@ export function FormStep({ stepKey, stepName, status }: Props) {
     console.log("[FormStep] Step number:", stepNumber);
 
     const event = {
-      type: "SUBMIT_FORM" as const,
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber,
       responses: actualFormData,
     };

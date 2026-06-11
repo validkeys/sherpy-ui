@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { EVENT_TYPES } from "../machines/constants";
 import { createWorkflowChatActions } from "./useWorkflowChatController";
 
 describe("createWorkflowChatActions", () => {
@@ -13,7 +14,7 @@ describe("createWorkflowChatActions", () => {
     actions.onSubmitMessage?.("  Slow project planning  ");
 
     expect(actor.send).toHaveBeenCalledWith({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 2,
       question: "What problem are you solving?",
       answer: "Slow project planning",
@@ -44,7 +45,7 @@ describe("createWorkflowChatActions", () => {
     actions.onSubmitMessage?.("  Postgres  ");
 
     expect(actor.send).toHaveBeenCalledWith({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 3,
       question: "Which database?",
       answer: "Postgres",
@@ -68,7 +69,7 @@ describe("createWorkflowChatActions", () => {
 
     expect(actor.send).toHaveBeenCalledTimes(1);
     expect(actor.send).toHaveBeenCalledWith({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 3,
       question: "What technical risk should be handled first?",
       answer: "State persistence",
@@ -88,7 +89,7 @@ describe("createWorkflowChatActions", () => {
 
     expect(actor.send).toHaveBeenCalledTimes(1);
     expect(actor.send).toHaveBeenCalledWith({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 2,
       question: "Which planning problem?",
       answer: "Manual planning",
@@ -109,7 +110,7 @@ describe("createWorkflowChatActions", () => {
     });
 
     expect(actor.send).toHaveBeenCalledWith({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         existingRequirements: "No",
@@ -132,7 +133,7 @@ describe("createWorkflowChatActions", () => {
     });
 
     expect(actor.send).toHaveBeenCalledWith({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 5,
       responses: {
         deploymentStrategy: "Existing frontend pipeline",

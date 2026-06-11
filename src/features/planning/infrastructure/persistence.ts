@@ -13,6 +13,7 @@
  */
 
 import type { SnapshotFrom } from "xstate";
+import { STEP_STATES } from "../machines/constants";
 import type { planningMachine } from "../machines/planningMachine";
 import { trackError } from "./metrics";
 
@@ -316,7 +317,9 @@ export class StatePersistence {
 
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic state value checking (type-safe in M1)
     return Object.values(stateValue).some(
-      (v: any) => v === "submitting" || v === "generatingArtifact",
+      (v: any) =>
+        v === STEP_STATES.STEP_5.SUBMITTING ||
+        v === STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
     );
   }
 }

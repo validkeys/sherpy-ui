@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import type { ActorRefFrom } from "xstate";
+import { EVENT_TYPES } from "../machines/constants";
 import { usePlanningMachine } from "../machines/PlanningMachineContext";
 import type { planningMachine } from "../machines/planningMachine";
 
@@ -401,7 +402,7 @@ function ManualEventSender({
 
   const sendTestSubmit = () => {
     const event = {
-      type: "SUBMIT_FORM" as const,
+      type: EVENT_TYPES.SUBMIT_FORM,
       stepNumber: 1,
       responses: {
         existingRequirements: testData.field1,

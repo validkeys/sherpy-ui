@@ -1,3 +1,4 @@
+import { STEP_KEYS } from "../machines/constants";
 import { useSelector } from "../machines/PlanningMachineContext";
 import { ArtifactOnlyStep } from "./ArtifactOnlyStep";
 import { AutomatedStep } from "./AutomatedStep";
@@ -12,19 +13,37 @@ type StepConfig = {
 };
 
 const STEP_CONFIG: Record<string, StepConfig> = {
-  step1_gapAnalysis: { type: "form", name: "Gap Analysis" },
-  step2_businessReqs: { type: "interview", name: "Business Requirements" },
-  step3_techReqs: { type: "interview", name: "Technical Requirements" },
-  step4_styleAnchors: { type: "automated", name: "Style Anchors" },
-  step5_implPlanner: { type: "form", name: "Implementation Planner" },
-  step6_definitionOfDone: { type: "automated", name: "Definition of Done" },
-  step7_archDecisions: {
+  [STEP_KEYS.STEP_1_GAP_ANALYSIS]: { type: "form", name: "Gap Analysis" },
+  [STEP_KEYS.STEP_2_BUSINESS_REQS]: {
+    type: "interview",
+    name: "Business Requirements",
+  },
+  [STEP_KEYS.STEP_3_TECH_REQS]: {
+    type: "interview",
+    name: "Technical Requirements",
+  },
+  [STEP_KEYS.STEP_4_STYLE_ANCHORS]: {
+    type: "automated",
+    name: "Style Anchors",
+  },
+  [STEP_KEYS.STEP_5_IMPL_PLANNER]: {
+    type: "form",
+    name: "Implementation Planner",
+  },
+  [STEP_KEYS.STEP_6_DEFINITION_OF_DONE]: {
+    type: "automated",
+    name: "Definition of Done",
+  },
+  [STEP_KEYS.STEP_7_ARCH_DECISIONS]: {
     type: "artifact-only",
     name: "Architecture Decisions",
   },
-  step8_deliveryTimeline: { type: "automated", name: "Delivery Timeline" },
-  step9_qaTestPlan: { type: "automated", name: "QA Test Plan" },
-  step10_summaries: { type: "automated", name: "Summaries" },
+  [STEP_KEYS.STEP_8_DELIVERY_TIMELINE]: {
+    type: "automated",
+    name: "Delivery Timeline",
+  },
+  [STEP_KEYS.STEP_9_QA_TEST_PLAN]: { type: "automated", name: "QA Test Plan" },
+  [STEP_KEYS.STEP_10_SUMMARIES]: { type: "automated", name: "Summaries" },
 };
 
 export function StepContainer() {

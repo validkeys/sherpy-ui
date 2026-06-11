@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Artifact, Message } from "@/components/workflow-chat";
+import { EVENT_TYPES } from "../machines/constants";
 import type { PlanningEvent } from "../machines/types";
 import { useWorkflowChatData } from "./useWorkflowChatData";
 
@@ -101,7 +102,7 @@ function submitInterviewAnswer(
   if (!trimmedAnswer) return;
 
   actor.send({
-    type: "SUBMIT_ANSWER",
+    type: EVENT_TYPES.SUBMIT_ANSWER,
     stepNumber,
     question,
     answer: trimmedAnswer,
@@ -114,7 +115,7 @@ function submitFormResponses(
   responses: Record<string, string>,
 ) {
   actor.send({
-    type: "SUBMIT_FORM",
+    type: EVENT_TYPES.SUBMIT_FORM,
     stepNumber,
     responses,
   });

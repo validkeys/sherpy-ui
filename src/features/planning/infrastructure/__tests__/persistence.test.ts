@@ -11,6 +11,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SnapshotFrom } from "xstate";
+import { STEP_STATES } from "../../machines/constants";
 import type { planningMachine } from "../../machines/planningMachine";
 import { StatePersistence } from "../persistence";
 
@@ -207,7 +208,7 @@ describe("StatePersistence", () => {
     vi.clearAllMocks();
 
     const mockSnapshot = createMockSnapshot({
-      value: { step2: "submitting" },
+      value: { step2: STEP_STATES.STEP_5.SUBMITTING },
       context: {
         currentStepNumber: 2,
         step2Answers: [],
@@ -237,7 +238,7 @@ describe("StatePersistence", () => {
     vi.clearAllMocks();
 
     const mockSnapshot = createMockSnapshot({
-      value: { step2: "generatingArtifact" },
+      value: { step2: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT },
       context: {
         currentStepNumber: 2,
         step2Answers: [],

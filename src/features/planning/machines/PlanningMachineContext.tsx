@@ -34,6 +34,7 @@ import {
 import { StatePersistence } from "../infrastructure/persistence";
 import { $loadPlanningState } from "../infrastructure/server-functions";
 import { parseSnapshot } from "../infrastructure/snapshot-guards";
+import { STEP_KEYS } from "./constants";
 import { createPlanningMachine } from "./planning-machine-factory";
 import type { PlanningInput } from "./types";
 
@@ -409,11 +410,11 @@ function getRestoredAutomatedStep(snapshot: SnapshotType): number | null {
   if (typeof stateValue !== "object" || stateValue === null) return null;
 
   const automatedStates: Array<[string, number]> = [
-    ["step4_styleAnchors", 4],
-    ["step6_definitionOfDone", 6],
-    ["step8_deliveryTimeline", 8],
-    ["step9_qaTestPlan", 9],
-    ["step10_summaries", 10],
+    [STEP_KEYS.STEP_4_STYLE_ANCHORS, 4],
+    [STEP_KEYS.STEP_6_DEFINITION_OF_DONE, 6],
+    [STEP_KEYS.STEP_8_DELIVERY_TIMELINE, 8],
+    [STEP_KEYS.STEP_9_QA_TEST_PLAN, 9],
+    [STEP_KEYS.STEP_10_SUMMARIES, 10],
   ];
 
   for (const [stateName, stepNumber] of automatedStates) {

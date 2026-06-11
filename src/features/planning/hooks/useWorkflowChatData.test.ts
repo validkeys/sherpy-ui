@@ -1,5 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { STEP_KEYS, STEP_STATES } from "../machines/constants";
 import type { PlanningContext } from "../machines/types";
 import { useWorkflowChatData } from "./useWorkflowChatData";
 
@@ -22,7 +23,9 @@ describe("useWorkflowChatData", () => {
     mockMachine.actor.send.mockClear();
     mockMachine.snapshot = {
       context: createContext(),
-      value: { step1_gapAnalysis: "collecting" },
+      value: {
+        [STEP_KEYS.STEP_1_GAP_ANALYSIS]: STEP_STATES.STEP_1.COLLECTING_INFO,
+      },
     };
   });
 
@@ -41,7 +44,9 @@ describe("useWorkflowChatData", () => {
         step2CurrentQuestion: "What problem are you solving?",
         step2CurrentOptions: ["Manual planning", "Slow reviews"],
       }),
-      value: { step2_businessReqs: "answering" },
+      value: {
+        [STEP_KEYS.STEP_2_BUSINESS_REQS]: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
+      },
     };
 
     const { result } = renderHook(() => useWorkflowChatData());
@@ -78,7 +83,10 @@ describe("useWorkflowChatData", () => {
         step2CurrentQuestion: null,
         step2CurrentOptions: null,
       }),
-      value: { step2_businessReqs: "asking" },
+      value: {
+        [STEP_KEYS.STEP_2_BUSINESS_REQS]:
+          STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+      },
     };
 
     const { result } = renderHook(() => useWorkflowChatData());
@@ -95,7 +103,9 @@ describe("useWorkflowChatData", () => {
   it("reports submitting while a nested machine state is in progress", () => {
     mockMachine.snapshot = {
       context: createContext({ currentStepNumber: 3 }),
-      value: { step3_techReqs: "checkingComplete" },
+      value: {
+        [STEP_KEYS.STEP_3_TECH_REQS]: STEP_STATES.INTERVIEW.CHECKING_COMPLETE,
+      },
     };
 
     const { result } = renderHook(() => useWorkflowChatData());
@@ -110,7 +120,9 @@ describe("useWorkflowChatData", () => {
         step3CurrentQuestion: "Which database should we support?",
         step3CurrentOptions: ["SQLite", "Postgres"],
       }),
-      value: { step3_techReqs: "answering" },
+      value: {
+        [STEP_KEYS.STEP_3_TECH_REQS]: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
+      },
     };
 
     const { result } = renderHook(() => useWorkflowChatData());

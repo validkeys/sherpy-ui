@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { STEP_KEYS } from "../machines/constants";
 import { isValidSnapshot, parseSnapshot } from "./snapshot-guards";
 
 describe("isValidSnapshot", () => {
@@ -16,7 +17,7 @@ describe("isValidSnapshot", () => {
         artifacts: {},
         updatedAt: "2026-06-10T10:00:00Z",
       },
-      value: "step1_gapAnalysis",
+      value: STEP_KEYS.STEP_1_GAP_ANALYSIS,
       status: "active",
     };
 
@@ -48,7 +49,7 @@ describe("isValidSnapshot", () => {
         },
         updatedAt: "2026-06-10T10:05:00Z",
       },
-      value: "step2_businessReqs",
+      value: STEP_KEYS.STEP_2_BUSINESS_REQS,
       status: "active",
     };
 
@@ -570,7 +571,7 @@ describe("parseSnapshot", () => {
         artifacts: {},
         updatedAt: "2026-06-10T12:00:00Z",
       },
-      value: "step2_businessReqs",
+      value: STEP_KEYS.STEP_2_BUSINESS_REQS,
       status: "active",
     };
 
@@ -707,7 +708,7 @@ describe("parseSnapshot", () => {
         },
         updatedAt: "2026-06-10T10:20:00Z",
       },
-      value: "step3_techReqs",
+      value: STEP_KEYS.STEP_3_TECH_REQS,
       status: "active",
     };
 

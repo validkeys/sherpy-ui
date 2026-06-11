@@ -5,6 +5,7 @@
 
 import type React from "react";
 import { useState } from "react";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import {
   usePlanningMachine,
   useSelector,
@@ -19,7 +20,7 @@ type Props = {
 
 export function InterviewStep({ stepKey, stepName, status }: Props) {
   const actor = usePlanningMachine();
-  const stepNumber = stepKey === "step2_businessReqs" ? 2 : 3;
+  const stepNumber = stepKey === STEP_KEYS.STEP_2_BUSINESS_REQS ? 2 : 3;
 
   // Select step-specific data with primitive selectors
   const answers = useSelector((state) => {
@@ -52,7 +53,7 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
     if (!currentQuestion || !answer.trim()) return;
 
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber,
       question: currentQuestion,
       answer: answer.trim(),
