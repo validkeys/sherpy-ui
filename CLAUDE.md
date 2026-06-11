@@ -6,6 +6,49 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 ---
 
+## 🏗️ MAGIC STRINGS ELIMINATION: Phase 1 Complete (2026-06-11)
+
+**Context:** BUG-029 investigation revealed 160+ magic strings causing state name mismatch bugs.
+
+**Phase 1 Status:** ✅ COMPLETE (2 hours)
+
+**What Was Created:**
+- `src/features/planning/machines/constants.ts` (+547 lines)
+- 8 constant categories: step keys, state names, events, form fields, context keys, messages, field types, artifacts
+- 8 TypeScript types for type safety
+- 4 validation utilities (type guards, converters)
+- Comprehensive JSDoc documentation
+
+**Key Features:**
+- ✅ Type-safe constants (compile-time error on typo)
+- ✅ IntelliSense autocomplete
+- ✅ Refactoring safety (rename in one place → propagates everywhere)
+- ✅ Self-documenting code (semantic names vs magic strings)
+- ✅ Runtime validation utilities
+
+**Critical Fix for BUG-029:**
+```typescript
+// Machine uses "collectingInfo", adapter checks for "collecting" ❌
+// Solution: Both import STEP_STATES.STEP_1.COLLECTING_INFO ✅
+```
+
+**Files Created:**
+- `src/features/planning/machines/constants.ts` (implementation)
+- `.tmp-docs/planning/006-eliminate-magic-strings/PHASE-1-COMPLETE.md` (summary)
+
+**Next Steps:**
+- Phase 2: Update `planning-machine-factory.ts` (3 hours)
+- Phase 3: Update `machine-to-messages.adapter.ts` (2 hours) → **Fixes BUG-029**
+- Phase 4: Update components (3 hours)
+- Phase 5: Update hooks + infrastructure (3 hours)
+- Phase 6: Update tests (2 hours)
+
+**Total Remaining:** 13 hours across Phases 2-6
+
+**Status:** Phase 1 complete, ready for Phase 2
+
+---
+
 ## ✅ BUG-028: FIXED - Sherpy Avatar Unreadable in Dark Mode (2026-06-10)
 
 **Problem**: Sherpy avatar in WorkflowChat had same background and text color in dark mode, making sparkles icon invisible.
