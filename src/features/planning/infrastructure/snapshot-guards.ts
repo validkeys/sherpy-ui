@@ -60,6 +60,23 @@ export function isValidSnapshot(data: unknown): data is PlanningSnapshot {
     return false;
   }
 
+  // Validate status field (required by XState)
+  if (!("status" in snapshot) || typeof snapshot.status !== "string") {
+    console.warn("[Snapshot validation] Missing or invalid status field");
+    return false;
+  }
+
+  // Validate status is valid XState status
+  if (
+    !["active", "done", "error", "stopped"].includes(snapshot.status as string)
+  ) {
+    console.warn(
+      "[Snapshot validation] Invalid status value:",
+      snapshot.status,
+    );
+    return false;
+  }
+
   const context = snapshot.context as Record<string, unknown>;
 
   // Context must not be null
@@ -90,9 +107,12 @@ export function isValidSnapshot(data: unknown): data is PlanningSnapshot {
   }
 
   // Validate field types
-  if (typeof context.projectId !== "string") {
+  if (
+    typeof context.projectId !== "string" ||
+    context.projectId.trim() === ""
+  ) {
     console.warn(
-      "[Snapshot validation] Invalid type for projectId (expected string)",
+      "[Snapshot validation] Invalid projectId (must be non-empty string)",
     );
     return false;
   }
@@ -104,9 +124,14 @@ export function isValidSnapshot(data: unknown): data is PlanningSnapshot {
     return false;
   }
 
-  if (typeof context.currentStepNumber !== "number") {
+  if (
+    typeof context.currentStepNumber !== "number" ||
+    context.currentStepNumber < 1 ||
+    context.currentStepNumber > 10 ||
+    !Number.isInteger(context.currentStepNumber)
+  ) {
     console.warn(
-      "[Snapshot validation] Invalid type for currentStepNumber (expected number)",
+      "[Snapshot validation] Invalid currentStepNumber (must be integer 1-10)",
     );
     return false;
   }
@@ -134,27 +159,33 @@ export function isValidSnapshot(data: unknown): data is PlanningSnapshot {
 
   if (
     typeof context.step1Responses !== "object" ||
-    context.step1Responses === null
+    context.step1Responses === null ||
+    Array.isArray(context.step1Responses)
   ) {
     console.warn(
-      "[Snapshot validation] Invalid type for step1Responses (expected object)",
+      "[Snapshot validation] Invalid type for step1Responses (expected object, not array)",
     );
     return false;
   }
 
   if (
     typeof context.step5Responses !== "object" ||
-    context.step5Responses === null
+    context.step5Responses === null ||
+    Array.isArray(context.step5Responses)
   ) {
     console.warn(
-      "[Snapshot validation] Invalid type for step5Responses (expected object)",
+      "[Snapshot validation] Invalid type for step5Responses (expected object, not array)",
     );
     return false;
   }
 
-  if (typeof context.artifacts !== "object" || context.artifacts === null) {
+  if (
+    typeof context.artifacts !== "object" ||
+    context.artifacts === null ||
+    Array.isArray(context.artifacts)
+  ) {
     console.warn(
-      "[Snapshot validation] Invalid type for artifacts (expected object)",
+      "[Snapshot validation] Invalid type for artifacts (expected object, not array)",
     );
     return false;
   }

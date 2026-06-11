@@ -301,6 +301,241 @@ describe("isValidSnapshot", () => {
 
     expect(isValidSnapshot(wrongType)).toBe(false);
   });
+
+  // BUG-FIX M1: Status field validation
+  it("should return false for missing status field", () => {
+    const missingStatus = {
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 1,
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      // Missing status field
+    };
+
+    expect(isValidSnapshot(missingStatus)).toBe(false);
+  });
+
+  it("should return false for invalid status value", () => {
+    const invalidStatus = {
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 1,
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "invalid_status", // Not in ["active", "done", "error", "stopped"]
+    };
+
+    expect(isValidSnapshot(invalidStatus)).toBe(false);
+  });
+
+  // BUG-FIX M1: Empty string projectId validation
+  it("should return false for empty string projectId", () => {
+    const emptyProjectId = {
+      context: {
+        projectId: "", // Empty string
+        entryPath: "new-project",
+        currentStepNumber: 1,
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    };
+
+    expect(isValidSnapshot(emptyProjectId)).toBe(false);
+  });
+
+  it("should return false for whitespace-only projectId", () => {
+    const whitespaceProjectId = {
+      context: {
+        projectId: "   ", // Whitespace only
+        entryPath: "new-project",
+        currentStepNumber: 1,
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    };
+
+    expect(isValidSnapshot(whitespaceProjectId)).toBe(false);
+  });
+
+  // BUG-FIX M1: Array rejection for object fields
+  it("should return false for step1Responses being array", () => {
+    const arrayStep1Responses = {
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 1,
+        completedSteps: [],
+        step1Responses: [], // Should be object, not array
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    };
+
+    expect(isValidSnapshot(arrayStep1Responses)).toBe(false);
+  });
+
+  it("should return false for step5Responses being array", () => {
+    const arrayStep5Responses = {
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 1,
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: [], // Should be object, not array
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    };
+
+    expect(isValidSnapshot(arrayStep5Responses)).toBe(false);
+  });
+
+  it("should return false for artifacts being array", () => {
+    const arrayArtifacts = {
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 1,
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: [], // Should be object, not array
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    };
+
+    expect(isValidSnapshot(arrayArtifacts)).toBe(false);
+  });
+
+  // BUG-FIX M1: Step number range validation
+  it("should return false for currentStepNumber = 0", () => {
+    const zeroStepNumber = {
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 0, // Must be 1-10
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    };
+
+    expect(isValidSnapshot(zeroStepNumber)).toBe(false);
+  });
+
+  it("should return false for negative currentStepNumber", () => {
+    const negativeStepNumber = {
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: -5, // Must be 1-10
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    };
+
+    expect(isValidSnapshot(negativeStepNumber)).toBe(false);
+  });
+
+  it("should return false for currentStepNumber > 10", () => {
+    const largeStepNumber = {
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 99, // Must be 1-10
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    };
+
+    expect(isValidSnapshot(largeStepNumber)).toBe(false);
+  });
+
+  it("should return false for non-integer currentStepNumber", () => {
+    const floatStepNumber = {
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 2.5, // Must be integer
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    };
+
+    expect(isValidSnapshot(floatStepNumber)).toBe(false);
+  });
 });
 
 describe("parseSnapshot", () => {
@@ -483,5 +718,98 @@ describe("parseSnapshot", () => {
     expect(result.context.step2Answers).toHaveLength(2);
     expect(result.context.step3Answers).toHaveLength(1);
     expect(Object.keys(result.context.artifacts)).toHaveLength(2);
+  });
+
+  // BUG-FIX M1: parseSnapshot fallback tests
+  it("should return default for missing status", () => {
+    const missingStatusJSON = JSON.stringify({
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 1,
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      // Missing status
+    });
+
+    const result = parseSnapshot(missingStatusJSON, defaultSnapshot);
+
+    expect(result).toBe(defaultSnapshot);
+  });
+
+  it("should return default for empty projectId", () => {
+    const emptyProjectIdJSON = JSON.stringify({
+      context: {
+        projectId: "", // Empty string
+        entryPath: "new-project",
+        currentStepNumber: 1,
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    });
+
+    const result = parseSnapshot(emptyProjectIdJSON, defaultSnapshot);
+
+    expect(result).toBe(defaultSnapshot);
+  });
+
+  it("should return default for array step1Responses", () => {
+    const arrayStep1ResponsesJSON = JSON.stringify({
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 1,
+        completedSteps: [],
+        step1Responses: [], // Should be object
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    });
+
+    const result = parseSnapshot(arrayStep1ResponsesJSON, defaultSnapshot);
+
+    expect(result).toBe(defaultSnapshot);
+  });
+
+  it("should return default for invalid step number", () => {
+    const invalidStepNumberJSON = JSON.stringify({
+      context: {
+        projectId: "test",
+        entryPath: "new-project",
+        currentStepNumber: 99, // Out of range (must be 1-10)
+        completedSteps: [],
+        step1Responses: {},
+        step2Answers: [],
+        step3Answers: [],
+        step5Responses: {},
+        artifacts: {},
+        updatedAt: "2026-06-10",
+      },
+      value: "step1",
+      status: "active",
+    });
+
+    const result = parseSnapshot(invalidStepNumberJSON, defaultSnapshot);
+
+    expect(result).toBe(defaultSnapshot);
   });
 });
