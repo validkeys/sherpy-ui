@@ -33,6 +33,7 @@ import {
 } from "../infrastructure/metrics";
 import { StatePersistence } from "../infrastructure/persistence";
 import { $loadPlanningState } from "../infrastructure/server-functions";
+import { parseSnapshot } from "../infrastructure/snapshot-guards";
 import { createPlanningMachine } from "./planning-machine-factory";
 import type { PlanningInput } from "./types";
 
@@ -90,9 +91,17 @@ export function PlanningMachineProvider({
   // ============================================================================
   // STEP 1: Optimistic read from cache (synchronous, instant)
   // ============================================================================
+  // Need default snapshot for validation fallback - create temp actor to get it
+  const defaultSnapshotForValidation = React.useMemo(() => {
+    const tempActor = createActor(planningMachine, { input });
+    const snapshot = tempActor.getSnapshot();
+    // Don't start the actor, we just need the initial snapshot structure
+    return snapshot;
+  }, [input]);
+
   const cachedSnapshot = React.useMemo(
-    () => loadStateSync(storageKey),
-    [storageKey],
+    () => loadStateSync(storageKey, defaultSnapshotForValidation),
+    [storageKey, defaultSnapshotForValidation],
   );
 
   // ============================================================================
@@ -462,8 +471,17 @@ function toPlainSnapshot(snapshot: unknown): Record<string, unknown> {
 /**
  * Load state synchronously from localStorage cache
  * Database serves as single source of truth, loaded via React Query
+ *
+ * Uses type-safe parseSnapshot() to validate structure before deserialization.
+ * Invalid/corrupted data results in null (fresh state), not a crash.
+ *
+ * @param key - localStorage key
+ * @param defaultSnapshot - Fallback snapshot if validation fails
  */
-function loadStateSync(key: string): SnapshotType | null {
+function loadStateSync(
+  key: string,
+  defaultSnapshot: SnapshotType,
+): SnapshotType | null {
   // Skip during SSR
   if (typeof window === "undefined") return null;
 
@@ -471,58 +489,43 @@ function loadStateSync(key: string): SnapshotType | null {
     const stored = localStorage.getItem(key);
     if (!stored) return null;
 
-    const parsed = JSON.parse(stored);
+    // Type-safe parsing with validation
+    const snapshot = parseSnapshot(stored, defaultSnapshot);
 
-    // Validate that we have a complete XState v5 snapshot
-    if (
-      !parsed ||
-      typeof parsed !== "object" ||
-      !parsed.status ||
-      !parsed.value ||
-      !parsed.context ||
-      typeof parsed.context !== "object"
-    ) {
-      throw new Error(
-        "Invalid snapshot structure: missing required fields (status, value, context). " +
-          "This may be from an old version. Clearing and starting fresh.",
+    // If validation failed, parseSnapshot returned default - treat as no cached state
+    if (snapshot === defaultSnapshot) {
+      console.warn(
+        "[PlanningMachineContext] Cached state invalid, clearing localStorage",
       );
+      try {
+        localStorage.removeItem(key);
+      } catch (clearError) {
+        console.error(
+          "[PlanningMachineContext] Failed to clear cache:",
+          clearError,
+        );
+      }
+      return null;
     }
 
-    // Validate critical context fields
-    if (
-      !parsed.context.projectId ||
-      typeof parsed.context.currentStepNumber !== "number"
-    ) {
-      throw new Error(
-        "Invalid context: missing projectId or currentStepNumber",
-      );
-    }
-
-    // Defensive reset of status to 'active'
-    if (parsed.status !== "active") {
+    // Defensive reset of status to 'active' (snapshots should always be active when loaded)
+    if (snapshot.status !== "active") {
       console.warn(
         "[PlanningMachineContext] Restoring snapshot with non-active status:",
-        parsed.status,
+        snapshot.status,
         "- forcing to active",
       );
-      parsed.status = "active";
+      // biome-ignore lint/suspicious/noExplicitAny: Snapshot mutation for status reset
+      (snapshot as any).status = "active";
     }
 
-    return parsed as unknown as SnapshotType;
+    return snapshot;
   } catch (error) {
-    // Auto-recover by clearing corrupted/outdated state
+    // parseSnapshot already handles parse errors, but catch any unexpected errors
     console.error(
-      "[PlanningMachineContext] ⚠️  Invalid state detected, clearing and starting fresh:",
+      "[PlanningMachineContext] Unexpected error loading state:",
       error,
     );
-    try {
-      localStorage.removeItem(key);
-    } catch (clearError) {
-      console.error(
-        "[PlanningMachineContext] Failed to clear invalid state:",
-        clearError,
-      );
-    }
-    return null; // Start with fresh state
+    return null;
   }
 }
