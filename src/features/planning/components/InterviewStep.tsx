@@ -5,6 +5,7 @@
 
 import type React from "react";
 import { useState } from "react";
+import { LiveRegion } from "@/components/ui/live-region";
 import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import {
   usePlanningMachine,
@@ -75,25 +76,33 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
 
   if (isLoading) {
     return (
-      <div className="interview-step loading">
-        <h2>{stepName}</h2>
-        <div className="loading-indicator">
-          <p>Loading next question...</p>
+      <>
+        <LiveRegion priority="polite">Loading next question.</LiveRegion>
+        <div className="interview-step loading">
+          <h2>{stepName}</h2>
+          <div className="loading-indicator">
+            <p>Loading next question...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (isGenerating) {
     return (
-      <div className="interview-step generating">
-        <h2>{stepName}</h2>
-        <div className="generating-indicator">
-          <p>
-            Generating {stepName} artifact from {answers.length} answers...
-          </p>
+      <>
+        <LiveRegion priority="polite">
+          Generating {stepName} artifact from {answers.length} answers.
+        </LiveRegion>
+        <div className="interview-step generating">
+          <h2>{stepName}</h2>
+          <div className="generating-indicator">
+            <p>
+              Generating {stepName} artifact from {answers.length} answers...
+            </p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -103,15 +112,18 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
       <p className="answer-count">{answers.length} questions answered</p>
 
       {error && (
-        <div className="error-message">
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={() => actor.send({ type: "RETRY", stepNumber })}
-          >
-            Retry
-          </button>
-        </div>
+        <>
+          <LiveRegion priority="assertive">Error: {error}</LiveRegion>
+          <div className="error-message">
+            <p>{error}</p>
+            <button
+              type="button"
+              onClick={() => actor.send({ type: "RETRY", stepNumber })}
+            >
+              Retry
+            </button>
+          </div>
+        </>
       )}
 
       {answers.length > 0 && (

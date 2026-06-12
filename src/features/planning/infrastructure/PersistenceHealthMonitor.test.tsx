@@ -202,10 +202,12 @@ describe("PersistenceHealthMonitor", () => {
     subscribers[0]?.(mockSnapshot);
 
     // Component should handle it gracefully and show warning
+    // M11: Now has both visual and screen-reader announcements
     await waitFor(() => {
-      expect(
-        screen.getByText(/Warning: Changes may not be saving/),
-      ).toBeInTheDocument();
+      const warnings = screen.getAllByText(
+        /Warning: Changes may not be saving/,
+      );
+      expect(warnings.length).toBeGreaterThanOrEqual(1);
     });
   });
 });

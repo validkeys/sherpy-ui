@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import type { Actor } from "xstate";
 import { ErrorModal } from "@/components/ui/error-modal";
+import { LiveRegion } from "@/components/ui/live-region";
 import { exportLocalStorageData } from "@/lib/export-data";
 
 interface HealthState {
@@ -137,12 +138,18 @@ export function PersistenceHealthMonitor({
   // Visual indicator for minor failures
   if (health.failureCount > 0 && health.failureCount < 3) {
     return (
-      <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
-        <p className="text-yellow-800 font-medium">
-          ⚠️ Warning: Changes may not be saving ({health.failureCount} failures)
-        </p>
-        <p className="text-yellow-700 text-sm mt-1">{health.lastError}</p>
-      </div>
+      <>
+        <LiveRegion priority="assertive">
+          Warning: Changes may not be saving. {health.failureCount} failures.
+        </LiveRegion>
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+          <p className="text-yellow-800 font-medium">
+            ⚠️ Warning: Changes may not be saving ({health.failureCount}{" "}
+            failures)
+          </p>
+          <p className="text-yellow-700 text-sm mt-1">{health.lastError}</p>
+        </div>
+      </>
     );
   }
 

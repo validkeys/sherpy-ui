@@ -6,6 +6,7 @@ import { OptionStack } from "@/components/thread/OptionStack";
 import { QuestionCard } from "@/components/thread/QuestionCard";
 import { ThreadDivider } from "@/components/thread/ThreadDivider";
 import { ThreadView } from "@/components/thread/ThreadView";
+import { LiveRegion } from "@/components/ui/live-region";
 import { useStreamingQuestion } from "@/features/ai/hooks";
 import {
   useCompleteStep,
@@ -363,18 +364,31 @@ export function InterviewThread({
     </button>
   );
 
+  // M11: ARIA live region for progress announcements (WCAG 4.1.3)
+  // Announce status changes to screen reader users
+  const statusAnnouncement = isComplete
+    ? "Step complete. Moving to next step."
+    : isPending
+      ? "Submitting your answer."
+      : isStreaming
+        ? "Loading next question."
+        : null;
+
   return (
-    <ThreadView
-      messages={messages}
-      question={question}
-      options={options}
-      composer={
-        <Composer
-          input={composerInput}
-          cta={composerCta}
-          disabled={isLoadingQuestion}
-        />
-      }
-    />
+    <>
+      <LiveRegion priority="polite">{statusAnnouncement}</LiveRegion>
+      <ThreadView
+        messages={messages}
+        question={question}
+        options={options}
+        composer={
+          <Composer
+            input={composerInput}
+            cta={composerCta}
+            disabled={isLoadingQuestion}
+          />
+        }
+      />
+    </>
   );
 }
