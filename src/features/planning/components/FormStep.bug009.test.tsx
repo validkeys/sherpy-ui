@@ -29,6 +29,24 @@ import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { FormStep } from "./FormStep";
 
+// Mock server functions
+vi.mock("../../ai/server", () => ({
+  $generateArtifact: vi.fn().mockResolvedValue({
+    format: "markdown",
+    content: "# Gap Analysis\n\nTest content",
+    generatedAt: new Date().toISOString(),
+  }),
+  $generateQuestion: vi.fn().mockResolvedValue({
+    question: "Mock question?",
+    options: ["Option A", "Option B"],
+  }),
+  $assessGapAnalysisNeed: vi.fn().mockResolvedValue({
+    needsGapAnalysis: true,
+    reasoning: "Mock assessment",
+    confidence: "high" as const,
+  }),
+}));
+
 describe("BUG-009: XState Machine Not Initializing", () => {
   const TEST_PROJECT_ID = "L5WIIxKU";
   const STORAGE_KEY = `planning-machine-${TEST_PROJECT_ID}`;
