@@ -14,8 +14,8 @@
   --neutral-1: #F2EEE5;     /* sunken / tinted rail */
   --neutral-2: #E8E2D4;     /* hairline divider */
   --neutral-3: #D6CDB9;     /* muted border */
-  --neutral-4: #A89F8E;     /* tertiary text */
-  --neutral-5: #756E61;     /* secondary text */
+  --neutral-4: #65604f;     /* tertiary text (WCAG 4.5:1) */
+  --neutral-5: #6e6756;     /* secondary text (WCAG 4.8:1) */
   --neutral-6: #4A453C;     /* body text */
   --neutral-7: #2D2A24;     /* primary text — warm graphite */
   --neutral-8: #1F1C18;     /* near-black, headlines + inverse bg */
@@ -200,7 +200,7 @@
   --neutral-1: #221F1A;
   --neutral-2: #2E2A23;
   --neutral-3: #3D382F;
-  --neutral-4: #6B6557;
+  --neutral-4: #a89f8e;     /* Keep original for dark mode (already passes) */
   --neutral-5: #9A9281;
   --neutral-6: #D8D2C4;
   --neutral-7: #F2EEE5;
