@@ -1,10 +1,8 @@
 /**
- * Domain layer: Pure query functions for planning step state.
+ * Domain query functions for planning step state.
  *
- * These functions calculate derived state from ProjectStepState without side effects.
- * All functions are pure - same input always produces same output, no mutations.
- *
- * @module features/planning/domain/step-state
+ * CRITICAL: All functions MUST be pure (no side effects, deterministic).
+ * NO database calls, NO API calls, NO mutations.
  */
 
 import type { PlanningStep, ProjectStepState } from "../types";
@@ -16,15 +14,15 @@ import type {
 } from "./types";
 
 /**
- * Create a summary of a single step's current state.
+ * Get summary view of a single planning step.
  *
  * @param step - The planning step to summarize
  * @param currentStep - The current step number in the workflow
- * @returns Summary with boolean flags for UI rendering
+ * @returns StepSummary with boolean flags for UI presentation
  */
 export function getStepSummary(
   step: PlanningStep,
-  _currentStep: number,
+  currentStep: number,
 ): StepSummary {
   return {
     stepNumber: step.stepNumber as StepNumber,
@@ -39,8 +37,8 @@ export function getStepSummary(
 /**
  * Calculate aggregate progress statistics across all steps.
  *
- * @param steps - Array of all planning steps
- * @returns Progress statistics including counts and percentage
+ * @param steps - Array of planning steps
+ * @returns StepProgress with counts and percentage
  */
 export function getStepProgress(steps: PlanningStep[]): StepProgress {
   const completed = steps.filter((s) => s.status === "complete").length;
@@ -60,9 +58,9 @@ export function getStepProgress(steps: PlanningStep[]): StepProgress {
 }
 
 /**
- * Get the current active step number from project state.
+ * Get the current step number from project state.
  *
- * @param state - The project's step state
+ * @param state - The project step state
  * @returns Current step number (1-10)
  */
 export function getCurrentStepNumber(state: ProjectStepState): number {
@@ -70,30 +68,26 @@ export function getCurrentStepNumber(state: ProjectStepState): number {
 }
 
 /**
- * Check if a step is accessible based on workflow business rules.
- *
- * Business rule: Users can only access the current step or previously completed steps.
- * Future steps are locked until the workflow progresses to them.
+ * Check if a step is accessible based on business rules.
+ * Business rule: Users can only access current step or completed steps.
  *
  * @param stepNumber - The step number to check
- * @param state - The project's step state
- * @returns true if the step is accessible, false otherwise
+ * @param state - The project step state
+ * @returns True if step is accessible, false otherwise
  */
 export function isStepAccessible(
   stepNumber: number,
   state: ProjectStepState,
 ): boolean {
-  // Can only access current step or completed steps
-  return stepNumber <= state.currentStep;
+  // Business rule: can only access current step or completed steps
+  return stepNumber > 0 && stepNumber <= state.currentStep;
 }
 
 /**
- * Get complete project progress including current step, statistics, and step summaries.
+ * Get complete project progress including all step summaries.
  *
- * This is a convenience function that combines multiple queries for UI consumption.
- *
- * @param state - The project's step state
- * @returns Complete project progress data
+ * @param state - The project step state
+ * @returns ProjectProgress with current step, progress stats, and summaries
  */
 export function getProjectProgress(state: ProjectStepState): ProjectProgress {
   return {
