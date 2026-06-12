@@ -145,9 +145,9 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
     fireEvent.change(requirementsField, { target: { value: "No" } });
     fireEvent.change(descriptionField, { target: { value: "Test project" } });
 
-    // Check if formData is being updated
+    // Check if formData is being updated (now logged from useFormState hook)
     const formDataLogs = consoleLogs.filter((log) =>
-      log.includes("[FormStep] Updated formData:"),
+      log.includes("[useFormState] Updated formData:"),
     );
     expect(formDataLogs.length).toBeGreaterThan(0);
 
@@ -274,10 +274,10 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
       fireEvent.submit(form);
     }
 
-    // Verify defensive check logged error
+    // Verify defensive check logged error (now from useFormState hook)
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("DEFENSIVE CHECK FAILED"),
+        expect.stringContaining("VALIDATION FAILED"),
         expect.objectContaining({
           missingFieldIds: expect.arrayContaining(["projectDescription"]),
           requiredFieldIds: expect.arrayContaining([
