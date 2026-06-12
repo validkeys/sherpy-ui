@@ -37,7 +37,7 @@ export function AskbackAside({ open, messages, onClose }: AskbackAsideProps) {
 
         {messages.map((msg, i) => (
           <div
-            key={i}
+            key={`${i}-${msg.who}-${msg.body.slice(0, 30)}`}
             className="flex gap-2 items-start text-[12.5px] text-fg-1"
           >
             <span

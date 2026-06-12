@@ -89,7 +89,7 @@ export function ErrorModal({
 
                 return (
                   <button
-                    key={i}
+                    key={action.label}
                     type="button"
                     onClick={action.onClick}
                     className={`px-4 py-2 rounded font-medium transition-colors ${
