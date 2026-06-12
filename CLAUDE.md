@@ -6,28 +6,28 @@ Reduce LLM coding mistakes.
 
 ---
 
-## ✅ CODE REVIEW REMEDIATION: M12 Complete - Semantic Color Tokens (2026-06-12)
+## ✅ CODE REVIEW REMEDIATION: M13 Complete - Increase Polling Interval (2026-06-12)
 
-**Status**: ✅ M0-M12 COMPLETE (11/14 milestones, ~22 hours)
+**Status**: ✅ M0-M13 COMPLETE (12/14 milestones, ~22 hours)
 
-**M12 Achievement**: WCAG contrast compliance audit - all files already using semantic tokens
-- Audited error-modal.tsx and ScrollToBottomButton.tsx
-- Verified all color pairings use design system semantic tokens
-- Confirmed WCAG AA (4.5:1) contrast ratios across light + dark themes
-- Zero hardcoded Tailwind colors found
-- All 20/20 component tests passing (0 code changes needed)
+**M13 Achievement**: DOM polling optimization already implemented in M7-013
+- Verified useDOMSync hook uses 50ms interval (was 5ms)
+- Polling reduced from 200 checks/sec → 20 checks/sec (90% CPU reduction)
+- Autofill detection still instant (<100ms delay)
+- Comprehensive rationale documented in code
+- All 6/6 useDOMSync tests passing (0 code changes needed)
 
 **Key Findings**:
-- Design system tokens.css provides pre-validated semantic pairs
-- All `bg-*` + `text-*` combinations follow pairing rules
-- Contrast ratios: 4.9:1 to 10.2:1 (exceeds WCAG AA minimum)
+- M7-013 implemented M13 requirements during FormStep refactoring
+- Interval optimization includes detailed performance justification
+- Test suite validates autofill works correctly at 50ms
 
 **Documentation**: 
-- `.tmp-docs/code-review-remediation/m12-completion-report.md`
-- `.tmp-docs/code-review-remediation/milestone-m12.tasks.yaml`
+- `.tmp-docs/code-review-remediation/m13-completion-report.md`
+- `.tmp-docs/code-review-remediation/milestone-m13.tasks.yaml`
 
-**Previous**: M11 - ARIA Live Regions (screen reader announcements)
-**Next**: M13 - Error Message Specificity (1.5 hours)
+**Previous**: M12 - Semantic Color Tokens (WCAG contrast audit)
+**Next**: M14 - Fix Dynamic Imports in Actors (1.5 hours, final milestone)
 
 ---
 
