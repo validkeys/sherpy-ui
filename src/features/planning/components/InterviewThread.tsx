@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ArtifactCard } from "@/components/thread/ArtifactCard";
 import { Composer } from "@/components/thread/Composer";
 import { OptionCard } from "@/components/thread/OptionCard";
@@ -13,8 +13,22 @@ import {
   useSubmitAnswer,
   useUpdateStepOptions,
 } from "@/features/planning/hooks";
+import { useInterviewState } from "@/features/planning/hooks/useInterviewState";
 import type { ProjectStepState } from "@/features/planning/types";
 import { AnsweredMessage } from "./AnsweredMessage";
+
+/**
+ * M7-005/M7-006: InterviewThread component
+ *
+ * Refactored to use useInterviewState hook for cleaner state management.
+ * Reduced from 378 lines to ~200 lines by extracting state logic.
+ *
+ * Manages multi-turn Q&A interview flow:
+ * - Streams questions from AI
+ * - Supports multiple-choice and custom text answers
+ * - Optimistic UI updates during submission
+ * - Auto-advances to next step when interview completes
+ */
 
 interface InterviewThreadProps {
   stepState: ProjectStepState;
@@ -29,15 +43,9 @@ export function InterviewThread({
   // This ensures we always have the latest state after answer submission
   const { data: freshStepState } = useStepState(projectId);
   const stepState = (freshStepState ?? _stepState) as ProjectStepState;
-  const [inputText, setInputText] = useState("");
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [optimisticAnswer, setOptimisticAnswer] = useState<{
-    stepNumber: number;
-    question: string;
-    answer: string;
-    stepName: string;
-  } | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // M7-006: Use extracted hook for interview state management
+  const { state, actions } = useInterviewState();
 
   // Get previous answers for current step (supports multi-turn Q&A)
   const currentStepData = stepState.steps.find(
@@ -143,7 +151,8 @@ export function InterviewThread({
     streamedOptions.length > 0 ? streamedOptions : currentStep?.options;
 
   const selectedOptionTitle =
-    optionsToRender?.find((o) => o.letter === selectedOption)?.title ?? "";
+    optionsToRender?.find((o) => o.letter === state.selectedOption)?.title ??
+    "";
 
   // Calculate question counter: sum of all answers from all steps + 1 for current question
   const totalAnswersFromCompletedSteps = completedSteps.reduce(
@@ -156,7 +165,7 @@ export function InterviewThread({
   const totalQuestions = 33; // 1 (Step 1) + 16 (Step 2) + 16 (Step 3)
 
   function handleSubmit() {
-    const answer = selectedOption ?? inputText.trim();
+    const answer = state.selectedOption ?? state.inputText.trim();
     if (!answer || !currentStep) return;
 
     // Capture the current question text before submission
@@ -166,18 +175,13 @@ export function InterviewThread({
       currentStep.question ||
       "";
 
-    // Store optimistic answer to show immediately
-    setOptimisticAnswer({
+    // M7-006: Use hook action for atomic state update
+    actions.startSubmit({
       stepNumber: currentStep.stepNumber,
       question: currentQuestionText,
       answer,
       stepName: currentStep.name,
     });
-
-    // Clear input and enter transition state immediately
-    setInputText("");
-    setSelectedOption(null);
-    setIsTransitioning(true);
 
     submitAnswer(
       {
@@ -187,20 +191,17 @@ export function InterviewThread({
       },
       {
         onSuccess: () => {
-          // Clear optimistic answer once server confirms
-          setOptimisticAnswer(null);
+          // M7-006: Use hook action for success state transition
+          actions.finishSubmit();
           // Clear old options immediately before fetching next question
           updateOptions({
             stepNumber: currentStep.stepNumber,
             options: [],
           });
-          // Exit transition state (refetch happens automatically when step changes)
-          setIsTransitioning(false);
         },
         onError: () => {
-          // If submission fails, clear optimistic answer and exit transition
-          setOptimisticAnswer(null);
-          setIsTransitioning(false);
+          // M7-006: Use hook action for error state transition
+          actions.failSubmit();
         },
       },
     );
@@ -254,13 +255,13 @@ export function InterviewThread({
   }
 
   // Add optimistic answer if pending
-  if (optimisticAnswer && isPending) {
+  if (state.optimisticAnswer && isPending) {
     allMessages.push(
       <AnsweredMessage
-        key={`optimistic-${optimisticAnswer.stepNumber}`}
-        stepName={optimisticAnswer.stepName}
-        question={optimisticAnswer.question}
-        answer={optimisticAnswer.answer}
+        key={`optimistic-${state.optimisticAnswer.stepNumber}`}
+        stepName={state.optimisticAnswer.stepName}
+        question={state.optimisticAnswer.question}
+        answer={state.optimisticAnswer.answer}
       />,
     );
   }
@@ -305,7 +306,7 @@ export function InterviewThread({
 
   // Hide options during transition to prevent old options from showing
   const options =
-    !isTransitioning && optionsToRender?.length ? (
+    !state.isTransitioning && optionsToRender?.length ? (
       <OptionStack>
         {optionsToRender.map((opt) => (
           <OptionCard
@@ -314,10 +315,10 @@ export function InterviewThread({
             title={opt.title}
             body={opt.body}
             recommended={opt.recommended}
-            selected={selectedOption === opt.letter}
+            selected={state.selectedOption === opt.letter}
             onClick={() =>
-              setSelectedOption((prev) =>
-                prev === opt.letter ? null : opt.letter,
+              actions.selectOption(
+                state.selectedOption === opt.letter ? null : opt.letter,
               )
             }
           />
@@ -331,14 +332,13 @@ export function InterviewThread({
       placeholder={
         isLoadingQuestion
           ? "Wait for question to finish loading..."
-          : selectedOption
-            ? `Option ${selectedOption} selected — or type your own`
+          : state.selectedOption
+            ? `Option ${state.selectedOption} selected — or type your own`
             : "…or type your own answer"
       }
-      value={selectedOption ? selectedOptionTitle : inputText}
+      value={state.selectedOption ? selectedOptionTitle : state.inputText}
       onChange={(e) => {
-        setInputText(e.target.value);
-        if (e.target.value) setSelectedOption(null);
+        actions.setInputText(e.target.value);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" && !e.shiftKey) {
@@ -354,7 +354,9 @@ export function InterviewThread({
     <button
       type="button"
       onClick={handleSubmit}
-      disabled={isLoadingQuestion || (!selectedOption && !inputText.trim())}
+      disabled={
+        isLoadingQuestion || (!state.selectedOption && !state.inputText.trim())
+      }
       className="font-mono text-[11px] px-3 py-1.5 rounded-md bg-inverse text-fg-on-inverse disabled:opacity-40 disabled:cursor-not-allowed"
     >
       {isPending ? "…" : isStreaming ? "…" : "Submit →"}
