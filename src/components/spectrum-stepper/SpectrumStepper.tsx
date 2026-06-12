@@ -123,8 +123,23 @@ export function SpectrumStepper({
     [onStageClick],
   );
 
+  const activeStage = stages[activeIndex];
+  const statusMessage = activeStage
+    ? `Stage ${activeStage.num}: ${activeStage.name}`
+    : "";
+
   return (
     <div className="px-8 pt-7 shrink-0">
+      {/* Screen reader status announcement */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {statusMessage}
+      </div>
+
       <div
         className="flex h-[5px] gap-[2px]"
         role="progressbar"

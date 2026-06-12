@@ -38,43 +38,52 @@ function DashboardComponent() {
 
   return (
     <AppLayout>
-      {errorInfo && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-          <div className="flex items-start gap-3">
-            <div className="text-red-500 text-xl">⚠️</div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-red-900">{errorInfo.title}</h3>
-              <p className="text-red-800 text-sm mt-1">{errorInfo.message}</p>
-              {errorInfo.action && (
-                <p className="text-red-700 text-sm mt-2">{errorInfo.action}</p>
-              )}
-              {error === "orphaned_state" && projectId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.removeItem(`planning-machine-${projectId}`);
-                    window.location.reload();
-                  }}
-                  className="mt-3 px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                >
-                  Clean Up Orphaned Data
-                </button>
-              )}
+      <main id="main-content">
+        {errorInfo && (
+          <div
+            role="alert"
+            className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="text-red-500 text-xl">⚠️</div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-900">
+                  {errorInfo.title}
+                </h3>
+                <p className="text-red-800 text-sm mt-1">{errorInfo.message}</p>
+                {errorInfo.action && (
+                  <p className="text-red-700 text-sm mt-2">
+                    {errorInfo.action}
+                  </p>
+                )}
+                {error === "orphaned_state" && projectId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem(`planning-machine-${projectId}`);
+                      window.location.reload();
+                    }}
+                    className="mt-3 px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                  >
+                    Clean Up Orphaned Data
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      <ProjectList
-        onProjectClick={useCallback(
-          (project: { id: string }) => {
-            navigate({
-              to: "/project/$projectId/build",
-              params: { projectId: project.id },
-            });
-          },
-          [navigate],
         )}
-      />
+        <ProjectList
+          onProjectClick={useCallback(
+            (project: { id: string }) => {
+              navigate({
+                to: "/project/$projectId/build",
+                params: { projectId: project.id },
+              });
+            },
+            [navigate],
+          )}
+        />
+      </main>
     </AppLayout>
   );
 }

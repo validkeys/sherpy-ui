@@ -128,7 +128,9 @@ function ProjectLayout() {
           onModeChange={handleModeChange}
         />
         <SpectrumStepper stages={stages} activeIndex={currentStep - 1} />
-        <Outlet />
+        <main id="main-content">
+          <Outlet />
+        </main>
       </AppLayout>
     </>
   );
