@@ -29,24 +29,25 @@ export function ErrorModal({
     info: "ℹ️",
   };
 
+  // Use design system semantic tokens for theme-aware colors
   const colors = {
     error: {
-      bg: "bg-red-50",
-      border: "border-red-200",
-      text: "text-red-900",
-      icon: "text-red-500",
+      bg: "bg-[var(--danger-soft)]",
+      border: "border-[var(--danger)]",
+      text: "text-[var(--danger)]",
+      icon: "text-[var(--danger)]",
     },
     warning: {
-      bg: "bg-yellow-50",
-      border: "border-yellow-200",
-      text: "text-yellow-900",
-      icon: "text-yellow-500",
+      bg: "bg-[var(--warning-soft)]",
+      border: "border-[var(--warning)]",
+      text: "text-[var(--warning)]",
+      icon: "text-[var(--warning)]",
     },
     info: {
-      bg: "bg-blue-50",
-      border: "border-blue-200",
-      text: "text-blue-900",
-      icon: "text-blue-500",
+      bg: "bg-[var(--info-soft)]",
+      border: "border-[var(--info)]",
+      text: "text-[var(--info)]",
+      icon: "text-[var(--info)]",
     },
   };
 
@@ -55,9 +56,9 @@ export function ErrorModal({
   return (
     <Dialog.Root open={open} onOpenChange={(isOpen) => !isOpen && onClose?.()}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 bg-black/60 z-50" />
+        <Dialog.Backdrop className="fixed inset-0 bg-[var(--bg-overlay)] z-50" />
         <Dialog.Popup className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 pointer-events-auto">
+          <div className="bg-[var(--bg-surface)] rounded-lg shadow-xl max-w-md w-full mx-4 pointer-events-auto">
             <div
               className={`${theme.bg} ${theme.border} border-l-4 p-6 rounded-t-lg`}
             >
@@ -76,10 +77,14 @@ export function ErrorModal({
 
             <div className="p-6 flex gap-3 justify-end">
               {actions.map((action, i) => {
+                // Use semantic tokens for button colors (theme-aware)
                 const variantClasses = {
-                  primary: "bg-blue-600 text-white hover:bg-blue-700",
-                  secondary: "bg-gray-200 text-gray-800 hover:bg-gray-300",
-                  danger: "bg-red-600 text-white hover:bg-red-700",
+                  primary:
+                    "bg-[var(--accent-2)] text-[var(--fg-on-inverse)] hover:bg-[var(--accent-2)]/90",
+                  secondary:
+                    "bg-[var(--bg-sunken)] text-[var(--fg-1)] hover:bg-[var(--neutral-2)]",
+                  danger:
+                    "bg-[var(--danger)] text-[var(--fg-on-inverse)] hover:bg-[var(--danger)]/90",
                 };
 
                 return (

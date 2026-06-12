@@ -92,7 +92,7 @@ describe("ErrorModal", () => {
     render(<ErrorModal {...defaultProps} actions={actions} />);
 
     const firstButton = screen.getByText("First");
-    expect(firstButton).toHaveClass("bg-blue-600");
+    expect(firstButton).toHaveClass("bg-[var(--accent-2)]");
   });
 
   it("applies secondary variant to subsequent actions by default", () => {
@@ -104,7 +104,7 @@ describe("ErrorModal", () => {
     render(<ErrorModal {...defaultProps} actions={actions} />);
 
     const secondButton = screen.getByText("Second");
-    expect(secondButton).toHaveClass("bg-gray-200");
+    expect(secondButton).toHaveClass("bg-[var(--bg-sunken)]");
   });
 
   it("respects explicit variant prop", () => {
@@ -115,7 +115,7 @@ describe("ErrorModal", () => {
     render(<ErrorModal {...defaultProps} actions={actions} />);
 
     const button = screen.getByText("Danger Action");
-    expect(button).toHaveClass("bg-red-600");
+    expect(button).toHaveClass("bg-[var(--danger)]");
   });
 
   it("renders long messages correctly", () => {
@@ -136,6 +136,6 @@ describe("ErrorModal", () => {
 
     const button = screen.getByText("Action");
     expect(button).toBeInTheDocument();
-    expect(button).toHaveClass("bg-blue-600"); // Should default to primary
+    expect(button).toHaveClass("bg-[var(--accent-2)]"); // Should default to primary
   });
 });
