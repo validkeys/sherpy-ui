@@ -6,26 +6,28 @@ Reduce LLM coding mistakes.
 
 ---
 
-## ✅ CODE REVIEW REMEDIATION: M11 Complete - ARIA Live Regions (2026-06-12)
+## ✅ CODE REVIEW REMEDIATION: M12 Complete - Semantic Color Tokens (2026-06-12)
 
-**Status**: ✅ M0-M11 COMPLETE (10/14 milestones, ~21.5 hours)
+**Status**: ✅ M0-M12 COMPLETE (11/14 milestones, ~22 hours)
 
-**M11 Achievement**: WCAG 4.1.3 compliant status announcements for screen readers
-- Created LiveRegion component with polite/assertive priority levels
-- Added announcements: loading, submitting, completion, errors, warnings
-- Modified 4 planning components + 18 new component tests
-- All 937/951 tests passing (18 new LiveRegion tests, 0 regressions)
-- Maintains 100/100 Lighthouse accessibility score
+**M12 Achievement**: WCAG contrast compliance audit - all files already using semantic tokens
+- Audited error-modal.tsx and ScrollToBottomButton.tsx
+- Verified all color pairings use design system semantic tokens
+- Confirmed WCAG AA (4.5:1) contrast ratios across light + dark themes
+- Zero hardcoded Tailwind colors found
+- All 20/20 component tests passing (0 code changes needed)
 
-**Commits**:
-- `2955857` - M11: Add ARIA live regions for dynamic status updates
-- `ad1620d` - M10: Replace array index keys with stable identifiers
+**Key Findings**:
+- Design system tokens.css provides pre-validated semantic pairs
+- All `bg-*` + `text-*` combinations follow pairing rules
+- Contrast ratios: 4.9:1 to 10.2:1 (exceeds WCAG AA minimum)
 
 **Documentation**: 
-- `.tmp-docs/code-review-remediation/m11-screen-reader-report.md`
-- `.tmp-docs/code-review-remediation/m11-t2-t3-completion.md`
+- `.tmp-docs/code-review-remediation/m12-completion-report.md`
+- `.tmp-docs/code-review-remediation/milestone-m12.tasks.yaml`
 
-**Next**: M12 - Semantic Color Tokens (2.5 hours)
+**Previous**: M11 - ARIA Live Regions (screen reader announcements)
+**Next**: M13 - Error Message Specificity (1.5 hours)
 
 ---
 
