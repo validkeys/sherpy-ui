@@ -14,28 +14,90 @@ const SUBMITTING_STATES = new Set([
   "generating",
 ]);
 
+/**
+ * Message-relevant context fields extracted from PlanningContext.
+ *
+ * Only includes fields used by adaptMachineSnapshotToMessages to prevent
+ * unnecessary re-renders when unrelated context changes (M7-010).
+ */
+type MessageRelevantContext = Pick<
+  PlanningContext,
+  | "currentStepNumber"
+  | "completedSteps"
+  | "artifacts"
+  | "step7Edits"
+  | "step1Responses"
+  | "step5Responses"
+  | "step2Answers"
+  | "step3Answers"
+  | "step2CurrentQuestion"
+  | "step3CurrentQuestion"
+  | "step2CurrentOptions"
+  | "step3CurrentOptions"
+  | "startedAt"
+  | "updatedAt"
+>;
+
+/**
+ * Artifact-relevant context fields extracted from PlanningContext.
+ *
+ * Only includes fields used by adaptMachineContextToArtifacts to prevent
+ * unnecessary re-renders when unrelated context changes (M7-010).
+ */
+type ArtifactRelevantContext = Pick<
+  PlanningContext,
+  "artifacts" | "step7Edits"
+>;
+
 export function useWorkflowChatData() {
   const actor = usePlanningMachine();
-  const { context, stateValue } = useSelector((snapshot) => ({
-    context: snapshot.context,
-    stateValue: snapshot.value,
-  }));
+
+  // Use selective useSelector to only subscribe to message-relevant fields (M7-010)
+  const messageContext = useSelector(
+    (snapshot): MessageRelevantContext => ({
+      currentStepNumber: snapshot.context.currentStepNumber,
+      completedSteps: snapshot.context.completedSteps,
+      artifacts: snapshot.context.artifacts,
+      step7Edits: snapshot.context.step7Edits,
+      step1Responses: snapshot.context.step1Responses,
+      step5Responses: snapshot.context.step5Responses,
+      step2Answers: snapshot.context.step2Answers,
+      step3Answers: snapshot.context.step3Answers,
+      step2CurrentQuestion: snapshot.context.step2CurrentQuestion,
+      step3CurrentQuestion: snapshot.context.step3CurrentQuestion,
+      step2CurrentOptions: snapshot.context.step2CurrentOptions,
+      step3CurrentOptions: snapshot.context.step3CurrentOptions,
+      startedAt: snapshot.context.startedAt,
+      updatedAt: snapshot.context.updatedAt,
+    }),
+  );
+
+  // Use selective useSelector to only subscribe to artifact-relevant fields (M7-010)
+  const artifactContext = useSelector(
+    (snapshot): ArtifactRelevantContext => ({
+      artifacts: snapshot.context.artifacts,
+      step7Edits: snapshot.context.step7Edits,
+    }),
+  );
+
+  const stateValue = useSelector((snapshot) => snapshot.value);
 
   const messages = useMemo(
-    () => adaptMachineSnapshotToMessages({ context, stateValue }),
-    [context, stateValue],
+    () =>
+      adaptMachineSnapshotToMessages({ context: messageContext, stateValue }),
+    [messageContext, stateValue],
   );
   const artifacts = useMemo(
-    () => adaptMachineContextToArtifacts(context),
-    [context],
+    () => adaptMachineContextToArtifacts(artifactContext),
+    [artifactContext],
   );
 
   return {
     messages,
     artifacts,
-    currentStepNumber: context.currentStepNumber,
-    currentQuestion: getCurrentQuestion(context),
-    currentOptions: getCurrentOptions(context),
+    currentStepNumber: messageContext.currentStepNumber,
+    currentQuestion: getCurrentQuestion(messageContext),
+    currentOptions: getCurrentOptions(messageContext),
     isSubmitting: isSubmittingState(stateValue),
     actor,
   };
