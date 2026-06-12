@@ -6,23 +6,26 @@ Reduce LLM coding mistakes.
 
 ---
 
-## ✅ CODE REVIEW REMEDIATION: M10 Complete - Fix List Keys (2026-06-12)
+## ✅ CODE REVIEW REMEDIATION: M11 Complete - ARIA Live Regions (2026-06-12)
 
-**Status**: ✅ M0-M10 COMPLETE (9/14 milestones, ~19 hours)
+**Status**: ✅ M0-M11 COMPLETE (10/14 milestones, ~21.5 hours)
 
-**M10 Achievement**: Replaced index-based React keys with stable identifiers
-- Fixed 4 components: yaml-highlight, error-modal, AskbackAside, Header
-- Applied M7-011 pattern: stable IDs (href, label) > composite keys (position+content)
-- All 919/951 tests passing (no new failures)
-- Zero React key warnings in console
+**M11 Achievement**: WCAG 4.1.3 compliant status announcements for screen readers
+- Created LiveRegion component with polite/assertive priority levels
+- Added announcements: loading, submitting, completion, errors, warnings
+- Modified 4 planning components + 18 new component tests
+- All 937/951 tests passing (18 new LiveRegion tests, 0 regressions)
+- Maintains 100/100 Lighthouse accessibility score
 
 **Commits**:
+- `2955857` - M11: Add ARIA live regions for dynamic status updates
 - `ad1620d` - M10: Replace array index keys with stable identifiers
-- `1c6240c` - M9: Type-enforced minimal context for adapters
 
-**Documentation**: `.tmp-docs/code-review-remediation/m10-completion.md`
+**Documentation**: 
+- `.tmp-docs/code-review-remediation/m11-screen-reader-report.md`
+- `.tmp-docs/code-review-remediation/m11-t2-t3-completion.md`
 
-**Next**: M11 - Optimize Context Queries (2 hours)
+**Next**: M12 - Semantic Color Tokens (2.5 hours)
 
 ---
 
