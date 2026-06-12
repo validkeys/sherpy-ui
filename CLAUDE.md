@@ -6,22 +6,23 @@ Reduce LLM coding mistakes.
 
 ---
 
-## ✅ CODE REVIEW REMEDIATION: M9 Complete - Adapter Memoization (2026-06-12)
+## ✅ CODE REVIEW REMEDIATION: M10 Complete - Fix List Keys (2026-06-12)
 
-**Status**: ✅ M0-M9 COMPLETE (8/14 milestones, ~18.5 hours)
+**Status**: ✅ M0-M10 COMPLETE (9/14 milestones, ~19 hours)
 
-**M9 Achievement**: Type-enforced minimal context for adapters
-- Created `MessageRelevantContext` (14 fields) and `ArtifactRelevantContext` (2 fields)
-- Refactored 7 adapter files to use minimal types instead of full `PlanningContext`
-- All 204 adapter + hook tests passing (zero regressions)
-- **Key Finding**: M7-010 already achieved optimal field selection
-- **M9 Benefit**: Type safety and structural quality (not runtime performance)
+**M10 Achievement**: Replaced index-based React keys with stable identifiers
+- Fixed 4 components: yaml-highlight, error-modal, AskbackAside, Header
+- Applied M7-011 pattern: stable IDs (href, label) > composite keys (position+content)
+- All 919/951 tests passing (no new failures)
+- Zero React key warnings in console
 
-**Documentation**:
-- `.tmp-docs/code-review-remediation/m9-completion.md` - Complete summary
-- `.tmp-docs/code-review-remediation/m9/` - Audit and analysis docs
+**Commits**:
+- `ad1620d` - M10: Replace array index keys with stable identifiers
+- `1c6240c` - M9: Type-enforced minimal context for adapters
 
-**Next**: M10 - Fix List Keys (2 hours)
+**Documentation**: `.tmp-docs/code-review-remediation/m10-completion.md`
+
+**Next**: M11 - Optimize Context Queries (2 hours)
 
 ---
 
