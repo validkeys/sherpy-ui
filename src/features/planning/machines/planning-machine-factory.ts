@@ -494,12 +494,56 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                   context.step1Responses.existingRequirements || "",
               }),
               onDone: {
-                target: STEP_STATES.STEP_1.COMPLETE,
+                // BUG-030 FIX: Always generate artifact after assessment
+                target: STEP_STATES.STEP_1.SUBMITTING,
                 actions: assign({
                   step1GapAnalysisNeeded: ({ event }) =>
                     event.output.needsGapAnalysis,
                   step1GapAnalysisReasoning: ({ event }) =>
                     event.output.reasoning,
+                  updatedAt: () => new Date().toISOString(),
+                }),
+              },
+              onError: {
+                // On error, still generate artifact with fallback reasoning
+                target: STEP_STATES.STEP_1.SUBMITTING,
+                actions: assign({
+                  step1GapAnalysisNeeded: false,
+                  step1GapAnalysisReasoning:
+                    "Assessment failed, proceeding with artifact generation",
+                  error: ({ event }) =>
+                    event.error instanceof Error
+                      ? event.error.message
+                      : "Failed to assess gap analysis need",
+                }),
+              },
+            },
+          },
+
+          [STEP_STATES.STEP_1.SUBMITTING]: {
+            invoke: {
+              src: "generateArtifact",
+              input: ({ context }) => ({
+                projectId: context.projectId,
+                stepNumber: 1,
+                accumulatedContext: {
+                  step1Responses: context.step1Responses,
+                },
+              }),
+              onDone: {
+                target: STEP_STATES.STEP_1.COMPLETE,
+                actions: assign({
+                  artifacts: ({ context, event }) => ({
+                    ...context.artifacts,
+                    1: {
+                      type:
+                        event.output.format === "markdown"
+                          ? "markdown"
+                          : "yaml",
+                      content: event.output.content,
+                      generatedAt: event.output.generatedAt,
+                    },
+                  }),
                   completedSteps: ({ context }) => [
                     ...context.completedSteps,
                     1,
@@ -513,7 +557,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                   error: ({ event }) =>
                     event.error instanceof Error
                       ? event.error.message
-                      : "Failed to assess gap analysis need",
+                      : "Failed to generate gap analysis artifact",
                 }),
               },
             },

@@ -298,7 +298,7 @@ describe("Step 1: Gap Analysis Form", () => {
     expect(snapshot.matches(STEP_KEYS.STEP_2_BUSINESS_REQS)).toBe(true);
   });
 
-  it("should skip gap analysis for greenfield projects (Observation #3)", async () => {
+  it("should always generate artifact even for greenfield projects (BUG-030 fix)", async () => {
     const actor = createActor(planningMachine, {
       input: { projectId: "test", entryPath: "new-project" },
     });
@@ -314,18 +314,19 @@ describe("Step 1: Gap Analysis Form", () => {
       },
     });
 
-    // Wait for assessment to complete
+    // Wait for artifact generation to complete
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     const snapshot = actor.getSnapshot();
 
-    // Should have assessed as not needing gap analysis
+    // Should have assessed as not needing gap analysis (internal logic)
     expect(snapshot.context.step1GapAnalysisNeeded).toBe(false);
     expect(snapshot.context.step1GapAnalysisReasoning).toBeTruthy();
 
-    // Should skip directly to Step 2 without generating artifact
+    // BUG-030 FIX: Should ALWAYS generate artifact regardless of assessment
     expect(snapshot.matches(STEP_KEYS.STEP_2_BUSINESS_REQS)).toBe(true);
-    expect(snapshot.context.artifacts[1]).toBeUndefined();
+    expect(snapshot.context.artifacts[1]).toBeDefined();
+    expect(snapshot.context.artifacts[1]?.type).toBe("markdown");
   });
 
   it("should run gap analysis for projects with existing requirements (Observation #3)", async () => {

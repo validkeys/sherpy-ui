@@ -128,6 +128,13 @@ export const STEP_STATES = {
     ASSESSING_NEED: "assessingNeed",
 
     /**
+     * Invoking actor to generate gap analysis artifact.
+     * UI should show loading spinner with "Generating artifact..." text.
+     * NOTE: BUG-030 fix - this state runs ALWAYS, not conditionally.
+     */
+    SUBMITTING: "submitting",
+
+    /**
      * Final state - step complete.
      * Machine will transition to Step 2.
      */

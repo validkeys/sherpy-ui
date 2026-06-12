@@ -639,21 +639,10 @@ export const planningMachine = setup({
         decideGapAnalysis: {
           always: [
             {
-              // If gap analysis needed, generate artifact
-              guard: ({ context }) => context.step1GapAnalysisNeeded === true,
+              // Always generate gap analysis artifact (BUG-030 fix)
+              // The needsGapAnalysis assessment is for internal logic only,
+              // not for deciding whether to generate the artifact.
               target: "submitting",
-            },
-            {
-              // Otherwise, skip directly to Step 2
-              target: "#planning.step2_businessReqs",
-              actions: assign({
-                completedSteps: ({ context }) =>
-                  context.completedSteps.includes(1)
-                    ? context.completedSteps
-                    : [...context.completedSteps, 1],
-                currentStepNumber: 2,
-                updatedAt: () => new Date().toISOString(),
-              }),
             },
           ],
         },
