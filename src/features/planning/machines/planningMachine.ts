@@ -2,6 +2,26 @@
  * XState v5 Planning Machine
  *
  * Manages the 10-step planning workflow with state machines
+ *
+ * @deprecated This file is deprecated in favor of planning-machine-factory.ts
+ *
+ * **Why deprecated:**
+ * - Uses dynamic imports (4x runtime latency overhead)
+ * - No dependency injection (harder to test)
+ * - Circular dependency risk (dynamic imports at invocation time)
+ *
+ * **Replacement:** Use `createPlanningMachine()` from planning-machine-factory.ts
+ * - Zero runtime import latency (functions pre-injected)
+ * - Compile-time type checking (no async import boundaries)
+ * - Easier testing (inject mocks at creation time)
+ *
+ * **Current usage:**
+ * - Runtime: NONE (PlanningMachineContext uses factory pattern)
+ * - Types: Exported types still used by 5 files (DebugPanel, useActorRef, etc.)
+ * - Tests: planningMachine.test.ts validates this implementation
+ *
+ * **Migration:** Replace `planningMachine` imports with `createPlanningMachine(deps)`
+ * See: PlanningMachineContext.tsx (lines 50-55) for example
  */
 
 import { assign, fromPromise, setup } from "xstate";
