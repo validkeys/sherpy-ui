@@ -27,7 +27,6 @@ export function submitStepAnswer(
   }
 
   const stepIndex = params.stepNumber - 1;
-  const step = state.steps[stepIndex];
 
   const newAnswer: StepAnswer = {
     question: params.question,
@@ -117,6 +116,47 @@ export function setStepArtifact(
 }
 
 /**
+ * Skip a step in the workflow.
+ * Marks step as skipped and moves to next step.
+ *
+ * @param state - Current project state
+ * @param stepNumber - Step to skip (1-10)
+ * @returns New state with step skipped (original state unchanged)
+ */
+export function skipStep(
+  state: ProjectStepState,
+  stepNumber: number,
+): ProjectStepState {
+  if (stepNumber < 1 || stepNumber > 10) {
+    throw new Error(`Invalid step number: ${stepNumber}`);
+  }
+
+  // Don't skip beyond step 10
+  if (stepNumber >= 10) {
+    return state;
+  }
+
+  const stepIndex = stepNumber - 1;
+  const nextStepIndex = stepNumber;
+
+  const newSteps = state.steps.map((s, i) => {
+    if (i === stepIndex) {
+      return { ...s, status: "skipped" as const };
+    }
+    if (i === nextStepIndex) {
+      return { ...s, status: "now" as const };
+    }
+    return s;
+  });
+
+  return {
+    ...state,
+    currentStep: stepNumber + 1,
+    steps: newSteps,
+  };
+}
+
+/**
  * Advance to the next step in the workflow.
  * Marks current step as complete and moves to next step.
  *
@@ -146,5 +186,30 @@ export function advanceToNextStep(state: ProjectStepState): ProjectStepState {
     ...state,
     currentStep: state.currentStep + 1,
     steps: newSteps,
+  };
+}
+
+/**
+ * Create an interview answer object for machine context.
+ *
+ * Helper function used by XState machine to create properly formatted
+ * interview answer objects. Pure function with no side effects.
+ *
+ * @param question - The interview question text
+ * @param answer - The user's answer
+ * @returns Interview answer object with timestamp
+ */
+export function createInterviewAnswer(
+  question: string,
+  answer: string,
+): {
+  question: string;
+  value: string;
+  timestamp: string;
+} {
+  return {
+    question,
+    value: answer,
+    timestamp: new Date().toISOString(),
   };
 }

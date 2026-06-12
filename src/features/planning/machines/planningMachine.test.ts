@@ -41,6 +41,116 @@ vi.mock("../../ai/server", () => ({
   }),
 }));
 
+// Mock workflow services (used by refactored machine)
+vi.mock("../workflow/services", () => {
+  // Use actual fromPromise from xstate for proper actor behavior
+  const { fromPromise } = require("xstate");
+
+  return {
+    persistAnswerService: fromPromise(
+      async ({
+        input,
+      }: {
+        input: {
+          projectId: string;
+          stepNumber: number;
+          question: string;
+          value: string;
+        };
+      }) => {
+        // Mock: return state with answer added
+        const mockState = {
+          projectId: input.projectId,
+          currentStep: input.stepNumber,
+          steps: Array.from({ length: 10 }, (_, i) => ({
+            stepNumber: i + 1,
+            name: `Step ${i + 1}`,
+            status:
+              i + 1 === input.stepNumber
+                ? "now"
+                : i + 1 < input.stepNumber
+                  ? "complete"
+                  : "pending",
+            question: "",
+            answers:
+              i + 1 === input.stepNumber
+                ? [
+                    {
+                      question: input.question,
+                      value: input.answer,
+                      submittedAt: new Date().toISOString(),
+                    },
+                  ]
+                : [],
+          })),
+        };
+        return mockState;
+      },
+    ),
+    persistArtifactService: fromPromise(
+      async ({
+        input,
+      }: {
+        input: {
+          projectId: string;
+          stepNumber: number;
+          artifact?: unknown;
+          artifactKey?: string;
+        };
+      }) => {
+        // Mock: return state with artifact added
+        const mockState = {
+          projectId: input.projectId,
+          currentStep: input.stepNumber,
+          steps: Array.from({ length: 10 }, (_, i) => ({
+            stepNumber: i + 1,
+            name: `Step ${i + 1}`,
+            status:
+              i + 1 === input.stepNumber
+                ? "now"
+                : i + 1 < input.stepNumber
+                  ? "complete"
+                  : "pending",
+            question: "",
+            artifact: i + 1 === input.stepNumber ? input.artifact : undefined,
+            artifactKey:
+              i + 1 === input.stepNumber ? input.artifactKey : undefined,
+          })),
+        };
+        return mockState;
+      },
+    ),
+    completeStepService: fromPromise(
+      async ({
+        input,
+      }: {
+        input: { projectId: string; stepNumber: number };
+      }) => {
+        // Mock: return state with step completed
+        const mockState = {
+          projectId: input.projectId,
+          currentStep: input.stepNumber === 10 ? 10 : input.stepNumber + 1,
+          steps: Array.from({ length: 10 }, (_, i) => ({
+            stepNumber: i + 1,
+            name: `Step ${i + 1}`,
+            status:
+              i + 1 === input.stepNumber
+                ? "complete"
+                : i + 1 === input.stepNumber + 1
+                  ? "now"
+                  : i + 1 < input.stepNumber
+                    ? "complete"
+                    : "pending",
+            question: "",
+            answers: [],
+          })),
+        };
+        return mockState;
+      },
+    ),
+  };
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
 

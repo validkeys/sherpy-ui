@@ -10,7 +10,11 @@
  */
 
 import { assign, fromPromise, setup } from "xstate";
-import { createInterviewAnswer } from "../domain/step-commands";
+import {
+  completeStepService,
+  persistAnswerService,
+  persistArtifactService,
+} from "../workflow/services";
 import { EVENT_TYPES, STEP_KEYS, STEP_STATES } from "./constants";
 import type {
   Artifact,
@@ -342,6 +346,9 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
       fetchQuestion,
       assessGapAnalysisNeed,
       generateArtifact,
+      persistAnswerService,
+      persistArtifactService,
+      completeStepService,
     },
     guards: {},
     actions: {
@@ -480,24 +487,11 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 },
               }),
               onDone: {
-                target: STEP_STATES.STEP_1.COMPLETE,
+                // Transition to persisting state to use workflow service
+                target: "persistingArtifact",
                 actions: assign({
-                  artifacts: ({ context, event }) => ({
-                    ...context.artifacts,
-                    1: {
-                      type:
-                        event.output.format === "markdown"
-                          ? "markdown"
-                          : "yaml",
-                      content: event.output.content,
-                      generatedAt: event.output.generatedAt,
-                    },
-                  }),
-                  completedSteps: ({ context }) => [
-                    ...context.completedSteps,
-                    1,
-                  ],
-                  updatedAt: () => new Date().toISOString(),
+                  // Store generated artifact temporarily for persistence
+                  _tempArtifact: ({ event }) => event.output,
                 }),
               },
               onError: {
@@ -507,6 +501,77 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                     event.error instanceof Error
                       ? event.error.message
                       : "Failed to generate gap analysis artifact",
+                }),
+              },
+            },
+          },
+
+          // New state: Persist artifact via workflow service
+          persistingArtifact: {
+            invoke: {
+              src: "persistArtifactService",
+              input: ({ context }) => {
+                if (!context._tempArtifact) {
+                  throw new Error("No artifact to persist");
+                }
+                return {
+                  projectId: context.projectId,
+                  stepNumber: 1,
+                  artifactKey: "gap-analysis",
+                  artifact: context._tempArtifact.content,
+                };
+              },
+              onDone: {
+                target: "completingStep",
+                actions: assign({
+                  // Keep generated artifact (machine context uses Artifact object)
+                  artifacts: ({ context }) => ({
+                    ...context.artifacts,
+                    1: context._tempArtifact!,
+                  }),
+                  _tempArtifact: undefined,
+                  updatedAt: () => new Date().toISOString(),
+                }),
+              },
+              onError: {
+                target: STEP_STATES.STEP_1.COLLECTING_INFO,
+                actions: assign({
+                  error: ({ event }) =>
+                    event.error instanceof Error
+                      ? event.error.message
+                      : "Failed to persist gap analysis artifact",
+                  _tempArtifact: undefined,
+                }),
+              },
+            },
+          },
+
+          // New state: Complete step via workflow service
+          completingStep: {
+            invoke: {
+              src: "completeStepService",
+              input: ({ context }) => ({
+                projectId: context.projectId,
+                stepNumber: 1,
+              }),
+              onDone: {
+                target: STEP_STATES.STEP_1.COMPLETE,
+                actions: assign({
+                  // Extract completion status from persisted state
+                  completedSteps: ({ event }) =>
+                    event.output.steps
+                      .filter((s) => s.status === "complete")
+                      .map((s) => s.stepNumber),
+                  updatedAt: () => new Date().toISOString(),
+                }),
+              },
+              onError: {
+                target: STEP_STATES.STEP_1.COLLECTING_INFO,
+                actions: assign({
+                  error: ({ event }) =>
+                    event.error instanceof Error
+                      ? event.error.message
+                      : "Failed to complete step",
                 }),
               },
             },
@@ -562,19 +627,49 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           [STEP_STATES.INTERVIEW.AWAITING_ANSWER]: {
             on: {
               [EVENT_TYPES.SUBMIT_ANSWER]: {
+                target: "persistingAnswer",
+              },
+              FINISH_INTERVIEW: {
+                target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+              },
+            },
+          },
+
+          // New state: Persist answer via workflow service
+          persistingAnswer: {
+            invoke: {
+              src: "persistAnswerService",
+              input: ({ context, event }) => {
+                // Guard: only process SUBMIT_ANSWER events
+                if (event.type !== EVENT_TYPES.SUBMIT_ANSWER) {
+                  throw new Error(`Expected SUBMIT_ANSWER, got ${event.type}`);
+                }
+                return {
+                  projectId: context.projectId,
+                  stepNumber: 2,
+                  question: event.question,
+                  answer: event.answer,
+                };
+              },
+              onDone: {
                 target: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
                 actions: assign({
-                  step2Answers: ({ context, event }) => [
-                    ...context.step2Answers,
-                    createInterviewAnswer(event.question, event.answer),
-                  ],
+                  // Extract step2 answers from persisted state
+                  step2Answers: ({ event }) =>
+                    event.output.steps[1].answers ?? [],
                   step2CurrentQuestion: null,
                   step2CurrentOptions: null,
                   updatedAt: () => new Date().toISOString(),
                 }),
               },
-              FINISH_INTERVIEW: {
-                target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+              onError: {
+                target: STEP_STATES.INTERVIEW.ERROR,
+                actions: assign({
+                  error: ({ event }) =>
+                    event.error instanceof Error
+                      ? event.error.message
+                      : "Failed to persist answer",
+                }),
               },
             },
           },
@@ -671,19 +766,49 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           [STEP_STATES.INTERVIEW.AWAITING_ANSWER]: {
             on: {
               [EVENT_TYPES.SUBMIT_ANSWER]: {
+                target: "persistingAnswer",
+              },
+              FINISH_INTERVIEW: {
+                target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+              },
+            },
+          },
+
+          // New state: Persist answer via workflow service
+          persistingAnswer: {
+            invoke: {
+              src: "persistAnswerService",
+              input: ({ context, event }) => {
+                // Guard: only process SUBMIT_ANSWER events
+                if (event.type !== EVENT_TYPES.SUBMIT_ANSWER) {
+                  throw new Error(`Expected SUBMIT_ANSWER, got ${event.type}`);
+                }
+                return {
+                  projectId: context.projectId,
+                  stepNumber: 3,
+                  question: event.question,
+                  answer: event.answer,
+                };
+              },
+              onDone: {
                 target: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
                 actions: assign({
-                  step3Answers: ({ context, event }) => [
-                    ...context.step3Answers,
-                    createInterviewAnswer(event.question, event.answer),
-                  ],
+                  // Extract step3 answers from persisted state
+                  step3Answers: ({ event }) =>
+                    event.output.steps[2].answers ?? [],
                   step3CurrentQuestion: null,
                   step3CurrentOptions: null,
                   updatedAt: () => new Date().toISOString(),
                 }),
               },
-              FINISH_INTERVIEW: {
-                target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+              onError: {
+                target: STEP_STATES.INTERVIEW.ERROR,
+                actions: assign({
+                  error: ({ event }) =>
+                    event.error instanceof Error
+                      ? event.error.message
+                      : "Failed to persist answer",
+                }),
               },
             },
           },
@@ -699,17 +824,9 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 },
               }),
               onDone: {
-                target: STEP_STATES.INTERVIEW.COMPLETE,
+                target: "persistingArtifact",
                 actions: assign({
-                  artifacts: ({ context, event }) => ({
-                    ...context.artifacts,
-                    technicalRequirements: event.output,
-                  }),
-                  completedSteps: ({ context }) => [
-                    ...context.completedSteps,
-                    3,
-                  ],
-                  updatedAt: () => new Date().toISOString(),
+                  _tempArtifact: ({ event }) => event.output,
                 }),
               },
               onError: {
@@ -719,6 +836,75 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                     event.error instanceof Error
                       ? event.error.message
                       : "Failed to generate artifact",
+                }),
+              },
+            },
+          },
+
+          // New state: Persist artifact via workflow service
+          persistingArtifact: {
+            invoke: {
+              src: "persistArtifactService",
+              input: ({ context }) => {
+                if (!context._tempArtifact) {
+                  throw new Error("No artifact to persist");
+                }
+                return {
+                  projectId: context.projectId,
+                  stepNumber: 3,
+                  artifactKey: "technical-requirements",
+                  artifact: context._tempArtifact.content,
+                };
+              },
+              onDone: {
+                target: "completingStep",
+                actions: assign({
+                  artifacts: ({ context }) => ({
+                    ...context.artifacts,
+                    technicalRequirements: context._tempArtifact!,
+                  }),
+                  _tempArtifact: undefined,
+                  updatedAt: () => new Date().toISOString(),
+                }),
+              },
+              onError: {
+                target: STEP_STATES.INTERVIEW.ERROR,
+                actions: assign({
+                  error: ({ event }) =>
+                    event.error instanceof Error
+                      ? event.error.message
+                      : "Failed to persist artifact",
+                  _tempArtifact: undefined,
+                }),
+              },
+            },
+          },
+
+          // New state: Complete step via workflow service
+          completingStep: {
+            invoke: {
+              src: "completeStepService",
+              input: ({ context }) => ({
+                projectId: context.projectId,
+                stepNumber: 3,
+              }),
+              onDone: {
+                target: STEP_STATES.INTERVIEW.COMPLETE,
+                actions: assign({
+                  completedSteps: ({ event }) =>
+                    event.output.steps
+                      .filter((s) => s.status === "complete")
+                      .map((s) => s.stepNumber),
+                  updatedAt: () => new Date().toISOString(),
+                }),
+              },
+              onError: {
+                target: STEP_STATES.INTERVIEW.ERROR,
+                actions: assign({
+                  error: ({ event }) =>
+                    event.error instanceof Error
+                      ? event.error.message
+                      : "Failed to complete step",
                 }),
               },
             },

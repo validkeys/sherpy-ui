@@ -76,6 +76,9 @@ export type PlanningContext = {
   // Accumulated artifacts
   artifacts: StepArtifactMap;
 
+  // Temporary storage for artifact workflow (internal use only)
+  _tempArtifact?: Artifact;
+
   // Navigation tracking
   completedSteps: number[]; // Array of step numbers (1-10) that are complete
   currentStepNumber: number; // Current step number (1-10)
