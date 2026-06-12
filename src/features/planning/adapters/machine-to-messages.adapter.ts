@@ -11,8 +11,39 @@ import {
   normalizeWorkflowState,
 } from "./step-normalizer";
 
+/**
+ * Minimal context fields required by message adapter chain.
+ *
+ * Only includes fields actually used by adaptMachineSnapshotToMessages and its
+ * helper functions. This enables precise useMemo dependencies in useWorkflowChatData.
+ *
+ * Fields grouped by usage (M9 optimization):
+ * - Step tracking: currentStepNumber, completedSteps
+ * - Artifacts: artifacts, step7Edits
+ * - Form data: step1Responses, step5Responses
+ * - Interview data: step2Answers, step3Answers, step2CurrentQuestion, step3CurrentQuestion, step2CurrentOptions, step3CurrentOptions
+ * - Timestamps: startedAt, updatedAt
+ */
+export type MessageRelevantContext = Pick<
+  PlanningContext,
+  | "currentStepNumber"
+  | "completedSteps"
+  | "artifacts"
+  | "step7Edits"
+  | "step1Responses"
+  | "step5Responses"
+  | "step2Answers"
+  | "step3Answers"
+  | "step2CurrentQuestion"
+  | "step3CurrentQuestion"
+  | "step2CurrentOptions"
+  | "step3CurrentOptions"
+  | "startedAt"
+  | "updatedAt"
+>;
+
 export type WorkflowChatAdapterInput = {
-  context: PlanningContext;
+  context: MessageRelevantContext;
   stateValue: unknown;
 };
 
@@ -32,7 +63,7 @@ export function adaptMachineSnapshotToMessages({
 }
 
 function getReachedSteps(
-  context: PlanningContext,
+  context: MessageRelevantContext,
   activeState: NormalizedWorkflowState,
 ): readonly WorkflowStepNumber[] {
   const artifactStepNumbers = getWorkflowStepNumbers().filter((stepNumber) => {

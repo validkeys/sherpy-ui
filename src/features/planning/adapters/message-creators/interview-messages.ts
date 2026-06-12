@@ -1,7 +1,8 @@
 import type { Message } from "@/components/workflow-chat/types";
 import { STEP_STATES } from "../../machines/constants";
-import type { InterviewAnswer, PlanningContext } from "../../machines/types";
+import type { InterviewAnswer } from "../../machines/types";
 import { getStepName } from "../../step-config";
+import type { MessageRelevantContext } from "../machine-to-messages.adapter";
 import type { NormalizedWorkflowState } from "../step-normalizer";
 
 export function createInterviewMessages(
@@ -28,7 +29,7 @@ export function createInterviewMessages(
 }
 
 export function createCurrentInterviewMessages(
-  context: PlanningContext,
+  context: MessageRelevantContext,
   stepNumber: 2 | 3,
   activeState: NormalizedWorkflowState,
 ): Message[] {

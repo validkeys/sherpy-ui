@@ -2,6 +2,16 @@ import type { Artifact as WorkflowArtifact } from "@/components/workflow-chat/ty
 import type { PlanningContext } from "../machines/types";
 import { getStepArtifactKey, getStepName } from "../step-config";
 
+/**
+ * Minimal context fields required by artifact adapter.
+ *
+ * Only includes fields used by adaptMachineContextToArtifacts (M9 optimization).
+ */
+export type ArtifactRelevantContext = Pick<
+  PlanningContext,
+  "artifacts" | "step7Edits"
+>;
+
 const STEP_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 const ARTIFACT_FILENAMES: Record<string, string> = {
@@ -32,7 +42,7 @@ export function getWorkflowArtifactName(stepNumber: number): string {
 }
 
 export function adaptMachineContextToArtifacts(
-  context: PlanningContext,
+  context: ArtifactRelevantContext,
 ): WorkflowArtifact[] {
   return STEP_NUMBERS.map((stepNumber) => {
     const machineArtifact = context.artifacts[stepNumber];

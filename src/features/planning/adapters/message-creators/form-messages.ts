@@ -2,7 +2,7 @@ import type {
   Message,
   QuestionMessage,
 } from "@/components/workflow-chat/types";
-import type { PlanningContext } from "../../machines/types";
+import type { MessageRelevantContext } from "../machine-to-messages.adapter";
 
 export const FORM_FIELDS = {
   1: [
@@ -37,7 +37,7 @@ const FORM_QUESTIONS = {
 } as const satisfies Record<1 | 5, string>;
 
 export function createFormQuestionMessage(
-  context: PlanningContext,
+  context: MessageRelevantContext,
   stepNumber: 1 | 5,
 ): QuestionMessage {
   return {

@@ -1,8 +1,8 @@
 import type { Message } from "@/components/workflow-chat/types";
 import { STEP_STATES } from "../../machines/constants";
-import type { PlanningContext } from "../../machines/types";
 import { getStepName } from "../../step-config";
 import type { WorkflowStepNumber } from "../machine-to-artifacts.adapter";
+import type { MessageRelevantContext } from "../machine-to-messages.adapter";
 import type { NormalizedWorkflowState } from "../step-normalizer";
 
 export const STAGE_COLORS: Record<WorkflowStepNumber, string> = {
@@ -29,7 +29,7 @@ export function createDividerMessage(stepNumber: WorkflowStepNumber): Message {
 }
 
 export function createLoadingMessage(
-  context: PlanningContext,
+  context: MessageRelevantContext,
   stepNumber: WorkflowStepNumber,
   activeState: NormalizedWorkflowState,
 ): Message | null {

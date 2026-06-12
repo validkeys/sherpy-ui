@@ -1,11 +1,16 @@
 import { useMemo } from "react";
-import { adaptMachineContextToArtifacts } from "../adapters/machine-to-artifacts.adapter";
-import { adaptMachineSnapshotToMessages } from "../adapters/machine-to-messages.adapter";
+import {
+  type ArtifactRelevantContext,
+  adaptMachineContextToArtifacts,
+} from "../adapters/machine-to-artifacts.adapter";
+import {
+  adaptMachineSnapshotToMessages,
+  type MessageRelevantContext,
+} from "../adapters/machine-to-messages.adapter";
 import {
   usePlanningMachine,
   useSelector,
 } from "../machines/PlanningMachineContext";
-import type { PlanningContext } from "../machines/types";
 
 const SUBMITTING_STATES = new Set([
   "submitting",
@@ -13,41 +18,6 @@ const SUBMITTING_STATES = new Set([
   "generatingArtifact",
   "generating",
 ]);
-
-/**
- * Message-relevant context fields extracted from PlanningContext.
- *
- * Only includes fields used by adaptMachineSnapshotToMessages to prevent
- * unnecessary re-renders when unrelated context changes (M7-010).
- */
-type MessageRelevantContext = Pick<
-  PlanningContext,
-  | "currentStepNumber"
-  | "completedSteps"
-  | "artifacts"
-  | "step7Edits"
-  | "step1Responses"
-  | "step5Responses"
-  | "step2Answers"
-  | "step3Answers"
-  | "step2CurrentQuestion"
-  | "step3CurrentQuestion"
-  | "step2CurrentOptions"
-  | "step3CurrentOptions"
-  | "startedAt"
-  | "updatedAt"
->;
-
-/**
- * Artifact-relevant context fields extracted from PlanningContext.
- *
- * Only includes fields used by adaptMachineContextToArtifacts to prevent
- * unnecessary re-renders when unrelated context changes (M7-010).
- */
-type ArtifactRelevantContext = Pick<
-  PlanningContext,
-  "artifacts" | "step7Edits"
->;
 
 export function useWorkflowChatData() {
   const actor = usePlanningMachine();
@@ -103,14 +73,14 @@ export function useWorkflowChatData() {
   };
 }
 
-function getCurrentQuestion(context: PlanningContext): string | null {
+function getCurrentQuestion(context: MessageRelevantContext): string | null {
   if (context.currentStepNumber === 2) return context.step2CurrentQuestion;
   if (context.currentStepNumber === 3) return context.step3CurrentQuestion;
 
   return null;
 }
 
-function getCurrentOptions(context: PlanningContext): string[] | null {
+function getCurrentOptions(context: MessageRelevantContext): string[] | null {
   if (context.currentStepNumber === 2) return context.step2CurrentOptions;
   if (context.currentStepNumber === 3) return context.step3CurrentOptions;
 

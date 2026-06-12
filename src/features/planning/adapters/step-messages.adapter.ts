@@ -7,6 +7,7 @@ import {
   getWorkflowArtifactName,
   type WorkflowStepNumber,
 } from "./machine-to-artifacts.adapter";
+import type { MessageRelevantContext } from "./machine-to-messages.adapter";
 import { createLoadingMessage } from "./message-creators/artifact-messages";
 import {
   createFormQuestionMessage,
@@ -26,13 +27,13 @@ import type { NormalizedWorkflowState } from "./step-normalizer";
  * 2. Adding current interaction (form questions, interview questions)
  * 3. Adding artifact messages (completed artifacts, loading states)
  *
- * @param context - Planning machine context
+ * @param context - Message-relevant context fields (M9 optimization)
  * @param stepNumber - Step number (1-10)
  * @param activeState - Normalized workflow state
  * @returns Array of messages for this step
  */
 export function createStepMessages(
-  context: PlanningContext,
+  context: MessageRelevantContext,
   stepNumber: WorkflowStepNumber,
   activeState: NormalizedWorkflowState,
 ): Message[] {
@@ -134,7 +135,7 @@ function shouldShowFormQuestion(
  * 3. null (no message needed)
  */
 function createArtifactMessage(
-  context: PlanningContext,
+  context: MessageRelevantContext,
   stepNumber: WorkflowStepNumber,
   activeState: NormalizedWorkflowState,
   isActiveStep: boolean,
@@ -170,9 +171,9 @@ function createArtifactMessage(
  * which take precedence over artifact.content.
  */
 function getArtifactContent(
-  context: PlanningContext,
+  context: MessageRelevantContext,
   stepNumber: WorkflowStepNumber,
-  artifact: PlanningContext["artifacts"][WorkflowStepNumber] | undefined,
+  artifact: MessageRelevantContext["artifacts"][WorkflowStepNumber] | undefined,
 ): string | undefined {
   if (!artifact) return undefined;
 

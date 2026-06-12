@@ -6,6 +6,25 @@ Reduce LLM coding mistakes.
 
 ---
 
+## ✅ CODE REVIEW REMEDIATION: M9 Complete - Adapter Memoization (2026-06-12)
+
+**Status**: ✅ M0-M9 COMPLETE (8/14 milestones, ~18.5 hours)
+
+**M9 Achievement**: Type-enforced minimal context for adapters
+- Created `MessageRelevantContext` (14 fields) and `ArtifactRelevantContext` (2 fields)
+- Refactored 7 adapter files to use minimal types instead of full `PlanningContext`
+- All 204 adapter + hook tests passing (zero regressions)
+- **Key Finding**: M7-010 already achieved optimal field selection
+- **M9 Benefit**: Type safety and structural quality (not runtime performance)
+
+**Documentation**:
+- `.tmp-docs/code-review-remediation/m9-completion.md` - Complete summary
+- `.tmp-docs/code-review-remediation/m9/` - Audit and analysis docs
+
+**Next**: M10 - Fix List Keys (2 hours)
+
+---
+
 ## 1. Think Before Code
 
 **No assume. No hide confusion. Surface tradeoffs.**
