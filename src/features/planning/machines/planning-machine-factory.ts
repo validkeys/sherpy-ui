@@ -317,6 +317,21 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
   // MACHINE SETUP
   // ─────────────────────────────────────────────────────────────
 
+  // M5: Step name mapping for navigation transitions
+  // NOTE: Steps 4-10 use placeholder names until BUG-029 Phase 7 updates them to match constants
+  const STEP_NAMES: Record<number, string> = {
+    1: STEP_KEYS.STEP_1_GAP_ANALYSIS,
+    2: STEP_KEYS.STEP_2_BUSINESS_REQS,
+    3: STEP_KEYS.STEP_3_TECH_REQS,
+    4: "step4_architecture", // TODO: Update to STEP_KEYS.STEP_4_STYLE_ANCHORS
+    5: "step5_dataModeling", // TODO: Update to STEP_KEYS.STEP_5_IMPL_PLANNER
+    6: "step6_testing", // TODO: Update to STEP_KEYS.STEP_6_DEFINITION_OF_DONE
+    7: "step7_refinement", // TODO: Update to STEP_KEYS.STEP_7_ARCH_DECISIONS
+    8: "step8_documentation", // TODO: Update to STEP_KEYS.STEP_8_DELIVERY_TIMELINE
+    9: "step9_deployment", // TODO: Update to STEP_KEYS.STEP_9_QA_TEST_PLAN
+    10: "step10_monitoring", // TODO: Update to STEP_KEYS.STEP_10_SUMMARIES
+  };
+
   return setup({
     types: {
       context: {} as PlanningContext,
@@ -361,92 +376,26 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
     }),
 
     on: {
-      // Global navigation handlers - explicit transitions based on current step
-      [EVENT_TYPES.NEXT]: [
-        {
+      // Global navigation handlers - programmatically generated transitions
+      // M5: Reduced from 85 lines to 21 lines by generating transitions in loops
+      [EVENT_TYPES.NEXT]: Array.from({ length: 9 }, (_, i) => {
+        const currentStep = i + 1;
+        const nextStep = i + 2;
+        return {
           guard: ({ context }) =>
-            context.currentStepNumber === 1 && isStepComplete(context, 1),
-          target: `.${STEP_KEYS.STEP_2_BUSINESS_REQS}`,
-        },
-        {
-          guard: ({ context }) =>
-            context.currentStepNumber === 2 && isStepComplete(context, 2),
-          target: `.${STEP_KEYS.STEP_3_TECH_REQS}`,
-        },
-        {
-          guard: ({ context }) =>
-            context.currentStepNumber === 3 && isStepComplete(context, 3),
-          target: ".step4_architecture",
-        },
-        {
-          guard: ({ context }) =>
-            context.currentStepNumber === 4 && isStepComplete(context, 4),
-          target: ".step5_dataModeling",
-        },
-        {
-          guard: ({ context }) =>
-            context.currentStepNumber === 5 && isStepComplete(context, 5),
-          target: ".step6_testing",
-        },
-        {
-          guard: ({ context }) =>
-            context.currentStepNumber === 6 && isStepComplete(context, 6),
-          target: ".step7_refinement",
-        },
-        {
-          guard: ({ context }) =>
-            context.currentStepNumber === 7 && isStepComplete(context, 7),
-          target: ".step8_documentation",
-        },
-        {
-          guard: ({ context }) =>
-            context.currentStepNumber === 8 && isStepComplete(context, 8),
-          target: ".step9_deployment",
-        },
-        {
-          guard: ({ context }) =>
-            context.currentStepNumber === 9 && isStepComplete(context, 9),
-          target: ".step10_monitoring",
-        },
-      ],
-      [EVENT_TYPES.BACK]: [
-        {
-          guard: ({ context }) => context.currentStepNumber === 10,
-          target: ".step9_deployment",
-        },
-        {
-          guard: ({ context }) => context.currentStepNumber === 9,
-          target: ".step8_documentation",
-        },
-        {
-          guard: ({ context }) => context.currentStepNumber === 8,
-          target: ".step7_refinement",
-        },
-        {
-          guard: ({ context }) => context.currentStepNumber === 7,
-          target: ".step6_testing",
-        },
-        {
-          guard: ({ context }) => context.currentStepNumber === 6,
-          target: ".step5_dataModeling",
-        },
-        {
-          guard: ({ context }) => context.currentStepNumber === 5,
-          target: ".step4_architecture",
-        },
-        {
-          guard: ({ context }) => context.currentStepNumber === 4,
-          target: `.${STEP_KEYS.STEP_3_TECH_REQS}`,
-        },
-        {
-          guard: ({ context }) => context.currentStepNumber === 3,
-          target: `.${STEP_KEYS.STEP_2_BUSINESS_REQS}`,
-        },
-        {
-          guard: ({ context }) => context.currentStepNumber === 2,
-          target: `.${STEP_KEYS.STEP_1_GAP_ANALYSIS}`,
-        },
-      ],
+            context.currentStepNumber === currentStep &&
+            isStepComplete(context, currentStep),
+          target: `.${STEP_NAMES[nextStep]}`,
+        };
+      }),
+      [EVENT_TYPES.BACK]: Array.from({ length: 9 }, (_, i) => {
+        const currentStep = i + 2; // Steps 2-10
+        const previousStep = i + 1; // Steps 1-9
+        return {
+          guard: ({ context }) => context.currentStepNumber === currentStep,
+          target: `.${STEP_NAMES[previousStep]}`,
+        };
+      }),
 
       [EVENT_TYPES.RESTORE_SNAPSHOT]: {
         actions: assign(({ event }) => {
