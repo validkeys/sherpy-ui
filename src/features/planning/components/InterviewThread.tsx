@@ -217,9 +217,9 @@ export function InterviewThread({
         <ThreadDivider label={step.name} tone="success" />
         {/* Show all Q&As from this step */}
         {step.answers && step.answers.length > 0 ? (
-          step.answers.map((ans, idx) => (
+          step.answers.map((ans) => (
             <AnsweredMessage
-              key={`${step.stepNumber}-${idx}`}
+              key={`${step.stepNumber}-${ans.question}`}
               stepName={step.name}
               question={ans.question}
               answer={ans.value}
@@ -242,10 +242,10 @@ export function InterviewThread({
 
   // Add previous Q&As from current step (before the active question)
   if (currentStepData?.answers && currentStepData.answers.length > 0) {
-    currentStepData.answers.forEach((ans, idx) => {
+    currentStepData.answers.forEach((ans) => {
       allMessages.push(
         <AnsweredMessage
-          key={`current-${currentStepData.stepNumber}-${idx}`}
+          key={`current-${currentStepData.stepNumber}-${ans.question}`}
           stepName={currentStepData.name}
           question={ans.question}
           answer={ans.value}

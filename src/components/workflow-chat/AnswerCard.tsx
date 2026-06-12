@@ -126,7 +126,7 @@ function AnswerCardComponent({
             const handleOptionSelect = () => onSelectOption?.(option, i);
             return (
               <label
-                key={i}
+                key={option}
                 className={`flex items-start gap-2.5 p-2.5 border rounded-sm bg-page transition-colors text-left ${
                   selectedOption === i
                     ? "border-fg-1"
