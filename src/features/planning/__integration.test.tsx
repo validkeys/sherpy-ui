@@ -25,6 +25,20 @@ import {
   usePlanningMachine,
 } from "./machines/PlanningMachineContext";
 
+// Mock localStorage for SSR-like environment
+const localStorageMock = {
+  getItem: vi.fn(() => null),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+  length: 0,
+  key: vi.fn(),
+};
+Object.defineProperty(global, "localStorage", {
+  value: localStorageMock,
+  writable: true,
+});
+
 // Mock the server-side AI function that generates artifacts
 vi.mock("../ai/server", () => ({
   $generateArtifact: vi.fn(async ({ data }) => ({
@@ -49,6 +63,51 @@ vi.mock("./infrastructure/server-functions", () => ({
   $loadPlanningState: vi.fn().mockResolvedValue(null),
   $saveInterviewAnswer: vi.fn().mockResolvedValue({ success: true }),
   $saveFormResponses: vi.fn().mockResolvedValue({ success: true }),
+  // Server functions used by workflow services
+  $setStepArtifact: vi.fn().mockImplementation(async ({ data }) => ({
+    projectId: data.projectId,
+    currentStep: data.stepNumber,
+    steps: Array.from({ length: 10 }, (_, i) => ({
+      stepNumber: i + 1,
+      name: `Step ${i + 1}`,
+      status:
+        i + 1 === data.stepNumber
+          ? "now"
+          : i + 1 < data.stepNumber
+            ? "complete"
+            : "pending",
+      question: "",
+      artifact: i + 1 === data.stepNumber ? data.artifact : undefined,
+    })),
+  })),
+  $completeStep: vi.fn().mockImplementation(async ({ data }) => ({
+    projectId: data.projectId,
+    currentStep: data.stepNumber === 10 ? 10 : data.stepNumber + 1,
+    steps: Array.from({ length: 10 }, (_, i) => ({
+      stepNumber: i + 1,
+      name: `Step ${i + 1}`,
+      status:
+        i + 1 === data.stepNumber
+          ? "complete"
+          : i + 1 === data.stepNumber + 1
+            ? "now"
+            : i + 1 < data.stepNumber
+              ? "complete"
+              : "pending",
+      question: "",
+    })),
+  })),
+  $submitAnswer: vi.fn().mockResolvedValue({
+    projectId: "integration-test-project",
+    currentStep: 2,
+    steps: Array.from({ length: 10 }, (_, i) => ({
+      stepNumber: i + 1,
+      name: `Step ${i + 1}`,
+      status: i + 1 === 2 ? "now" : "pending",
+      question: "",
+      answers: [],
+    })),
+  }),
 }));
 
 describe("Full Planning Workflow Integration", () => {
@@ -130,17 +189,32 @@ describe("Full Planning Workflow Integration", () => {
     const submitStep1Button = screen.getByRole("button", { name: /submit/i });
     await user.click(submitStep1Button);
 
+    // Wait for Step 1 to complete (artifact generation happens during submission)
+    await waitFor(
+      () => {
+        const nextBtn = screen.getByRole("button", {
+          name: /next/i,
+        }) as HTMLButtonElement;
+        expect(nextBtn.disabled).toBe(false);
+      },
+      { timeout: 10000 },
+    );
+
+    // Click Next to navigate to Step 2
+    const nextButtonAfterStep1 = screen.getByRole("button", { name: /next/i });
+    await user.click(nextButtonAfterStep1);
+
     // ═══════════════════════════════════════════════════════════
     // STEP 2: Business Requirements Interview
     // ═══════════════════════════════════════════════════════════
 
-    // Wait for Step 2 to load (artifact generation happens first)
+    // Wait for Step 2 to load
     await waitFor(
       () => {
         expect(screen.getByText(/Step 2 of 10/i)).toBeDefined();
       },
-      { timeout: 10000 },
-    ); // Increased timeout for artifact generation
+      { timeout: 5000 },
+    );
 
     // Verify the workflow rendered successfully through Step 1 -> Step 2 transition
     // This confirms:
@@ -197,12 +271,27 @@ describe("Full Planning Workflow Integration", () => {
     const submitButton = screen.getByRole("button", { name: /submit/i });
     await user.click(submitButton);
 
-    // Wait for Step 2 (artifact generation happens between steps)
+    // Wait for Step 1 to complete (artifact generation happens during submission)
+    await waitFor(
+      () => {
+        const nextBtn = screen.getByRole("button", {
+          name: /next/i,
+        }) as HTMLButtonElement;
+        expect(nextBtn.disabled).toBe(false);
+      },
+      { timeout: 10000 },
+    );
+
+    // Click Next to navigate to Step 2
+    const nextButtonToStep2 = screen.getByRole("button", { name: /next/i });
+    await user.click(nextButtonToStep2);
+
+    // Wait for Step 2 to load
     await waitFor(
       () => {
         expect(screen.getByText(/Step 2 of 10/i)).toBeDefined();
       },
-      { timeout: 10000 },
+      { timeout: 5000 },
     );
 
     // Back button should now be enabled
@@ -291,12 +380,29 @@ describe("Full Planning Workflow Integration", () => {
     const submitButton = screen.getByRole("button", { name: /submit/i });
     await user.click(submitButton);
 
-    // Wait for Step 2 (artifact generation happens between steps)
+    // Wait for Step 1 to complete (artifact generation happens during submission)
+    await waitFor(
+      () => {
+        const nextBtn = screen.getByRole("button", {
+          name: /next/i,
+        }) as HTMLButtonElement;
+        expect(nextBtn.disabled).toBe(false);
+      },
+      { timeout: 10000 },
+    );
+
+    // Click Next to navigate to Step 2
+    const nextButtonToStep2Persist = screen.getByRole("button", {
+      name: /next/i,
+    });
+    await user.click(nextButtonToStep2Persist);
+
+    // Wait for Step 2 to load
     await waitFor(
       () => {
         expect(screen.getByText(/Step 2 of 10/i)).toBeDefined();
       },
-      { timeout: 10000 },
+      { timeout: 5000 },
     );
 
     // Note: Persistence test requires working localStorage, which may not be available in test environment

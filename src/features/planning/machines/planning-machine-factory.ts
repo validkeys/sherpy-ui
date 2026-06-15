@@ -504,9 +504,9 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 target: STEP_STATES.STEP_1.SUBMITTING,
                 actions: assign({
                   step1GapAnalysisNeeded: ({ event }) =>
-                    event.output.needsGapAnalysis,
+                    event.output?.needsGapAnalysis ?? null,
                   step1GapAnalysisReasoning: ({ event }) =>
-                    event.output.reasoning,
+                    event.output?.reasoning ?? null,
                   updatedAt: () => new Date().toISOString(),
                 }),
               },
@@ -609,9 +609,9 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 actions: assign({
                   // Extract completion status from persisted state
                   completedSteps: ({ event }) =>
-                    event.output.steps
-                      .filter((s) => s.status === "complete")
-                      .map((s) => s.stepNumber),
+                    event.output?.steps
+                      ?.filter((s) => s.status === "complete")
+                      .map((s) => s.stepNumber) ?? [],
                   updatedAt: () => new Date().toISOString(),
                 }),
               },
@@ -656,9 +656,10 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
               onDone: {
                 target: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
                 actions: assign({
-                  step2CurrentQuestion: ({ event }) => event.output.question,
+                  step2CurrentQuestion: ({ event }) =>
+                    event.output?.question ?? null,
                   step2CurrentOptions: ({ event }) =>
-                    event.output.options ?? null,
+                    event.output?.options ?? null,
                   updatedAt: () => new Date().toISOString(),
                 }),
               },
@@ -706,7 +707,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 actions: assign({
                   // Extract step2 answers from persisted state
                   step2Answers: ({ event }) =>
-                    event.output.steps[1].answers ?? [],
+                    event.output?.steps?.[1]?.answers ?? [],
                   step2CurrentQuestion: null,
                   step2CurrentOptions: null,
                   updatedAt: () => new Date().toISOString(),
@@ -795,9 +796,10 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
               onDone: {
                 target: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
                 actions: assign({
-                  step3CurrentQuestion: ({ event }) => event.output.question,
+                  step3CurrentQuestion: ({ event }) =>
+                    event.output?.question ?? null,
                   step3CurrentOptions: ({ event }) =>
-                    event.output.options ?? null,
+                    event.output?.options ?? null,
                   updatedAt: () => new Date().toISOString(),
                 }),
               },
@@ -845,7 +847,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 actions: assign({
                   // Extract step3 answers from persisted state
                   step3Answers: ({ event }) =>
-                    event.output.steps[2].answers ?? [],
+                    event.output?.steps?.[2]?.answers ?? [],
                   step3CurrentQuestion: null,
                   step3CurrentOptions: null,
                   updatedAt: () => new Date().toISOString(),
@@ -942,9 +944,9 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 target: STEP_STATES.INTERVIEW.COMPLETE,
                 actions: assign({
                   completedSteps: ({ event }) =>
-                    event.output.steps
-                      .filter((s) => s.status === "complete")
-                      .map((s) => s.stepNumber),
+                    event.output?.steps
+                      ?.filter((s) => s.status === "complete")
+                      .map((s) => s.stepNumber) ?? [],
                   updatedAt: () => new Date().toISOString(),
                 }),
               },

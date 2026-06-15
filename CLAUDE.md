@@ -36,7 +36,7 @@ Reduce LLM coding mistakes.
 - Accessibility guide: `.tmp-docs/code-review-remediation/pr21-remediation/ACCESSIBILITY.md`
 - Task breakdowns: `.tmp-docs/code-review-remediation/pr21-remediation/tasks/milestone-m{0,1,2}.tasks.yaml`
 
-**Test Status**: 969/969 passing (100%)
+**Test Status**: 986/998 passing (98.8%) - 12 remaining failures in XState workflow tests
 
 ---
 
