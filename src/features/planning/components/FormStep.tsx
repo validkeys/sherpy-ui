@@ -99,11 +99,13 @@ export function FormStep({ stepKey, stepName, status }: Props) {
   });
 
   // Sync form data when existing responses change (e.g., loaded from localStorage)
+  // setFormData is stable (useState setter) - no need in deps
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setFormData is stable (useState setter)
   useEffect(() => {
     if (existingResponses && Object.keys(existingResponses).length > 0) {
       setFormData(existingResponses);
     }
-  }, [existingResponses, setFormData]);
+  }, [existingResponses]);
 
   // DOM sync for autofill detection (extracted hook)
   // M7-013: Uses 50ms interval (optimized from 5ms)
