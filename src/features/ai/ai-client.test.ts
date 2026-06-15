@@ -15,8 +15,8 @@ vi.mock("ai", () => ({
 }));
 
 vi.mock("@/lib/ai-provider", () => ({
-  getBedrockModel: vi.fn(() => "mock-model"),
-  BEDROCK_MODEL_ID: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  getModel: vi.fn(() => "mock-model"),
+  AI_MODEL_ID: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 }));
 
 vi.mock("@/lib/langfuse-helpers", () => ({

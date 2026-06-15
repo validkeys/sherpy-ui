@@ -1,6 +1,6 @@
 /**
  * @deprecated This module uses the raw AWS SDK (`BedrockRuntimeClient`) directly.
- * New code should use the Vercel AI SDK via `@/lib/ai-provider` (`getBedrockModel`)
+ * New code should use the Vercel AI SDK via `@/lib/ai-provider` (`getModel`)
  * and the wrappers in `@/features/ai/ai-client` instead.
  *
  * This file is retained solely for standalone scripts (e.g. `scripts/check-bedrock.mjs`)
@@ -9,22 +9,22 @@
  * Migration path:
  *   import { bedrockClient, BEDROCK_MODEL_ID } from "@/lib/bedrock"
  *   →
- *   import { getBedrockModel, BEDROCK_MODEL_ID } from "@/lib/ai-provider"
+ *   import { getModel, AI_MODEL_ID } from "@/lib/ai-provider"
  */
 
 import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime";
 
-/** @deprecated Use `BEDROCK_MODEL_ID` from `@/lib/ai-provider` instead. */
+/** @deprecated Use `AI_MODEL_ID` from `@/lib/ai-provider` instead. */
 export const BEDROCK_REGION = process.env.AWS_REGION ?? "us-east-1";
 
-/** @deprecated Use `BEDROCK_MODEL_ID` from `@/lib/ai-provider` instead. */
+/** @deprecated Use `AI_MODEL_ID` from `@/lib/ai-provider` instead. */
 export const BEDROCK_MODEL_ID =
   process.env.BEDROCK_MODEL_ID ??
   "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
 
 let _bedrockClient: BedrockRuntimeClient | undefined;
 
-/** @deprecated Use `getBedrockModel()` from `@/lib/ai-provider` instead. */
+/** @deprecated Use `getModel()` from `@/lib/ai-provider` instead. */
 export function getBedrockClient(): BedrockRuntimeClient {
   if (!_bedrockClient) {
     _bedrockClient = new BedrockRuntimeClient({
@@ -34,7 +34,7 @@ export function getBedrockClient(): BedrockRuntimeClient {
   return _bedrockClient;
 }
 
-/** @deprecated Use `getBedrockModel()` from `@/lib/ai-provider` instead. */
+/** @deprecated Use `getModel()` from `@/lib/ai-provider` instead. */
 export const bedrockClient: BedrockRuntimeClient = new Proxy(
   {} as BedrockRuntimeClient,
   {

@@ -13,6 +13,7 @@
     "start": "node .output/server/index.mjs",
     "check:ai": "node scripts/check-ai.mjs",
     "check:bedrock": "node scripts/check-bedrock.mjs",
+    "check:provider": "node scripts/check-provider.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
@@ -44,6 +45,8 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^4.0.113",
+    "@ai-sdk/anthropic": "^3.0.84",
+    "@ai-sdk/openai": "^3.0.71",
     "@aws-sdk/client-bedrock-runtime": "^3.1044.0",
     "@aws-sdk/client-sts": "^3.1054.0",
     "@aws-sdk/credential-providers": "^3.1064.0",

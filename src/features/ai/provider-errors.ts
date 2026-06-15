@@ -2,7 +2,7 @@
 // Do not import from client-side code — Vite stubs replace these
 // classes with functions, breaking instanceof checks.
 import { APICallError, NoSuchModelError } from "ai";
-import { BEDROCK_MODEL_ID, BEDROCK_REGION } from "@/lib/ai-provider";
+import { AI_MODEL_ID, getProviderName } from "@/lib/ai-provider";
 
 export type AIProviderErrorCode =
   | "AI_PROVIDER_AUTH_INVALID"
@@ -118,11 +118,11 @@ export function normalizeAIProviderError(error: unknown): AIProviderErrorCode {
 export function getAIProviderErrorMessage(code: AIProviderErrorCode): string {
   switch (code) {
     case "AI_PROVIDER_AUTH_INVALID":
-      return "AI provider credentials are invalid or expired. Refresh AWS credentials and rerun the request.";
+      return "AI provider credentials are invalid or expired. Check your API key or auth configuration and rerun the request.";
     case "AI_PROVIDER_ACCESS_DENIED":
-      return "AI provider access was denied. Confirm IAM permissions and Bedrock model access.";
+      return "AI provider access was denied. Confirm your API key permissions and model access.";
     case "AI_PROVIDER_MODEL_UNAVAILABLE":
-      return "The configured AI model is unavailable in this region or account.";
+      return "The configured AI model is unavailable. Verify the model ID and your account access.";
     case "AI_PROVIDER_RATE_LIMITED":
       return "The AI provider rate limit was reached. Retry after quota recovers.";
     case "AI_PROVIDER_UNKNOWN":
@@ -154,9 +154,8 @@ export function logAIProviderError(
 
   console.error("[ai-provider]", {
     code: normalizedError.code,
-    provider: "aws-bedrock",
-    modelId: BEDROCK_MODEL_ID,
-    region: BEDROCK_REGION,
+    provider: getProviderName(),
+    modelId: AI_MODEL_ID,
     operation: context.operation,
     projectId: context.projectId,
     stepNumber: context.stepNumber,
