@@ -311,6 +311,12 @@ export const EVENT_TYPES = {
    * Payload: { stepNumber: number }
    */
   RESUME_AUTOMATED_STEP: "RESUME_AUTOMATED_STEP",
+
+  /**
+   * Update a single form field value (Steps 1, 5).
+   * Payload: { stepNumber: number, fieldId: string, value: string }
+   */
+  UPDATE_FORM_FIELD: "UPDATE_FORM_FIELD",
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];

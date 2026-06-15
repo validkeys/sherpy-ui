@@ -118,6 +118,12 @@ export type PlanningEvent =
         // biome-ignore lint/suspicious/noExplicitAny: XState snapshot value can be any state value
         value?: any;
       };
+    }
+  | {
+      type: "UPDATE_FORM_FIELD";
+      stepNumber: 1 | 5;
+      fieldId: string;
+      value: string;
     };
 
 /**

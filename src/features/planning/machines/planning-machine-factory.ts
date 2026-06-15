@@ -11,10 +11,10 @@
 
 import { assign, fromPromise, setup } from "xstate";
 import {
-  completeStepService,
-  persistAnswerService,
-  persistArtifactService,
-} from "../workflow/services";
+  $completeStep,
+  $setStepArtifact,
+  $submitAnswer,
+} from "../infrastructure/server-functions";
 import { EVENT_TYPES, STEP_KEYS, STEP_STATES } from "./constants";
 import type {
   Artifact,
@@ -346,9 +346,47 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
       fetchQuestion,
       assessGapAnalysisNeed,
       generateArtifact,
-      persistAnswerService,
-      persistArtifactService,
-      completeStepService,
+      // Wrapper actors for server functions (no repository imports)
+      persistAnswerService: fromPromise(
+        async ({
+          input,
+        }: {
+          input: {
+            projectId: string;
+            stepNumber: number;
+            question: string;
+            answer: string;
+          };
+        }) => {
+          const result = await $submitAnswer({ data: input });
+          return result;
+        },
+      ),
+      persistArtifactService: fromPromise(
+        async ({
+          input,
+        }: {
+          input: {
+            projectId: string;
+            stepNumber: number;
+            artifactKey: string;
+            artifact: string;
+          };
+        }) => {
+          const result = await $setStepArtifact({ data: input });
+          return result;
+        },
+      ),
+      completeStepService: fromPromise(
+        async ({
+          input,
+        }: {
+          input: { projectId: string; stepNumber: number };
+        }) => {
+          const result = await $completeStep({ data: input });
+          return result;
+        },
+      ),
     },
     guards: {},
     actions: {
@@ -429,6 +467,18 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
         states: {
           [STEP_STATES.STEP_1.COLLECTING_INFO]: {
             on: {
+              [EVENT_TYPES.UPDATE_FORM_FIELD]: {
+                actions: assign({
+                  step1Responses: ({ context, event }) => {
+                    if (event.stepNumber !== 1) return context.step1Responses;
+                    return {
+                      ...context.step1Responses,
+                      [event.fieldId]: event.value,
+                    };
+                  },
+                  updatedAt: () => new Date().toISOString(),
+                }),
+              },
               [EVENT_TYPES.SUBMIT_FORM]: {
                 target: STEP_STATES.STEP_1.ASSESSING_NEED,
                 actions: assign({

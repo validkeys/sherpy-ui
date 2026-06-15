@@ -18,6 +18,11 @@ type WorkflowChatActions = {
   onSubmitMessage?: (message: string) => void;
   onSelectOption?: (question: string, option: string, index: number) => void;
   onSubmitForm?: (question: string, values: Record<string, string>) => void;
+  onFormValueChange?: (
+    question: string,
+    fieldId: string,
+    value: string,
+  ) => void;
 };
 
 type WorkflowChatController = WorkflowChatActions & {
@@ -25,6 +30,7 @@ type WorkflowChatController = WorkflowChatActions & {
   artifacts: Artifact[];
   disabled: boolean;
   isSubmitting: boolean;
+  formValues: Record<string, string> | null;
 };
 
 export function useWorkflowChatController(): WorkflowChatController {
@@ -35,6 +41,7 @@ export function useWorkflowChatController(): WorkflowChatController {
     actor,
     currentStepNumber,
     currentQuestion,
+    formValues,
   } = useWorkflowChatData();
 
   const actions = useMemo(
@@ -52,6 +59,7 @@ export function useWorkflowChatController(): WorkflowChatController {
     artifacts,
     disabled: isSubmitting,
     isSubmitting,
+    formValues,
     ...actions,
   };
 }
@@ -89,6 +97,11 @@ export function createWorkflowChatActions({
           submitFormResponses(actor, currentStepNumber, values);
         }
       : undefined,
+    onFormValueChange: isInteractiveForm
+      ? (_question, fieldId, value) => {
+          updateFormField(actor, currentStepNumber as 1 | 5, fieldId, value);
+        }
+      : undefined,
   };
 }
 
@@ -118,5 +131,19 @@ function submitFormResponses(
     type: EVENT_TYPES.SUBMIT_FORM,
     stepNumber,
     responses,
+  });
+}
+
+function updateFormField(
+  actor: WorkflowChatActor,
+  stepNumber: 1 | 5,
+  fieldId: string,
+  value: string,
+) {
+  actor.send({
+    type: EVENT_TYPES.UPDATE_FORM_FIELD,
+    stepNumber,
+    fieldId,
+    value,
   });
 }

@@ -36,6 +36,12 @@ interface ChatMessageProps {
   canOpenArtifact?: (artifactId: string) => boolean;
   onSelectOption?: (question: string, option: string, index: number) => void;
   onSubmitForm?: (question: string, values: Record<string, string>) => void;
+  onFormValueChange?: (
+    question: string,
+    fieldId: string,
+    value: string,
+  ) => void;
+  formValues?: Record<string, string> | null;
   disabled?: boolean;
   isSubmitting?: boolean;
 }
@@ -46,6 +52,8 @@ function ChatMessageComponent({
   canOpenArtifact,
   onSelectOption,
   onSubmitForm,
+  onFormValueChange,
+  formValues,
   disabled = false,
   isSubmitting = false,
 }: ChatMessageProps) {
@@ -65,6 +73,15 @@ function ChatMessageComponent({
       }
     },
     [message, onSubmitForm],
+  );
+
+  const handleFormValueChange = useCallback(
+    (fieldId: string, value: string) => {
+      if (message.type === "question") {
+        onFormValueChange?.(message.question, fieldId, value);
+      }
+    },
+    [message, onFormValueChange],
   );
 
   const handleArtifactClick = useCallback(() => {
@@ -137,6 +154,7 @@ function ChatMessageComponent({
             <AnswerCard
               options={message.options}
               formFields={message.formFields}
+              formValues={formValues ?? undefined}
               disabled={
                 disabled ||
                 Boolean(message.options && !onSelectOption) ||
@@ -145,6 +163,7 @@ function ChatMessageComponent({
               isSubmitting={isSubmitting}
               onSelectOption={handleSelectOption}
               onSubmitForm={handleSubmitForm}
+              onFormValueChange={handleFormValueChange}
             />
           </>
         )}

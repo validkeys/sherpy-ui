@@ -36,6 +36,12 @@ export interface WorkflowChatProps {
   onSubmitMessage?: (message: string) => void;
   onSelectOption?: (question: string, option: string, index: number) => void;
   onSubmitForm?: (question: string, values: Record<string, string>) => void;
+  onFormValueChange?: (
+    question: string,
+    fieldId: string,
+    value: string,
+  ) => void;
+  formValues?: Record<string, string> | null;
   disabled?: boolean;
   isSubmitting?: boolean;
 }
@@ -46,6 +52,8 @@ export function WorkflowChat({
   onSubmitMessage,
   onSelectOption,
   onSubmitForm,
+  onFormValueChange,
+  formValues,
   disabled = false,
   isSubmitting = false,
 }: WorkflowChatProps) {
@@ -168,6 +176,8 @@ export function WorkflowChat({
                   canOpenArtifact={canOpenArtifact}
                   onSelectOption={onSelectOption}
                   onSubmitForm={onSubmitForm}
+                  onFormValueChange={onFormValueChange}
+                  formValues={formValues}
                   disabled={disabled}
                   isSubmitting={isSubmitting}
                 />

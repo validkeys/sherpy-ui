@@ -68,6 +68,7 @@ export function useWorkflowChatData() {
     currentStepNumber: messageContext.currentStepNumber,
     currentQuestion: getCurrentQuestion(messageContext),
     currentOptions: getCurrentOptions(messageContext),
+    formValues: getFormValues(messageContext),
     isSubmitting: isSubmittingState(stateValue),
     actor,
   };
@@ -83,6 +84,15 @@ function getCurrentQuestion(context: MessageRelevantContext): string | null {
 function getCurrentOptions(context: MessageRelevantContext): string[] | null {
   if (context.currentStepNumber === 2) return context.step2CurrentOptions;
   if (context.currentStepNumber === 3) return context.step3CurrentOptions;
+
+  return null;
+}
+
+function getFormValues(
+  context: MessageRelevantContext,
+): Record<string, string> | null {
+  if (context.currentStepNumber === 1) return context.step1Responses;
+  if (context.currentStepNumber === 5) return context.step5Responses;
 
   return null;
 }
