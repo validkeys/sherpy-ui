@@ -130,9 +130,10 @@ export function PlanningMachineProvider({
         throw error;
       }
     },
-    staleTime: 30000, // Consider fresh for 30 seconds (reduce DB load)
+    // Refetch on mount for fresh state; 10s staleTime for active workflows
+    staleTime: 10000, // Consider fresh for 10 seconds (real-time workflow behavior)
     gcTime: 5 * 60 * 1000, // Keep in memory for 5 minutes (better offline support)
-    refetchOnMount: false, // Don't refetch if cache is fresh
+    refetchOnMount: true, // Fetch fresh data on remount
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     retry: 3,
