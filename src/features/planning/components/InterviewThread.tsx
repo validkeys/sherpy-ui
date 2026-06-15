@@ -172,10 +172,13 @@ export function InterviewThread({
     "";
 
   // Calculate question counter: sum of all answers from all steps + 1 for current question
-  const totalAnswersFromCompletedSteps = completedSteps.reduce(
-    (sum, step) => sum + (step.answers?.length ?? (step.answer ? 1 : 0)),
-    0,
-  );
+  // Memoize to avoid recalculating on every render
+  const totalAnswersFromCompletedSteps = useMemo(() => {
+    return completedSteps.reduce(
+      (sum, step) => sum + (step.answers?.length ?? (step.answer ? 1 : 0)),
+      0,
+    );
+  }, [completedSteps]);
   const answersInCurrentStep = completedAnswers.length;
   const currentQuestionNumber =
     totalAnswersFromCompletedSteps + answersInCurrentStep + 1;
