@@ -9,7 +9,7 @@
  * periodically checks DOM values and syncs them to React state.
  */
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import type { FormQuestion } from "./useFormState";
 
 type UseDOMSyncOptions = {
@@ -27,34 +27,35 @@ export function useDOMSync({
   updateFormData,
   interval = 50,
 }: UseDOMSyncOptions) {
+  // Memoize the sync function to prevent interval recreation on every render
+  const syncDOMValues = useCallback(() => {
+    updateFormData((current) => {
+      let changed = false;
+      const next = { ...current };
+
+      questions.forEach((question) => {
+        const element = document.getElementById(question.id) as
+          | HTMLInputElement
+          | HTMLTextAreaElement
+          | HTMLSelectElement
+          | null;
+        const domValue = element?.value;
+
+        // Only update if DOM has a non-empty value different from React state
+        if (domValue?.trim() && next[question.id] !== domValue) {
+          next[question.id] = domValue;
+          changed = true;
+        }
+      });
+
+      // Only trigger re-render if values actually changed
+      return changed ? next : current;
+    });
+  }, [questions, updateFormData]);
+
   useEffect(() => {
     // Don't sync while submitting to avoid race conditions
     if (isSubmitting) return;
-
-    const syncDOMValues = () => {
-      updateFormData((current) => {
-        let changed = false;
-        const next = { ...current };
-
-        questions.forEach((question) => {
-          const element = document.getElementById(question.id) as
-            | HTMLInputElement
-            | HTMLTextAreaElement
-            | HTMLSelectElement
-            | null;
-          const domValue = element?.value;
-
-          // Only update if DOM has a non-empty value different from React state
-          if (domValue?.trim() && next[question.id] !== domValue) {
-            next[question.id] = domValue;
-            changed = true;
-          }
-        });
-
-        // Only trigger re-render if values actually changed
-        return changed ? next : current;
-      });
-    };
 
     // M7-013: Changed from 5ms to 50ms
     // Rationale: 5ms = 200 checks/sec is excessive overhead for autofill detection.
@@ -63,5 +64,5 @@ export function useDOMSync({
     // polling catches it within 1-2 cycles.
     const intervalId = window.setInterval(syncDOMValues, interval);
     return () => window.clearInterval(intervalId);
-  }, [questions, isSubmitting, updateFormData, interval]);
+  }, [syncDOMValues, isSubmitting, interval]);
 }
