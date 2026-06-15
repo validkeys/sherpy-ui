@@ -76,7 +76,8 @@ export function InterviewThread({
   });
 
   const { mutate: submitAnswer, isPending } = useSubmitAnswer(projectId);
-  const { mutate: completeStep } = useCompleteStep(projectId);
+  const { mutate: completeStep, isPending: isCompletingStep } =
+    useCompleteStep(projectId);
   const { mutate: updateOptions } = useUpdateStepOptions(projectId);
 
   // Debug logging
@@ -85,7 +86,10 @@ export function InterviewThread({
     answersCount: completedAnswers.length,
   });
 
-  // Auto-advance when AI signals step completion
+  /**
+   * Auto-advance when AI signals step completion.
+   * Guards prevent duplicate API calls on re-renders.
+   */
   // Track which step we completed to avoid duplicate calls
   const lastCompletedStepRef = useRef<number | null>(null);
 
@@ -97,6 +101,17 @@ export function InterviewThread({
       if (lastCompletedStepRef.current === currentStepNum) {
         console.log(
           "[InterviewThread] Step already completed, skipping duplicate call",
+          {
+            stepNumber: currentStepNum,
+          },
+        );
+        return;
+      }
+
+      // Guard against duplicate calls while mutation is pending
+      if (isCompletingStep) {
+        console.log(
+          "[InterviewThread] Step completion in progress, skipping duplicate call",
           {
             stepNumber: currentStepNum,
           },
@@ -118,6 +133,7 @@ export function InterviewThread({
   }, [
     isComplete,
     isStreaming,
+    isCompletingStep,
     stepState.currentStep,
     completeStep,
     currentStepData?.name,
