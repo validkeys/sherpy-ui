@@ -115,6 +115,8 @@ function ChatMessageComponent({
     <div className="mx-auto flex w-full max-w-[720px] gap-3.5 px-4 sm:px-8">
       {/* Avatar */}
       <div
+        role="img"
+        aria-label={isAssistant ? "Assistant message" : "User message"}
         className={`w-[26px] h-[26px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
           isAssistant
             ? "bg-inverse text-fg-on-inverse"
@@ -122,9 +124,11 @@ function ChatMessageComponent({
         }`}
       >
         {isAssistant ? (
-          <Sparkles className="w-3.5 h-3.5" />
+          <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
         ) : (
-          <span className="font-mono text-[11px]">U</span>
+          <span className="font-mono text-[11px]" aria-hidden="true">
+            U
+          </span>
         )}
       </div>
 
