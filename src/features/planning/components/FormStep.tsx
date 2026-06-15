@@ -159,41 +159,6 @@ export function FormStep({ stepKey, stepName, status }: Props) {
       actorRef.current.send(event);
 
       console.log("[FormStep] Event sent to machine");
-
-      // Check state after a tick
-      setTimeout(() => {
-        const snapshot = actorRef.current.getSnapshot();
-        console.log("[FormStep] Machine state AFTER send:", snapshot.value);
-        console.log("[FormStep] Machine context AFTER send:", snapshot.context);
-        if (snapshot.context.error) {
-          console.error(
-            "[FormStep] ❌ ERROR in context:",
-            snapshot.context.error,
-          );
-        }
-      }, 10);
-
-      // Check after a longer delay to see if artifact generation completed
-      setTimeout(() => {
-        const snapshot = actorRef.current.getSnapshot();
-        console.log(
-          "[FormStep] Machine state after 2 seconds:",
-          snapshot.value,
-        );
-        if (snapshot.context.error) {
-          console.error(
-            "[FormStep] ❌ ERROR after 2s:",
-            snapshot.context.error,
-          );
-        }
-        if (snapshot.context.currentStepNumber !== stepNumber + 1) {
-          console.warn(
-            "[FormStep] ⚠️ Still on step",
-            snapshot.context.currentStepNumber,
-            "- artifact generation may have failed",
-          );
-        }
-      }, 2000);
     },
     [
       formData,
