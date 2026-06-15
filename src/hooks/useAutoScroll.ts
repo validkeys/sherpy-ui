@@ -14,6 +14,10 @@ interface UseAutoScrollReturn {
   shouldShowScrollButton: boolean;
 }
 
+/**
+ * Auto-scrolls to bottom when new messages arrive.
+ * Cleans up pending timeouts on unmount to prevent race conditions.
+ */
 export function useAutoScroll<T extends any[]>(
   messages: T,
   options: UseAutoScrollOptions = {},
@@ -75,6 +79,9 @@ export function useAutoScroll<T extends any[]>(
     const shouldAutoScroll =
       (hasNewMessages || isInitialMount.current) && !isUserScrolling.current;
 
+    // Track all nested timeouts for cleanup
+    const timeouts: NodeJS.Timeout[] = [];
+
     if (shouldAutoScroll) {
       // Clear any pending scroll
       if (scrollTimeout.current) {
@@ -87,19 +94,21 @@ export function useAutoScroll<T extends any[]>(
 
         // Second scroll after a longer delay to catch late-rendering content
         // (e.g., question options, form fields)
-        setTimeout(() => {
+        const timeout2 = setTimeout(() => {
           if (!isUserScrolling.current) {
             scrollToBottom();
 
             // Third scroll to ensure option buttons are fully visible
             // especially after answer submission when both answer + new question render
-            setTimeout(() => {
+            const timeout3 = setTimeout(() => {
               if (!isUserScrolling.current) {
                 scrollToBottom();
               }
             }, 300);
+            timeouts.push(timeout3);
           }
         }, 200);
+        timeouts.push(timeout2);
       }, scrollDelay);
 
       // Mark that initial mount is complete
@@ -112,6 +121,8 @@ export function useAutoScroll<T extends any[]>(
       if (scrollTimeout.current) {
         clearTimeout(scrollTimeout.current);
       }
+      // Clean up all nested timeouts on unmount
+      timeouts.forEach(clearTimeout);
     };
   }, [messages.length, scrollToBottom, scrollDelay, enabled]);
 
@@ -119,25 +130,32 @@ export function useAutoScroll<T extends any[]>(
   useEffect(() => {
     if (!enabled || messages.length === 0) return;
 
+    // Track nested timeouts for cleanup
+    const timeouts: NodeJS.Timeout[] = [];
+
     // Scroll to bottom on initial mount after a delay for DOM to render
     const initialScrollTimeout = setTimeout(() => {
       if (scrollRef.current) {
         scrollToBottom();
 
         // Second scroll for late-rendering content
-        setTimeout(() => {
+        const timeout2 = setTimeout(() => {
           if (scrollRef.current) {
             scrollToBottom();
           }
         }, 200);
+        timeouts.push(timeout2);
       }
     }, 100);
 
     return () => {
       clearTimeout(initialScrollTimeout);
+      // Clean up all nested timeouts on unmount
+      timeouts.forEach(clearTimeout);
     };
+    // Run when messages change or scroll is enabled
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scrollToBottom, messages.length, enabled]); // Only run once on mount
+  }, [scrollToBottom, messages.length, enabled]);
 
   // Set up scroll listener with throttling
   useEffect(() => {
