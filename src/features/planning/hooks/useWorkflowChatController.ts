@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { Artifact, Message } from "@/components/workflow-chat";
 import { EVENT_TYPES } from "../machines/constants";
 import type { PlanningEvent } from "../machines/types";
@@ -11,7 +11,7 @@ type WorkflowChatActor = {
 type WorkflowChatControllerInput = {
   actor: WorkflowChatActor;
   currentStepNumber: number;
-  currentQuestion: string | null;
+  currentQuestionRef: React.RefObject<string | null>;
 };
 
 type WorkflowChatActions = {
@@ -33,6 +33,10 @@ type WorkflowChatController = WorkflowChatActions & {
   formValues: Record<string, string> | null;
 };
 
+/**
+ * Returns stable action callbacks using refs to avoid re-renders.
+ * Callbacks don't depend on currentQuestion to prevent cascading updates.
+ */
 export function useWorkflowChatController(): WorkflowChatController {
   const {
     messages,
@@ -44,14 +48,22 @@ export function useWorkflowChatController(): WorkflowChatController {
     formValues,
   } = useWorkflowChatData();
 
+  // Use ref to keep currentQuestion in sync without triggering re-renders
+  const currentQuestionRef = useRef(currentQuestion);
+
+  // Keep ref in sync with latest question
+  useEffect(() => {
+    currentQuestionRef.current = currentQuestion;
+  }, [currentQuestion]);
+
   const actions = useMemo(
     () =>
       createWorkflowChatActions({
         actor,
         currentStepNumber,
-        currentQuestion,
+        currentQuestionRef,
       }),
-    [actor, currentStepNumber, currentQuestion],
+    [actor, currentStepNumber],
   );
 
   return {
@@ -67,31 +79,33 @@ export function useWorkflowChatController(): WorkflowChatController {
 export function createWorkflowChatActions({
   actor,
   currentStepNumber,
-  currentQuestion,
+  currentQuestionRef,
 }: WorkflowChatControllerInput): WorkflowChatActions {
   const isInteractiveInterview =
     currentStepNumber === 2 || currentStepNumber === 3;
   const isInteractiveForm = currentStepNumber === 1 || currentStepNumber === 5;
 
   return {
-    onSubmitMessage:
-      isInteractiveInterview && currentQuestion
-        ? (message) => {
-            submitInterviewAnswer(
-              actor,
-              currentStepNumber,
-              currentQuestion,
-              message,
-            );
-          }
-        : undefined,
-    onSelectOption:
-      isInteractiveInterview && currentQuestion
-        ? (question, option) => {
-            if (question !== currentQuestion) return;
-            submitInterviewAnswer(actor, currentStepNumber, question, option);
-          }
-        : undefined,
+    onSubmitMessage: isInteractiveInterview
+      ? (message) => {
+          const currentQuestion = currentQuestionRef.current;
+          if (!currentQuestion) return;
+          submitInterviewAnswer(
+            actor,
+            currentStepNumber,
+            currentQuestion,
+            message,
+          );
+        }
+      : undefined,
+    onSelectOption: isInteractiveInterview
+      ? (question, option) => {
+          const currentQuestion = currentQuestionRef.current;
+          if (question !== currentQuestion) return;
+          if (!currentQuestion) return;
+          submitInterviewAnswer(actor, currentStepNumber, question, option);
+        }
+      : undefined,
     onSubmitForm: isInteractiveForm
       ? (_question, values) => {
           submitFormResponses(actor, currentStepNumber, values);

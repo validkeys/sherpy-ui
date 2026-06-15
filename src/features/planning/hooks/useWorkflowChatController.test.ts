@@ -1,3 +1,4 @@
+import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { EVENT_TYPES } from "../machines/constants";
 import { createWorkflowChatActions } from "./useWorkflowChatController";
@@ -5,10 +6,12 @@ import { createWorkflowChatActions } from "./useWorkflowChatController";
 describe("createWorkflowChatActions", () => {
   it("maps interview messages to SUBMIT_ANSWER events for Step 2", () => {
     const actor = { send: vi.fn() };
+    const currentQuestionRef = createRef<string | null>();
+    (currentQuestionRef as any).current = "What problem are you solving?";
     const actions = createWorkflowChatActions({
       actor,
       currentStepNumber: 2,
-      currentQuestion: "What problem are you solving?",
+      currentQuestionRef,
     });
 
     actions.onSubmitMessage?.("  Slow project planning  ");
@@ -23,10 +26,12 @@ describe("createWorkflowChatActions", () => {
 
   it("does not submit empty Step 2 answers", () => {
     const actor = { send: vi.fn() };
+    const currentQuestionRef = createRef<string | null>();
+    (currentQuestionRef as any).current = "What problem are you solving?";
     const actions = createWorkflowChatActions({
       actor,
       currentStepNumber: 2,
-      currentQuestion: "What problem are you solving?",
+      currentQuestionRef,
     });
 
     actions.onSubmitMessage?.("   ");
@@ -36,10 +41,12 @@ describe("createWorkflowChatActions", () => {
 
   it("maps interview messages to SUBMIT_ANSWER events for Step 3", () => {
     const actor = { send: vi.fn() };
+    const currentQuestionRef = createRef<string | null>();
+    (currentQuestionRef as any).current = "Which database?";
     const actions = createWorkflowChatActions({
       actor,
       currentStepNumber: 3,
-      currentQuestion: "Which database?",
+      currentQuestionRef,
     });
 
     actions.onSubmitMessage?.("  Postgres  ");
@@ -54,10 +61,13 @@ describe("createWorkflowChatActions", () => {
 
   it("maps selected Step 3 options only when they answer the active question", () => {
     const actor = { send: vi.fn() };
+    const currentQuestionRef = createRef<string | null>();
+    (currentQuestionRef as any).current =
+      "What technical risk should be handled first?";
     const actions = createWorkflowChatActions({
       actor,
       currentStepNumber: 3,
-      currentQuestion: "What technical risk should be handled first?",
+      currentQuestionRef,
     });
 
     actions.onSelectOption?.("Old question", "Latency", 0);
@@ -78,10 +88,12 @@ describe("createWorkflowChatActions", () => {
 
   it("maps selected Step 2 options only when they answer the active question", () => {
     const actor = { send: vi.fn() };
+    const currentQuestionRef = createRef<string | null>();
+    (currentQuestionRef as any).current = "Which planning problem?";
     const actions = createWorkflowChatActions({
       actor,
       currentStepNumber: 2,
-      currentQuestion: "Which planning problem?",
+      currentQuestionRef,
     });
 
     actions.onSelectOption?.("Old question", "Slow reviews", 0);
@@ -98,10 +110,12 @@ describe("createWorkflowChatActions", () => {
 
   it("maps Step 1 form submissions to SUBMIT_FORM events", () => {
     const actor = { send: vi.fn() };
+    const currentQuestionRef = createRef<string | null>();
+    (currentQuestionRef as any).current = null;
     const actions = createWorkflowChatActions({
       actor,
       currentStepNumber: 1,
-      currentQuestion: null,
+      currentQuestionRef,
     });
 
     actions.onSubmitForm?.("First, let's understand your starting point:", {
@@ -121,10 +135,12 @@ describe("createWorkflowChatActions", () => {
 
   it("maps Step 5 form submissions to SUBMIT_FORM events", () => {
     const actor = { send: vi.fn() };
+    const currentQuestionRef = createRef<string | null>();
+    (currentQuestionRef as any).current = null;
     const actions = createWorkflowChatActions({
       actor,
       currentStepNumber: 5,
-      currentQuestion: null,
+      currentQuestionRef,
     });
 
     actions.onSubmitForm?.("Tell me how this should be implemented:", {
@@ -144,10 +160,12 @@ describe("createWorkflowChatActions", () => {
 
   it("omits interactive handlers when the current step has no supported input", () => {
     const actor = { send: vi.fn() };
+    const currentQuestionRef = createRef<string | null>();
+    (currentQuestionRef as any).current = null;
     const actions = createWorkflowChatActions({
       actor,
       currentStepNumber: 4,
-      currentQuestion: null,
+      currentQuestionRef,
     });
 
     expect(actions.onSubmitMessage).toBeUndefined();
