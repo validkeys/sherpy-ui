@@ -28,7 +28,7 @@
  * - Optimizes when parent ChatMessage re-renders
  */
 
-import { memo, useCallback, useId, useState } from "react";
+import { memo, useCallback, useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type FormValues = Record<string, string>;
@@ -109,6 +109,31 @@ function AnswerCardComponent({
     if (!canSubmitForm) return;
     onSubmitForm?.(values);
   }, [fields, values, canSubmitForm, onSubmitForm]);
+
+  // Auto-submit when all required fields are filled (BUG-031 fix)
+  // This improves UX by eliminating the need to click the submit button
+  useEffect(() => {
+    if (canSubmitForm && !isSubmitting && onSubmitForm) {
+      // Small delay to allow user to review their input
+      const timeoutId = setTimeout(() => {
+        // Validate all fields before submit
+        const newErrors: Record<string, string> = {};
+        fields.forEach((field) => {
+          if (!values[field.id]?.trim()) {
+            newErrors[field.id] = `${field.label} is required`;
+          }
+        });
+
+        if (Object.keys(newErrors).length === 0) {
+          // Clear errors and submit
+          setErrors({});
+          onSubmitForm(values);
+        }
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [canSubmitForm, isSubmitting, onSubmitForm, fields, values]);
 
   return (
     <div className="border border-border-1 rounded-md bg-surface p-3.5 mt-1 flex flex-col gap-2.5">
