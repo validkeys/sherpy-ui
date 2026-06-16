@@ -152,22 +152,42 @@ export function logAIProviderError(
   const normalizedError = toAIProviderError(error);
   const providerError = error as ProviderErrorShape;
 
-  console.error("[ai-provider]", {
+  console.error("[ai-provider] Error occurred:", {
+    // Normalized error info
     code: normalizedError.code,
+    normalizedMessage: normalizedError.message,
+
+    // Provider context
     provider: getProviderName(),
     modelId: AI_MODEL_ID,
     operation: context.operation,
     projectId: context.projectId,
     stepNumber: context.stepNumber,
     artifactKey: context.artifactKey,
+
+    // Raw error details (for debugging misclassification)
+    rawErrorType: error?.constructor?.name,
+    rawErrorMessage: providerError.message,
     providerErrorName: providerError.name ?? providerError.code,
+
+    // HTTP details
     statusCode: providerError.statusCode,
     httpStatusCode: providerError.$metadata?.httpStatusCode,
+
+    // Retry/Rate limit flags
     isRetryable: providerError.isRetryable,
+    isAPICallError: error instanceof APICallError,
+
+    // AWS metadata
     requestId: providerError.$metadata?.requestId,
     extendedRequestId: providerError.$metadata?.extendedRequestId,
     cfId: providerError.$metadata?.cfId,
   });
+
+  // Log full error object for deep inspection (only in development)
+  if (process.env.NODE_ENV === "development") {
+    console.error("[ai-provider] Full error object:", error);
+  }
 
   return normalizedError;
 }
