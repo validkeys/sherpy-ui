@@ -58,8 +58,18 @@ function createProvider() {
         region: BEDROCK_REGION,
         credentialProvider: fromNodeProviderChain(),
       });
-    case "openai":
-      return createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    case "openai": {
+      const openai = createOpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+        compatibility: "compatible",
+        ...(process.env.OPENAI_BASE_URL && {
+          baseURL: process.env.OPENAI_BASE_URL,
+        }),
+      });
+      // Use Chat Completions API (not Responses API) for compatibility with
+      // OpenAI-compatible providers like GLM, vLLM, LM Studio, etc.
+      return (modelId: string) => openai.chat(modelId);
+    }
     case "anthropic":
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   }

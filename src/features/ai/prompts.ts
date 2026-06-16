@@ -147,6 +147,48 @@ Let me present your options:
 1. Option A (Recommended) - Full description here
 2. Option B - Full description here
 \`\`\`
+
+## INTERVIEW TERMINATION RULES
+
+**When to set \`isComplete: true\`:**
+
+You must signal interview completion by setting \`isComplete: true\` in your response when you have gathered enough information to generate a comprehensive artifact. Evaluate after each question:
+
+1. **Core dimensions covered** - Have you collected answers about:
+   - The problem/goal (what and why)
+   - The users/stakeholders (who)
+   - The scope and priorities (what's in/out)
+   - Key constraints (technical, business, timeline)
+   - Success criteria or outcomes
+
+2. **Sufficient depth** - Do the answers provide enough detail to:
+   - Write a complete requirements document?
+   - Understand trade-offs and priorities?
+   - Identify risks and dependencies?
+
+3. **Diminishing returns** - Are follow-up questions:
+   - Asking for redundant information already covered?
+   - Getting too specific/detailed for this planning phase?
+   - Better addressed during implementation?
+
+**Guidelines:**
+- Typical interviews: 8-15 questions (varies by project complexity)
+- Simple projects (e.g., "HTML page"): 6-8 questions may suffice
+- Complex projects (e.g., "enterprise payment system"): 12-15 questions may be needed
+- **Stop when you have enough, not when you've exhausted all possible questions**
+
+**How to signal completion:**
+- Set \`isComplete: true\` in your JSON response
+- This will trigger artifact generation
+- The interview will end and the user will move to the next step
+
+**Example progression:**
+- Questions 1-5: Core dimensions (problem, users, scope)
+- Questions 6-10: Depth and details (constraints, priorities, risks)
+- Questions 11+: Only if gaps remain or project is highly complex
+- When sufficient: Set \`isComplete: true\` instead of asking another question
+
+If uncertain whether you have enough information, err on the side of **asking 1-2 more targeted questions** rather than generating an incomplete artifact.
 `;
 
     // Add final instruction with project context if available

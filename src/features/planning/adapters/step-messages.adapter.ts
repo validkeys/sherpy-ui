@@ -12,6 +12,7 @@ import { createLoadingMessage } from "./message-creators/artifact-messages";
 import {
   createFormQuestionMessage,
   createFormResponseMessages,
+  FORM_FIELDS,
 } from "./message-creators/form-messages";
 import {
   createCurrentInterviewMessages,
@@ -50,7 +51,12 @@ export function createStepMessages(
       ),
     );
     if (
-      shouldShowFormQuestion(isActiveStep, activeState, context.step1Responses)
+      shouldShowFormQuestion(
+        isActiveStep,
+        activeState,
+        context.step1Responses,
+        1,
+      )
     ) {
       messages.push(createFormQuestionMessage(context, stepNumber));
     }
@@ -82,7 +88,12 @@ export function createStepMessages(
       ),
     );
     if (
-      shouldShowFormQuestion(isActiveStep, activeState, context.step5Responses)
+      shouldShowFormQuestion(
+        isActiveStep,
+        activeState,
+        context.step5Responses,
+        5,
+      )
     ) {
       messages.push(createFormQuestionMessage(context, stepNumber));
     }
@@ -108,12 +119,25 @@ export function createStepMessages(
  * Shows form when:
  * - This is the active step
  * - Currently in collecting info state
- * - No responses have been submitted yet
+ * - NOT ALL required fields have been filled yet
+ *
+ * BUG FIX (2026-06-15):
+ * Previously checked `Object.keys(responses).length === 0` which caused the form
+ * to disappear after filling just ONE field, preventing users from accessing the
+ * second field. Now checks that ALL required form fields have values before hiding
+ * the form.
+ *
+ * @param isActiveStep - Whether this is the currently active workflow step
+ * @param activeState - Current normalized workflow state
+ * @param responses - Current form field responses (may be partial)
+ * @param stepNumber - Step number to determine which form fields are required
+ * @returns true if form should be visible, false if all fields are complete
  */
 function shouldShowFormQuestion(
   isActiveStep: boolean,
   activeState: NormalizedWorkflowState,
   responses: Record<string, string>,
+  stepNumber: 1 | 5,
 ): boolean {
   if (!isActiveStep) return false;
 
@@ -121,9 +145,20 @@ function shouldShowFormQuestion(
     activeState.status === STEP_STATES.STEP_1.COLLECTING_INFO ||
     activeState.status === STEP_STATES.STEP_5.COLLECTING_INFO;
 
-  const hasNoResponses = Object.keys(responses).length === 0;
+  if (!isCollectingInfo) return false;
 
-  return isCollectingInfo && hasNoResponses;
+  // Get required form fields for this step
+  const requiredFields = FORM_FIELDS[stepNumber];
+
+  // Check if ALL required fields have non-empty values
+  // Form should remain visible until ALL fields are filled
+  const allFieldsFilled = requiredFields.every((field) => {
+    const value = responses[field.id];
+    return value !== undefined && value.trim().length > 0;
+  });
+
+  // Show form if NOT all fields are filled
+  return !allFieldsFilled;
 }
 
 /**

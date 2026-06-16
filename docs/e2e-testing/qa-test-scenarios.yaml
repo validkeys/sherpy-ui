@@ -1,0 +1,972 @@
+---
+# QA Test Scenarios - Sherpy Planning Workflow
+# Step-by-step testing scenarios for QA personnel
+# Version: 1.0
+# Created: 2025-01-27
+
+meta:
+  version: "1.0"
+  created: "2025-01-27"
+  purpose: "Comprehensive QA test scenarios for manual testing"
+  audience: "QA testers, manual testers"
+  estimated_time: "30-40 minutes per full workflow test"
+  prerequisites:
+    - "Dev server running on http://localhost:5180"
+    - "Browser with DevTools open"
+    - "Clean browser state (incognito mode recommended)"
+    - "Access to server logs terminal"
+
+# =============================================================================
+# TEST SCENARIOS
+# =============================================================================
+
+scenarios:
+
+  # ===========================================================================
+  # SCENARIO 1: HAPPY PATH - COMPLETE WORKFLOW (NEW PROJECT FROM SCRATCH)
+  # ===========================================================================
+
+  - id: "S001"
+    name: "Happy Path - New Project from Scratch"
+    type: "end-to-end"
+    priority: "critical"
+    description: "Complete a full planning workflow from project creation through all 10 stages"
+    estimated_duration: "30-35 minutes"
+    preconditions:
+      - "User is logged in (or auth is mocked)"
+      - "Dashboard is accessible"
+      - "No corrupted localStorage state"
+
+    test_steps:
+
+      # --- Project Creation ---
+      - step: 1
+        id: "S001-01"
+        action: "Create New Project"
+        description: "Navigate to dashboard and create a new project"
+        instructions:
+          - "Navigate to http://localhost:5180"
+          - "Click 'New project' button"
+          - "Select 'Start from scratch' option"
+          - "Enter project name: 'QA Test - Healthcare Portal - [YYYY-MM-DD HH:MM]'"
+          - "Click 'Create project' button"
+        expected_result:
+          - "Project is created successfully"
+          - "Browser navigates to /project/{projectId}/build"
+          - "Planning workflow UI loads (StepContainer or WorkflowChat)"
+          - "Stage 1 (Gap Analysis) is active"
+          - "Form with 2 fields is displayed"
+        verification:
+          - checklist:
+            - "Project name appears in header or breadcrumb"
+            - "URL contains valid project ID"
+            - "Stage 1 form visible with 2 input fields"
+            - "No console errors in DevTools"
+            - "No server errors in terminal logs"
+        on_failure:
+          severity: "critical"
+          stop_test: true
+          actions:
+            - "Take screenshot of current state"
+            - "Copy console errors"
+            - "Copy server logs"
+            - "File bug report with severity: critical"
+
+      # --- Stage 1: Gap Analysis ---
+      - step: 2
+        id: "S001-02"
+        action: "Complete Gap Analysis Form"
+        description: "Fill out the Gap Analysis form with project details"
+        instructions:
+          - "Locate first field: 'Do you have existing requirements?'"
+          - "Enter text: 'No, starting from scratch'"
+          - "Locate second field: 'What are you building?'"
+          - "Enter multi-line text:"
+          - "  'A comprehensive healthcare patient portal with:'"
+          - "  '- Online appointment scheduling with calendar integration'"
+          - "  '- Secure access to medical records and test results'"
+          - "  '- Direct messaging with healthcare providers'"
+          - "  '- Prescription refill requests and medication tracking'"
+          - "  '- Billing and insurance information management'"
+          - "Click 'Submit' or 'Continue' button"
+        expected_result:
+          - "Form submission is accepted"
+          - "Loading indicator appears (spinner, progress bar, or 'Generating...' message)"
+          - "After 15-30 seconds, artifact generation completes"
+          - "UI transitions to Stage 2 (Business Requirements Interview)"
+          - "First business question is displayed"
+        verification:
+          checklist:
+            - "Both form fields accepted input"
+            - "Submit button was enabled after filling both fields"
+            - "Loading state was visible during generation"
+            - "Artifact generation completed within 60 seconds"
+            - "UI transitioned to Stage 2 automatically"
+            - "First business question is visible"
+            - "Question is contextual (references 'healthcare' or 'portal')"
+            - "No console errors"
+            - "No server errors"
+        on_failure:
+          severity: "critical"
+          stop_test: true
+          actions:
+            - "Take screenshot showing error or stuck state"
+            - "Check browser console for errors"
+            - "Check server logs for generation failures"
+            - "Check network tab for failed API calls"
+            - "File bug report with all evidence"
+
+      # --- Stage 2: Business Requirements Interview (10 questions) ---
+      - step: 3
+        id: "S001-03"
+        action: "Business Requirements Interview - Question 1"
+        description: "Answer the first business requirements question"
+        instructions:
+          - "Read the AI-generated question carefully"
+          - "Verify question is contextual (mentions healthcare/portal specifics)"
+          - "If multiple-choice options are shown, click the most relevant option"
+          - "If text input is shown, enter a relevant answer"
+          - "Click 'Submit' or wait for auto-advance"
+        expected_result:
+          - "Answer is accepted"
+          - "Loading indicator appears briefly (3-5 seconds)"
+          - "Second business question loads"
+        verification:
+          checklist:
+            - "Question 1 was contextual (not generic)"
+            - "Question referenced project details from Stage 1"
+            - "Answer was recorded successfully"
+            - "Question 2 loaded within 10 seconds"
+            - "Question 2 is also contextual"
+            - "No errors in console or server logs"
+        on_failure:
+          severity: "high"
+          stop_test: true
+          actions:
+            - "Document the exact question text"
+            - "Note whether it was contextual or generic"
+            - "Take screenshot"
+            - "File bug with contextual verification details"
+
+      - step: 4
+        id: "S001-04"
+        action: "Business Requirements Interview - Questions 2-10"
+        description: "Complete the remaining 9 business questions"
+        instructions:
+          - "For each question (2 through 10):"
+          - "  1. Read the question"
+          - "  2. Verify it's contextual to healthcare portal"
+          - "  3. Select/enter an appropriate answer"
+          - "  4. Wait for next question to load (3-5 seconds)"
+          - "Continue until all 10 questions are answered"
+        expected_result:
+          - "All 10 questions are answered successfully"
+          - "Each question is contextual to the project"
+          - "After question 10, artifact generation begins"
+          - "Loading indicator shows 'Generating Business Requirements artifact...'"
+          - "After 20-30 seconds, Business Requirements artifact is created"
+          - "UI transitions to Stage 3 (Technical Requirements Interview)"
+          - "First technical question is displayed"
+        verification:
+          checklist:
+            - "All 10 questions were answered"
+            - "Each question was contextual (not generic)"
+            - "Questions built upon previous answers"
+            - "No duplicate questions"
+            - "Artifact generation completed within 60 seconds"
+            - "Transitioned to Stage 3 automatically"
+            - "First technical question is visible"
+            - "No console or server errors"
+        on_failure:
+          severity: "high"
+          stop_test: true
+          actions:
+            - "Note which question number failed"
+            - "Document the question text and issue"
+            - "Check if questions were contextual up to failure point"
+            - "Take screenshot"
+            - "File bug report"
+
+      # --- Stage 3: Technical Requirements Interview (10 questions) ---
+      - step: 5
+        id: "S001-05"
+        action: "Technical Requirements Interview - Questions 1-10"
+        description: "Complete all 10 technical requirements questions"
+        instructions:
+          - "For each technical question (1 through 10):"
+          - "  1. Read the question (should be technical in nature)"
+          - "  2. Verify it's relevant to healthcare portal tech requirements"
+          - "  3. Select/enter appropriate technical answer"
+          - "  4. Wait for next question (3-5 seconds)"
+          - "Expected topics: architecture, tech stack, database, security, deployment, APIs, testing"
+        expected_result:
+          - "All 10 technical questions are answered"
+          - "Questions are technical and contextual"
+          - "After question 10, Technical Requirements artifact generation begins"
+          - "Loading indicator shows progress"
+          - "After 20-30 seconds, artifact is created"
+          - "UI transitions to Stage 4 (Style Anchors)"
+        verification:
+          checklist:
+            - "All 10 technical questions answered"
+            - "Questions were technical (not business-focused)"
+            - "Questions were contextual to healthcare portal"
+            - "Artifact generation completed within 60 seconds"
+            - "Transitioned to Stage 4 automatically"
+            - "No errors"
+        on_failure:
+          severity: "high"
+          stop_test: true
+          actions:
+            - "Document question that failed"
+            - "Note if questions were technical vs business"
+            - "Take screenshot"
+            - "File bug report"
+
+      # --- Stage 4: Style Anchors (Automated) ---
+      - step: 6
+        id: "S001-06"
+        action: "Style Anchors Collection (Automated)"
+        description: "Verify automated style anchors generation"
+        instructions:
+          - "Stage 4 is automated - no user input required"
+          - "Watch for loading indicator"
+          - "Wait for generation to complete (20-30 seconds)"
+          - "Verify automatic transition to Stage 5"
+        expected_result:
+          - "Loading indicator appears immediately"
+          - "Message shows 'Collecting style anchors...' or similar"
+          - "After 20-30 seconds, artifact is created"
+          - "UI transitions automatically to Stage 5 (Implementation Planner)"
+          - "Stage 5 form is displayed"
+        verification:
+          checklist:
+            - "No user input was required"
+            - "Loading state was visible"
+            - "Generation completed within 60 seconds"
+            - "Transitioned to Stage 5 automatically"
+            - "Stage 5 form is visible"
+            - "No errors"
+        on_failure:
+          severity: "high"
+          stop_test: true
+          actions:
+            - "Check if stage got stuck in loading state"
+            - "Check server logs for generation errors"
+            - "Take screenshot"
+            - "File bug report"
+
+      # --- Stage 5: Implementation Planner ---
+      - step: 7
+        id: "S001-07"
+        action: "Complete Implementation Planner Form"
+        description: "Fill out implementation planning form"
+        instructions:
+          - "Locate form fields (may vary, but typically 2-4 fields)"
+          - "Common fields: deployment strategy, tech stack, additional requirements"
+          - "Fill each field with relevant technical details"
+          - "Click 'Submit' or 'Continue' button"
+        expected_result:
+          - "Form submission is accepted"
+          - "Loading indicator appears"
+          - "After 15-25 seconds, Implementation Plan artifact is created"
+          - "UI transitions to Stage 6 (Definition of Done)"
+        verification:
+          checklist:
+            - "All form fields accepted input"
+            - "Submit button enabled when form complete"
+            - "Artifact generation completed within 60 seconds"
+            - "Transitioned to Stage 6 automatically"
+            - "No errors"
+        on_failure:
+          severity: "high"
+          stop_test: true
+          actions:
+            - "Document form fields that failed"
+            - "Take screenshot"
+            - "Check console and server logs"
+            - "File bug report"
+
+      # --- Stage 6: Definition of Done (Automated) ---
+      - step: 8
+        id: "S001-08"
+        action: "Definition of Done Generation (Automated)"
+        description: "Verify automated Definition of Done generation"
+        instructions:
+          - "Stage 6 is automated - no user input"
+          - "Watch for loading indicator"
+          - "Wait for generation (20-30 seconds)"
+        expected_result:
+          - "Loading indicator appears"
+          - "Artifact generated within 30 seconds"
+          - "Transitions to Stage 7 automatically"
+        verification:
+          checklist:
+            - "No user input required"
+            - "Generation completed within 60 seconds"
+            - "Transitioned to Stage 7"
+            - "No errors"
+        on_failure:
+          severity: "moderate"
+          stop_test: true
+          actions:
+            - "Take screenshot"
+            - "Check logs"
+            - "File bug report"
+
+      # --- Stage 7: Architecture Decision Records (Review Only) ---
+      - step: 9
+        id: "S001-09"
+        action: "Architecture Decision Records Review"
+        description: "Review ADRs (may be automatic or require manual advance)"
+        instructions:
+          - "Stage 7 may show review content or auto-continue"
+          - "If artifact is shown for review, click 'Continue' or 'Next'"
+          - "If stage auto-continues, wait for Stage 8"
+        expected_result:
+          - "Stage 7 completes (either via review or auto-continue)"
+          - "Transitions to Stage 8 (Delivery Timeline)"
+        verification:
+          checklist:
+            - "Stage 7 completed successfully"
+            - "Transitioned to Stage 8"
+            - "No errors"
+        on_failure:
+          severity: "moderate"
+          stop_test: false
+          actions:
+            - "Take screenshot"
+            - "File bug report but continue testing"
+
+      # --- Stage 8: Delivery Timeline (Automated) ---
+      - step: 10
+        id: "S001-10"
+        action: "Delivery Timeline Generation (Automated)"
+        description: "Verify automated timeline generation"
+        instructions:
+          - "Wait for automated generation (20-30 seconds)"
+          - "Verify transition to Stage 9"
+        expected_result:
+          - "Artifact generated within 30 seconds"
+          - "Transitions to Stage 9 (QA Test Plan)"
+        verification:
+          checklist:
+            - "Generation completed within 60 seconds"
+            - "Transitioned to Stage 9"
+            - "No errors"
+        on_failure:
+          severity: "moderate"
+          stop_test: false
+          actions:
+            - "Take screenshot, file bug, continue testing"
+
+      # --- Stage 9: QA Test Plan (Automated) ---
+      - step: 11
+        id: "S001-11"
+        action: "QA Test Plan Generation (Automated)"
+        description: "Verify automated QA test plan generation"
+        instructions:
+          - "Wait for automated generation (20-30 seconds)"
+          - "Verify transition to Stage 10"
+        expected_result:
+          - "Artifact generated within 30 seconds"
+          - "Transitions to Stage 10 (Summaries)"
+        verification:
+          checklist:
+            - "Generation completed within 60 seconds"
+            - "Transitioned to Stage 10"
+            - "No errors"
+        on_failure:
+          severity: "moderate"
+          stop_test: false
+          actions:
+            - "Take screenshot, file bug, continue testing"
+
+      # --- Stage 10: Generate Summaries (Automated, Final) ---
+      - step: 12
+        id: "S001-12"
+        action: "Generate Summaries (Final Stage)"
+        description: "Verify final artifact generation and workflow completion"
+        instructions:
+          - "Wait for automated generation (20-30 seconds)"
+          - "Look for workflow completion message or indicator"
+        expected_result:
+          - "Summaries artifact generated within 30 seconds"
+          - "Workflow shows 'Complete' status"
+          - "All 10 artifacts are generated"
+          - "Completion message or success indicator displayed"
+        verification:
+          checklist:
+            - "Summaries artifact generated"
+            - "Workflow marked as complete"
+            - "All 10 stages show 'completed' status"
+            - "No errors in final stage"
+        on_failure:
+          severity: "high"
+          stop_test: false
+          actions:
+            - "Take screenshot"
+            - "Check how many artifacts were generated"
+            - "File bug report"
+
+      # --- Artifact Verification ---
+      - step: 13
+        id: "S001-13"
+        action: "Verify All Artifacts Generated"
+        description: "Check that all 10 artifacts exist and contain valid content"
+        instructions:
+          - "Navigate to Review Mode (if separate tab) or Artifacts section"
+          - "For each artifact (1-10):"
+          - "  1. Click to open/view artifact"
+          - "  2. Verify artifact contains content (not empty)"
+          - "  3. Verify content is relevant to project (mentions healthcare portal)"
+          - "  4. Verify content is properly formatted (YAML or Markdown)"
+        expected_result:
+          - "All 10 artifacts are present"
+          - "Each artifact contains substantive content (>500 bytes)"
+          - "Content is relevant to the healthcare portal project"
+          - "Content is properly formatted (no parse errors)"
+        verification:
+          checklist:
+            - "Artifact 1: Gap Analysis - contains form answers"
+            - "Artifact 2: Business Requirements - contains 10 Q&A pairs"
+            - "Artifact 3: Technical Requirements - contains 10 technical Q&A"
+            - "Artifact 4: Style Anchors - contains style information"
+            - "Artifact 5: Implementation Plan - contains milestones/tasks"
+            - "Artifact 6: Definition of Done - contains acceptance criteria"
+            - "Artifact 7: Architecture Decisions - contains ADRs"
+            - "Artifact 8: Delivery Timeline - contains timeline"
+            - "Artifact 9: QA Test Plan - contains test cases"
+            - "Artifact 10: Summaries - contains executive/developer summaries"
+            - "All artifacts are contextual (mention project specifics)"
+        on_failure:
+          severity: "high"
+          stop_test: false
+          actions:
+            - "Document which artifact is empty or invalid"
+            - "Take screenshot of artifact content"
+            - "Check if artifact file exists in storage"
+            - "File bug report per artifact issue"
+
+      # --- State Persistence Testing ---
+      - step: 14
+        id: "S001-14"
+        action: "Test State Persistence - Page Refresh"
+        description: "Verify workflow state persists after page refresh"
+        instructions:
+          - "With workflow in 'completed' state, note current stage"
+          - "Press F5 or click browser refresh button"
+          - "Wait for page to reload"
+        expected_result:
+          - "Page reloads successfully"
+          - "Workflow state is preserved (still shows 'completed')"
+          - "All 10 artifacts are still visible"
+          - "No errors or loss of data"
+        verification:
+          checklist:
+            - "Page reloaded without errors"
+            - "Workflow shows 'completed' status"
+            - "All artifacts still present"
+            - "Project details preserved"
+            - "No console errors on reload"
+        on_failure:
+          severity: "critical"
+          stop_test: false
+          actions:
+            - "Document what state was lost"
+            - "Check localStorage in DevTools"
+            - "Take screenshot before/after refresh"
+            - "File bug report (this is BUG-018 category)"
+
+      - step: 15
+        id: "S001-15"
+        action: "Test State Persistence - Navigate Away and Return"
+        description: "Verify workflow state persists when navigating away"
+        instructions:
+          - "Click project name or breadcrumb to return to dashboard"
+          - "Verify project appears in dashboard project list"
+          - "Click project card to reopen project"
+        expected_result:
+          - "Returns to dashboard successfully"
+          - "Project shows in project list with 'completed' status"
+          - "Clicking project reopens workflow"
+          - "Workflow state is preserved (completed, all artifacts present)"
+        verification:
+          checklist:
+            - "Dashboard navigation worked"
+            - "Project appeared in list"
+            - "Project showed correct status"
+            - "Reopening project preserved state"
+            - "All artifacts still accessible"
+        on_failure:
+          severity: "high"
+          stop_test: false
+          actions:
+            - "Take screenshots of dashboard and reopened project"
+            - "File bug report"
+
+    # Scenario Success Criteria
+    success_criteria:
+      - "All 15 test steps completed successfully"
+      - "All 10 workflow stages completed"
+      - "All 10 artifacts generated with valid content"
+      - "All contextual checks passed (questions referenced project)"
+      - "State persistence tests passed"
+      - "Total test duration: 30-40 minutes"
+      - "Zero critical errors encountered"
+
+    acceptance_criteria:
+      - "PASS: All 15 steps green, all artifacts valid, no critical errors"
+      - "PARTIAL PASS: 13-14 steps green, all critical steps passed, only minor issues"
+      - "FAIL: Any critical step failed, workflow blocked, or artifacts empty"
+
+  # ===========================================================================
+  # SCENARIO 2: ERROR HANDLING - EMPTY FORM SUBMISSION
+  # ===========================================================================
+
+  - id: "S002"
+    name: "Error Handling - Empty Form Submission"
+    type: "negative"
+    priority: "high"
+    description: "Verify form validation prevents submission with empty fields"
+    estimated_duration: "5 minutes"
+    preconditions:
+      - "New project created, at Stage 1 Gap Analysis form"
+
+    test_steps:
+      - step: 1
+        id: "S002-01"
+        action: "Attempt Empty Form Submission"
+        instructions:
+          - "Navigate to Stage 1 (Gap Analysis form)"
+          - "Leave both form fields empty"
+          - "Click 'Submit' button"
+        expected_result:
+          - "Submit button is DISABLED (cannot click)"
+          - "OR validation error messages appear"
+          - "Form does NOT submit"
+          - "No navigation to Stage 2"
+        verification:
+          checklist:
+            - "Submit button was disabled with empty fields"
+            - "OR error messages shown on empty fields"
+            - "Form did not submit"
+            - "Stayed on Stage 1"
+        on_failure:
+          severity: "high"
+          actions:
+            - "Take screenshot showing empty form submitting"
+            - "File bug: form validation not working"
+
+      - step: 2
+        id: "S002-02"
+        action: "Partial Form Submission"
+        instructions:
+          - "Fill ONLY the first field"
+          - "Leave second field empty"
+          - "Try to click Submit"
+        expected_result:
+          - "Submit button remains disabled"
+          - "OR validation error on empty second field"
+          - "Cannot submit with partial data"
+        verification:
+          checklist:
+            - "Submit blocked with only one field filled"
+            - "Appropriate validation feedback shown"
+        on_failure:
+          severity: "high"
+          actions:
+            - "Take screenshot, file bug"
+
+    success_criteria:
+      - "Cannot submit form with empty required fields"
+      - "Clear validation feedback provided to user"
+
+  # ===========================================================================
+  # SCENARIO 3: NAVIGATION - BACKWARD/FORWARD THROUGH STAGES
+  # ===========================================================================
+
+  - id: "S003"
+    name: "Navigation - Backward and Forward Through Stages"
+    type: "functional"
+    priority: "high"
+    description: "Verify user can navigate backward and forward through completed stages"
+    estimated_duration: "10 minutes"
+    preconditions:
+      - "Workflow completed through at least Stage 3 (first 3 stages done)"
+
+    test_steps:
+      - step: 1
+        id: "S003-01"
+        action: "Navigate Backward"
+        instructions:
+          - "From Stage 3 (current stage), click 'Back' button"
+          - "Verify navigation to Stage 2"
+          - "Click 'Back' again"
+          - "Verify navigation to Stage 1"
+        expected_result:
+          - "Can navigate backward through completed stages"
+          - "Each stage displays previously entered data"
+          - "No data loss during backward navigation"
+        verification:
+          checklist:
+            - "Backward navigation worked"
+            - "Stage 2 showed previous answers"
+            - "Stage 1 showed form data from original submission"
+            - "No errors during navigation"
+        on_failure:
+          severity: "high"
+          actions:
+            - "Document which stage navigation failed"
+            - "Check if data was lost"
+            - "Take screenshot, file bug"
+
+      - step: 2
+        id: "S003-02"
+        action: "Navigate Forward"
+        instructions:
+          - "From Stage 1, click 'Next' or 'Continue' button"
+          - "Verify navigation to Stage 2"
+          - "Click 'Next' again"
+          - "Verify return to Stage 3 (current stage)"
+        expected_result:
+          - "Can navigate forward through previously completed stages"
+          - "Returns to current active stage"
+          - "No data loss or errors"
+        verification:
+          checklist:
+            - "Forward navigation worked"
+            - "Returned to Stage 3 (current stage)"
+            - "No data loss"
+            - "No errors"
+        on_failure:
+          severity: "high"
+          actions:
+            - "Take screenshot, file bug"
+
+    success_criteria:
+      - "Backward navigation works through all completed stages"
+      - "Forward navigation works back to current stage"
+      - "No data loss during navigation"
+
+  # ===========================================================================
+  # SCENARIO 4: EDGE CASE - VERY LONG TEXT INPUT
+  # ===========================================================================
+
+  - id: "S004"
+    name: "Edge Case - Very Long Text Input"
+    type: "edge-case"
+    priority: "moderate"
+    description: "Verify system handles very long text inputs gracefully"
+    estimated_duration: "5 minutes"
+    preconditions:
+      - "New project created, at Stage 1 form"
+
+    test_steps:
+      - step: 1
+        id: "S004-01"
+        action: "Submit Form with Very Long Text"
+        instructions:
+          - "In first field, enter a 500-character string"
+          - "In second field (project description), enter 5000+ characters"
+          - "Submit form"
+        expected_result:
+          - "Form accepts input (or shows character limit)"
+          - "Submission succeeds without errors"
+          - "Artifact generation handles long text"
+          - "No UI breaking or layout issues"
+        verification:
+          checklist:
+            - "Long text was accepted OR character limit enforced"
+            - "Form submitted successfully"
+            - "Artifact generated with long content"
+            - "UI remained functional"
+            - "No console errors about text length"
+        on_failure:
+          severity: "moderate"
+          actions:
+            - "Take screenshot showing broken UI"
+            - "Note what broke (layout, generation, etc.)"
+            - "File bug"
+
+    success_criteria:
+      - "System handles long text without crashing"
+      - "Clear character limits enforced if applicable"
+
+  # ===========================================================================
+  # SCENARIO 5: ARTIFACT EXPORT - DOWNLOAD AND COPY
+  # ===========================================================================
+
+  - id: "S005"
+    name: "Artifact Export - Download and Copy to Clipboard"
+    type: "functional"
+    priority: "moderate"
+    description: "Verify artifact export features work correctly"
+    estimated_duration: "5 minutes"
+    preconditions:
+      - "At least one artifact generated (Stage 1 complete)"
+
+    test_steps:
+      - step: 1
+        id: "S005-01"
+        action: "Download Artifact as File"
+        instructions:
+          - "Navigate to Review Mode or Artifacts section"
+          - "Click 'Download' button for Gap Analysis artifact"
+          - "Check browser downloads folder"
+        expected_result:
+          - "File downloads successfully"
+          - "File has correct name (e.g., 'gap-analysis-worksheet.md')"
+          - "File contains artifact content"
+          - "Content is properly formatted"
+        verification:
+          checklist:
+            - "File downloaded"
+            - "File name correct"
+            - "File opens and contains content"
+            - "Content matches what's shown in UI"
+        on_failure:
+          severity: "moderate"
+          actions:
+            - "Check browser console for errors"
+            - "Check network tab for download request"
+            - "File bug with severity: moderate"
+
+      - step: 2
+        id: "S005-02"
+        action: "Copy Artifact to Clipboard"
+        instructions:
+          - "Click 'Copy to clipboard' button for artifact"
+          - "Open a text editor"
+          - "Paste (Ctrl+V or Cmd+V)"
+        expected_result:
+          - "Copy succeeds (success message shown)"
+          - "Pasted content matches artifact content"
+          - "Content is properly formatted"
+        verification:
+          checklist:
+            - "Copy action succeeded"
+            - "Pasted content matches UI"
+            - "Formatting preserved"
+        on_failure:
+          severity: "low"
+          actions:
+            - "Take screenshot, file bug"
+
+    success_criteria:
+      - "Download feature works for all artifacts"
+      - "Copy to clipboard works for all artifacts"
+
+  # ===========================================================================
+  # SCENARIO 6: CONCURRENT PROJECTS - MULTIPLE PROJECTS MANAGEMENT
+  # ===========================================================================
+
+  - id: "S006"
+    name: "Concurrent Projects - Multiple Active Projects"
+    type: "functional"
+    priority: "moderate"
+    description: "Verify user can manage multiple projects simultaneously"
+    estimated_duration: "15 minutes"
+    preconditions:
+      - "User is logged in"
+      - "Dashboard is accessible"
+
+    test_steps:
+      - step: 1
+        id: "S006-01"
+        action: "Create First Project"
+        instructions:
+          - "Create project: 'QA Test Project A'"
+          - "Complete Stage 1 (Gap Analysis)"
+          - "Return to dashboard"
+        expected_result:
+          - "Project A appears in dashboard with progress indicator"
+          - "Shows 'Stage 1 completed' or similar status"
+        verification:
+          checklist:
+            - "Project A in dashboard"
+            - "Shows correct progress"
+
+      - step: 2
+        id: "S006-02"
+        action: "Create Second Project"
+        instructions:
+          - "From dashboard, create project: 'QA Test Project B'"
+          - "Complete Stage 1 and Stage 2 (Business Requirements)"
+          - "Return to dashboard"
+        expected_result:
+          - "Both Project A and Project B appear in dashboard"
+          - "Each shows correct individual progress"
+          - "No cross-contamination of data"
+        verification:
+          checklist:
+            - "Both projects listed"
+            - "Project A still shows Stage 1 progress"
+            - "Project B shows Stage 2 progress"
+            - "No data mixing"
+
+      - step: 3
+        id: "S006-03"
+        action: "Switch Between Projects"
+        instructions:
+          - "Open Project A from dashboard"
+          - "Verify it's at Stage 2 (ready to continue from Stage 1)"
+          - "Return to dashboard"
+          - "Open Project B"
+          - "Verify it's at Stage 3 (ready to continue from Stage 2)"
+        expected_result:
+          - "Each project maintains its own state"
+          - "No data loss or mixing"
+          - "Can seamlessly switch between projects"
+        verification:
+          checklist:
+            - "Project A state preserved"
+            - "Project B state preserved"
+            - "No cross-contamination"
+            - "Navigation between projects works"
+
+    success_criteria:
+      - "Can create and manage multiple projects"
+      - "Each project maintains independent state"
+      - "No data cross-contamination between projects"
+
+# =============================================================================
+# GENERAL TESTING GUIDELINES
+# =============================================================================
+
+testing_guidelines:
+  before_each_test:
+    - "Clear browser cache and localStorage (or use incognito mode)"
+    - "Verify dev server is running on http://localhost:5180"
+    - "Open browser DevTools (F12) for console monitoring"
+    - "Have terminal with server logs visible"
+    - "Prepare screenshot tool or know screenshot shortcuts"
+
+  during_test:
+    - "Take screenshots at key moments (stage transitions, errors, completions)"
+    - "Monitor browser console for errors"
+    - "Monitor server logs for errors"
+    - "Note actual timings vs expected timings"
+    - "Record any unexpected behavior, even if not a blocker"
+
+  after_each_test:
+    - "Document test results in tracking.yaml"
+    - "File bug reports for all issues encountered"
+    - "Save all screenshots to .tmp-docs/screenshots/"
+    - "Update learnings.md with new insights"
+    - "Report findings to team"
+
+  bug_severity_guide:
+    critical:
+      - "Workflow cannot proceed past this point"
+      - "Data loss or corruption occurs"
+      - "Application crashes"
+      - "Security vulnerability"
+    high:
+      - "Core feature doesn't work as expected"
+      - "Significant UX issue affecting usability"
+      - "Incorrect data generated in artifacts"
+    moderate:
+      - "Feature works but has issues (slow, inconsistent)"
+      - "UI/UX issue that doesn't block usage"
+      - "Non-critical validation issue"
+    low:
+      - "Cosmetic issue"
+      - "Minor typo or wording issue"
+      - "Nice-to-have feature not working"
+
+  screenshot_naming:
+    format: "test-{scenario-id}-{step-id}-{description}.png"
+    examples:
+      - "test-S001-01-project-created.png"
+      - "test-S001-02-gap-analysis-submitted.png"
+      - "test-S002-01-empty-form-error.png"
+
+# =============================================================================
+# REFERENCE MATERIALS
+# =============================================================================
+
+reference_files:
+  - path: "docs/e2e-testing/guide-workflow-chat.md"
+    description: "Detailed manual testing guide (WorkflowChat UI)"
+
+  - path: "docs/e2e-testing/tracking-template.yaml"
+    description: "Template for test run tracking"
+
+  - path: "docs/e2e-testing/bug-report-template.yaml"
+    description: "Template for filing bug reports"
+
+  - path: "docs/planning/mini-app/planning/business-requirements.yaml"
+    description: "Business requirements and workflow definition"
+
+# =============================================================================
+# EXPECTED ARTIFACTS PER STAGE
+# =============================================================================
+
+artifact_reference:
+  stage_1:
+    name: "Gap Analysis"
+    artifact_file: "gap-analysis-worksheet.md"
+    expected_content: "Form answers from Stage 1 submission"
+
+  stage_2:
+    name: "Business Requirements"
+    artifact_file: "business-requirements.yaml"
+    expected_content: "10 Q&A pairs from business interview"
+
+  stage_3:
+    name: "Technical Requirements"
+    artifact_file: "technical-requirements.yaml"
+    expected_content: "10 Q&A pairs from technical interview"
+
+  stage_4:
+    name: "Style Anchors"
+    artifact_file: "style-anchors.yaml"
+    expected_content: "Code style patterns from codebase analysis"
+
+  stage_5:
+    name: "Implementation Plan"
+    artifact_file: "milestones.yaml and milestone-m*.tasks.yaml"
+    expected_content: "Milestones and detailed task breakdown"
+
+  stage_6:
+    name: "Definition of Done"
+    artifact_file: "definition-of-done.yaml"
+    expected_content: "Acceptance criteria for project completion"
+
+  stage_7:
+    name: "Architecture Decision Records"
+    artifact_file: "adrs/"
+    expected_content: "Architecture decisions extracted from artifacts"
+
+  stage_8:
+    name: "Delivery Timeline"
+    artifact_file: "timeline.yaml"
+    expected_content: "Project timeline with milestones"
+
+  stage_9:
+    name: "QA Test Plan"
+    artifact_file: "qa-test-plan.yaml"
+    expected_content: "Test cases and QA strategy"
+
+  stage_10:
+    name: "Summaries"
+    artifact_file: "executive-summary.md and developer-summary.md"
+    expected_content: "Executive and developer summaries"
+
+# =============================================================================
+# VERSION HISTORY
+# =============================================================================
+
+version_history:
+  "1.0":
+    date: "2025-01-27"
+    changes:
+      - "Initial version with 6 test scenarios"
+      - "Happy path (S001) with 15 detailed steps"
+      - "Error handling (S002)"
+      - "Navigation testing (S003)"
+      - "Edge case testing (S004)"
+      - "Artifact export testing (S005)"
+      - "Concurrent projects testing (S006)"
+      - "Added testing guidelines and reference materials"

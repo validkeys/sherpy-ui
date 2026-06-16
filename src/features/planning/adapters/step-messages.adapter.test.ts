@@ -62,10 +62,16 @@ describe("step-messages.adapter", () => {
       expect(messages[2].type).toBe("loading");
     });
 
-    it("does not show form question when responses exist", () => {
+    it("does not show form question when ALL responses exist", () => {
+      // BUG FIX (2026-06-15): Changed from partial to complete responses
+      // Old behavior: form hidden with any response
+      // New behavior: form hidden only when ALL required fields filled
       const context = {
         ...baseContext,
-        step1Responses: { projectDescription: "Test" },
+        step1Responses: {
+          existingRequirements: "Yes",
+          projectDescription: "Test",
+        },
       };
       const activeState: NormalizedWorkflowState = {
         stepNumber: 1,

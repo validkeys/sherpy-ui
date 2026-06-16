@@ -48,8 +48,14 @@ async function createModel() {
     }
     case "openai": {
       const { createOpenAI } = await import("@ai-sdk/openai");
-      const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      return { model: openai(modelId), region: "n/a" };
+      const openai = createOpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+        compatibility: "compatible",
+        ...(process.env.OPENAI_BASE_URL && {
+          baseURL: process.env.OPENAI_BASE_URL,
+        }),
+      });
+      return { model: openai.chat(modelId), region: "n/a" };
     }
     case "anthropic": {
       const { createAnthropic } = await import("@ai-sdk/anthropic");
@@ -109,8 +115,10 @@ try {
 
   result = await generateText({
     model,
-    maxOutputTokens: 8,
-    messages: [{ role: "user", content: "Reply with OK." }],
+    maxOutputTokens: 256,
+    messages: [
+      { role: "user", content: "In one sentence, what is the capital of France?" },
+    ],
   });
 } catch (error) {
   console.error(
