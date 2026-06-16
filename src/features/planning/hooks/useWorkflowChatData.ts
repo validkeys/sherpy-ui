@@ -52,6 +52,21 @@ export function useWorkflowChatData() {
 
   const stateValue = useSelector((snapshot) => snapshot.value);
 
+  // BUG-032 FIX: Direct selector for formValues to ensure React sees updates
+  // Problem: messageContext object creates new reference but shallow equality
+  // check might miss nested step1Responses/step5Responses changes
+  // Solution: Dedicated selector that returns the actual form values object
+  const currentStepNumber = messageContext.currentStepNumber;
+  const formValues = useSelector((snapshot) => {
+    if (snapshot.context.currentStepNumber === 1) {
+      return snapshot.context.step1Responses;
+    }
+    if (snapshot.context.currentStepNumber === 5) {
+      return snapshot.context.step5Responses;
+    }
+    return null;
+  });
+
   const messages = useMemo(
     () =>
       adaptMachineSnapshotToMessages({ context: messageContext, stateValue }),
@@ -65,10 +80,10 @@ export function useWorkflowChatData() {
   return {
     messages,
     artifacts,
-    currentStepNumber: messageContext.currentStepNumber,
+    currentStepNumber,
     currentQuestion: getCurrentQuestion(messageContext),
     currentOptions: getCurrentOptions(messageContext),
-    formValues: getFormValues(messageContext),
+    formValues,
     isSubmitting: isSubmittingState(stateValue),
     actor,
   };
@@ -84,15 +99,6 @@ function getCurrentQuestion(context: MessageRelevantContext): string | null {
 function getCurrentOptions(context: MessageRelevantContext): string[] | null {
   if (context.currentStepNumber === 2) return context.step2CurrentOptions;
   if (context.currentStepNumber === 3) return context.step3CurrentOptions;
-
-  return null;
-}
-
-function getFormValues(
-  context: MessageRelevantContext,
-): Record<string, string> | null {
-  if (context.currentStepNumber === 1) return context.step1Responses;
-  if (context.currentStepNumber === 5) return context.step5Responses;
 
   return null;
 }
