@@ -61,11 +61,13 @@ export type PlanningContext = {
   step2Answers: InterviewAnswer[];
   step2CurrentQuestion: string | null;
   step2CurrentOptions: string[] | null;
+  step2IsComplete: boolean; // BUG-033: AI signals interview completion
 
   // Step 3: Technical Requirements (interview)
   step3Answers: InterviewAnswer[];
   step3CurrentQuestion: string | null;
   step3CurrentOptions: string[] | null;
+  step3IsComplete: boolean; // BUG-033: AI signals interview completion
 
   // Step 5: Implementation Planner (form)
   step5Responses: Record<string, string>;

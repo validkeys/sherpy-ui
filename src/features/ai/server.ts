@@ -29,6 +29,7 @@ import { getArtifactName } from "./skills-content";
 interface GenerateQuestionOutput {
   question: string;
   options?: string[];
+  isComplete?: boolean; // BUG-033: Signal from AI that interview is complete
 }
 
 interface AssessGapAnalysisNeedOutput {
@@ -158,6 +159,7 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       const parsed = rawResult as {
         question?: string;
         options?: Array<{ letter: string; title: string }>;
+        isComplete?: boolean; // BUG-033: AI signals interview completion
       };
       if (parsed.question) {
         return {
@@ -165,6 +167,7 @@ export const $generateQuestion = createServerFn({ method: "POST" })
           options: Array.isArray(parsed.options)
             ? parsed.options.map((o) => `${o.letter}. ${o.title}`)
             : undefined,
+          isComplete: parsed.isComplete, // BUG-033: Pass through completion signal
         };
       }
     }

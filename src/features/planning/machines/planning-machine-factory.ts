@@ -39,7 +39,11 @@ export type ServerFunctions = {
       previousAnswers: string[];
       projectContext?: string;
     };
-  }) => Promise<{ question: string; options?: string[] }>;
+  }) => Promise<{
+    question: string;
+    options?: string[];
+    isComplete?: boolean; // BUG-033: AI signals interview completion
+  }>;
 
   $assessGapAnalysisNeed: (params: {
     data: {
@@ -141,7 +145,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
   // ─────────────────────────────────────────────────────────────
 
   const fetchQuestion = fromPromise<
-    { question: string; options?: string[] },
+    { question: string; options?: string[]; isComplete?: boolean }, // BUG-033: Add isComplete signal
     {
       projectId: string;
       stepNumber: number;
@@ -170,6 +174,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
       console.log("[fetchQuestion] ✅ Success:", {
         hasQuestion: !!result.question,
         questionLength: result.question?.length ?? 0,
+        isComplete: result.isComplete ?? false, // BUG-033: Log completion signal
       });
 
       // Validate question is non-empty
@@ -183,6 +188,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
         return {
           question: result.question,
           options: result.options,
+          isComplete: result.isComplete, // BUG-033: Pass through completion signal
         };
       }
 
@@ -195,6 +201,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           parsedOptions.length > 0
             ? parsedOptions.map((opt) => opt.title)
             : undefined,
+        isComplete: result.isComplete, // BUG-033: Pass through completion signal
       };
     } catch (error) {
       console.error("[fetchQuestion] ❌ Error:", {
@@ -409,9 +416,11 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
       step2Answers: [],
       step2CurrentQuestion: null,
       step2CurrentOptions: null,
+      step2IsComplete: false, // BUG-033: Initialize completion flag
       step3Answers: [],
       step3CurrentQuestion: null,
       step3CurrentOptions: null,
+      step3IsComplete: false, // BUG-033: Initialize completion flag
       step5Responses: {},
       step7Edits: null,
       artifacts: {},
@@ -660,6 +669,8 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                     event.output?.question ?? null,
                   step2CurrentOptions: ({ event }) =>
                     event.output?.options ?? null,
+                  step2IsComplete: ({ event }) =>
+                    event.output?.isComplete ?? false, // BUG-033: Store completion signal
                   updatedAt: () => new Date().toISOString(),
                 }),
               },
@@ -680,6 +691,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
               [EVENT_TYPES.SUBMIT_ANSWER]: {
                 target: "persistingAnswer",
               },
+              // BUG-033: Keep manual FINISH_INTERVIEW for backward compatibility (debug panel)
               FINISH_INTERVIEW: {
                 target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
               },
@@ -703,7 +715,8 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 };
               },
               onDone: {
-                target: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+                // BUG-033: Go to checkingComplete instead of fetching next question
+                target: STEP_STATES.INTERVIEW.CHECKING_COMPLETE,
                 actions: assign({
                   // Extract step2 answers from persisted state
                   step2Answers: ({ event }) =>
@@ -723,6 +736,21 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
             },
+          },
+
+          // BUG-033: New state to check if interview is complete
+          [STEP_STATES.INTERVIEW.CHECKING_COMPLETE]: {
+            always: [
+              {
+                // If AI signaled completion, go to artifact generation
+                guard: ({ context }) => context.step2IsComplete === true,
+                target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+              },
+              {
+                // Otherwise, fetch next question
+                target: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+              },
+            ],
           },
 
           [STEP_STATES.INTERVIEW.GENERATING_ARTIFACT]: {
@@ -800,6 +828,8 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                     event.output?.question ?? null,
                   step3CurrentOptions: ({ event }) =>
                     event.output?.options ?? null,
+                  step3IsComplete: ({ event }) =>
+                    event.output?.isComplete ?? false, // BUG-033: Store completion signal
                   updatedAt: () => new Date().toISOString(),
                 }),
               },
@@ -820,6 +850,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
               [EVENT_TYPES.SUBMIT_ANSWER]: {
                 target: "persistingAnswer",
               },
+              // BUG-033: Keep manual FINISH_INTERVIEW for backward compatibility (debug panel)
               FINISH_INTERVIEW: {
                 target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
               },
@@ -843,7 +874,8 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 };
               },
               onDone: {
-                target: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+                // BUG-033: Go to checkingComplete instead of fetching next question
+                target: STEP_STATES.INTERVIEW.CHECKING_COMPLETE,
                 actions: assign({
                   // Extract step3 answers from persisted state
                   step3Answers: ({ event }) =>
@@ -863,6 +895,21 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
             },
+          },
+
+          // BUG-033: New state to check if interview is complete
+          [STEP_STATES.INTERVIEW.CHECKING_COMPLETE]: {
+            always: [
+              {
+                // If AI signaled completion, go to artifact generation
+                guard: ({ context }) => context.step3IsComplete === true,
+                target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+              },
+              {
+                // Otherwise, fetch next question
+                target: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+              },
+            ],
           },
 
           [STEP_STATES.INTERVIEW.GENERATING_ARTIFACT]: {
