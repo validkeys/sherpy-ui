@@ -54,6 +54,18 @@ export async function aiGenerateText(
 
   const startTime = Date.now();
 
+  // Log request details for debugging
+  console.log("[aiGenerateText] Starting request:", {
+    modelId: modelId ?? AI_MODEL_ID,
+    maxTokens,
+    messageCount: messages.length,
+    totalChars: messages.reduce((sum, m) => sum + m.content.length, 0),
+    estimatedTokens: Math.ceil(
+      messages.reduce((sum, m) => sum + m.content.length, 0) / 4,
+    ),
+    providerContext,
+  });
+
   let result: Awaited<ReturnType<typeof generateText>>;
   try {
     result = await generateText({
@@ -66,7 +78,18 @@ export async function aiGenerateText(
       ...(temperature !== undefined && { temperature }),
       abortSignal,
     });
+
+    console.log("[aiGenerateText] ✅ Success:", {
+      latencyMs: Date.now() - startTime,
+      outputTokens: result.usage?.outputTokens,
+      finishReason: result.finishReason,
+      providerContext,
+    });
   } catch (error) {
+    console.error("[aiGenerateText] ❌ Request failed:", {
+      latencyMs: Date.now() - startTime,
+      providerContext,
+    });
     throw logAIProviderError(error, {
       operation: "generateText",
       ...providerContext,
@@ -125,6 +148,19 @@ export async function aiGenerateObject<T>(
 
   const startTime = Date.now();
 
+  // Log request details for debugging
+  console.log("[aiGenerateObject] Starting request:", {
+    modelId: modelId ?? AI_MODEL_ID,
+    maxTokens,
+    messageCount: messages.length,
+    totalChars: messages.reduce((sum, m) => sum + m.content.length, 0),
+    estimatedTokens: Math.ceil(
+      messages.reduce((sum, m) => sum + m.content.length, 0) / 4,
+    ),
+    structuredOutput: true,
+    providerContext,
+  });
+
   let result: Awaited<ReturnType<typeof generateText>>;
   try {
     result = await generateText({
@@ -138,7 +174,18 @@ export async function aiGenerateObject<T>(
       output: Output.object({ schema }),
       abortSignal,
     });
+
+    console.log("[aiGenerateObject] ✅ Success:", {
+      latencyMs: Date.now() - startTime,
+      outputTokens: result.usage?.outputTokens,
+      finishReason: result.finishReason,
+      providerContext,
+    });
   } catch (error) {
+    console.error("[aiGenerateObject] ❌ Request failed:", {
+      latencyMs: Date.now() - startTime,
+      providerContext,
+    });
     throw logAIProviderError(error, {
       operation: "generateText",
       ...providerContext,
