@@ -41,8 +41,10 @@ export function createStepMessages(
   const messages: Message[] = [];
   const isActiveStep = activeState.stepNumber === stepNumber;
 
-  // Step 1: Gap Analysis Form
+  // Step 1: Gap Analysis (Form + Interview)
+  // BUG-033 FIX: Added interview messages to match Steps 2/3 pattern
   if (stepNumber === 1) {
+    // 1. Show initial form responses
     messages.push(
       ...createFormResponseMessages(
         stepNumber,
@@ -50,6 +52,8 @@ export function createStepMessages(
         context.startedAt,
       ),
     );
+
+    // 2. Show form question if not yet submitted
     if (
       shouldShowFormQuestion(
         isActiveStep,
@@ -60,6 +64,12 @@ export function createStepMessages(
     ) {
       messages.push(createFormQuestionMessage(context, stepNumber));
     }
+
+    // 3. Show AI interview messages (after form submitted)
+    messages.push(...createInterviewMessages(stepNumber, context.step1Answers));
+    messages.push(
+      ...createCurrentInterviewMessages(context, stepNumber, activeState),
+    );
   }
 
   // Step 2: Business Requirements Interview

@@ -52,10 +52,15 @@ export type PlanningContext = {
   startedAt: string;
   updatedAt: string;
 
-  // Step 1: Gap Analysis (form)
-  step1Responses: Record<string, string>;
-  step1GapAnalysisNeeded: boolean | null; // null = not yet assessed
-  step1GapAnalysisReasoning: string | null;
+  // Step 1: Gap Analysis (form + interview)
+  // BUG-033 FIX: Added interview fields to match Steps 2/3 pattern
+  step1Responses: Record<string, string>; // Initial form responses
+  step1Answers: InterviewAnswer[]; // AI interview answers
+  step1CurrentQuestion: string | null;
+  step1CurrentOptions: string[] | null;
+  step1IsComplete: boolean; // AI signals interview completion
+  step1GapAnalysisNeeded: boolean | null; // DEPRECATED: Will remove after migration
+  step1GapAnalysisReasoning: string | null; // DEPRECATED: Will remove after migration
 
   // Step 2: Business Requirements (interview)
   step2Answers: InterviewAnswer[];

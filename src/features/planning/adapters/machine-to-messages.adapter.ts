@@ -21,7 +21,7 @@ import {
  * - Step tracking: currentStepNumber, completedSteps
  * - Artifacts: artifacts, step7Edits
  * - Form data: step1Responses, step5Responses
- * - Interview data: step2Answers, step3Answers, step2CurrentQuestion, step3CurrentQuestion, step2CurrentOptions, step3CurrentOptions
+ * - Interview data: step1Answers, step1CurrentQuestion, step1CurrentOptions, step2Answers, step3Answers, step2CurrentQuestion, step3CurrentQuestion, step2CurrentOptions, step3CurrentOptions
  * - Timestamps: startedAt, updatedAt
  */
 export type MessageRelevantContext = Pick<
@@ -31,6 +31,9 @@ export type MessageRelevantContext = Pick<
   | "artifacts"
   | "step7Edits"
   | "step1Responses"
+  | "step1Answers" // BUG-033: Add Step 1 interview fields
+  | "step1CurrentQuestion"
+  | "step1CurrentOptions"
   | "step5Responses"
   | "step2Answers"
   | "step3Answers"

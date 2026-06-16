@@ -5,10 +5,14 @@ import { getStepName } from "../../step-config";
 import type { MessageRelevantContext } from "../machine-to-messages.adapter";
 import type { NormalizedWorkflowState } from "../step-normalizer";
 
+// BUG-033 FIX: Added Step 1 to support interview pattern
 export function createInterviewMessages(
-  stepNumber: 2 | 3,
-  answers: InterviewAnswer[],
+  stepNumber: 1 | 2 | 3,
+  answers: InterviewAnswer[] | undefined,
 ): Message[] {
+  // Safety: handle undefined answers (for Step 1 backwards compatibility)
+  if (!answers) return [];
+
   return answers.flatMap((answer, index) => [
     {
       type: "question",
@@ -28,21 +32,26 @@ export function createInterviewMessages(
   ]);
 }
 
+// BUG-033 FIX: Added Step 1 to support interview pattern
 export function createCurrentInterviewMessages(
   context: MessageRelevantContext,
-  stepNumber: 2 | 3,
+  stepNumber: 1 | 2 | 3,
   activeState: NormalizedWorkflowState,
 ): Message[] {
   if (activeState.stepNumber !== stepNumber) return [];
 
   const currentQuestion =
-    stepNumber === 2
-      ? context.step2CurrentQuestion
-      : context.step3CurrentQuestion;
+    stepNumber === 1
+      ? context.step1CurrentQuestion
+      : stepNumber === 2
+        ? context.step2CurrentQuestion
+        : context.step3CurrentQuestion;
   const currentOptions =
-    stepNumber === 2
-      ? context.step2CurrentOptions
-      : context.step3CurrentOptions;
+    stepNumber === 1
+      ? context.step1CurrentOptions
+      : stepNumber === 2
+        ? context.step2CurrentOptions
+        : context.step3CurrentOptions;
 
   if (
     activeState.status === STEP_STATES.INTERVIEW.FETCHING_QUESTION &&

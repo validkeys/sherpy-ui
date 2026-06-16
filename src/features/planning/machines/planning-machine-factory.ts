@@ -264,12 +264,21 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
     const answers: string[] = [];
 
     // Collect answers from step-specific context
-    if (input.stepNumber === 1 && input.accumulatedContext.step1Responses) {
-      const responses = input.accumulatedContext.step1Responses as Record<
-        string,
-        string
-      >;
-      answers.push(...Object.values(responses));
+    if (input.stepNumber === 1) {
+      // BUG-033 FIX: Include both form responses and interview answers
+      if (input.accumulatedContext.step1Responses) {
+        const responses = input.accumulatedContext.step1Responses as Record<
+          string,
+          string
+        >;
+        answers.push(...Object.values(responses));
+      }
+      if (input.accumulatedContext.step1Answers) {
+        const stepAnswers = input.accumulatedContext.step1Answers as Array<{
+          value: string;
+        }>;
+        answers.push(...stepAnswers.map((a) => a.value));
+      }
     } else if (
       input.stepNumber === 2 &&
       input.accumulatedContext.step2Answers
@@ -411,8 +420,12 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
       startedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       step1Responses: {},
-      step1GapAnalysisNeeded: null,
-      step1GapAnalysisReasoning: null,
+      step1Answers: [], // BUG-033: Initialize interview answers
+      step1CurrentQuestion: null, // BUG-033: Initialize current question
+      step1CurrentOptions: null, // BUG-033: Initialize current options
+      step1IsComplete: false, // BUG-033: Initialize completion flag
+      step1GapAnalysisNeeded: null, // DEPRECATED: Will remove after migration
+      step1GapAnalysisReasoning: null, // DEPRECATED: Will remove after migration
       step2Answers: [],
       step2CurrentQuestion: null,
       step2CurrentOptions: null,
@@ -464,8 +477,10 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
 
     states: {
       // ───────────────────────────────────────────────────────
-      // STEP 1: Gap Analysis
+      // STEP 1: Gap Analysis (Interview Pattern)
       // ───────────────────────────────────────────────────────
+      // BUG-033 FIX: Changed from form-only to interview pattern like Steps 2/3
+      // Flow: form → AI interview loop → artifact generation → completion
       [STEP_KEYS.STEP_1_GAP_ANALYSIS]: {
         initial: STEP_STATES.STEP_1.COLLECTING_INFO,
         entry: assign({
@@ -489,53 +504,120 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
               [EVENT_TYPES.SUBMIT_FORM]: {
-                target: STEP_STATES.STEP_1.ASSESSING_NEED,
+                // BUG-033 FIX: Start interview loop instead of going directly to assessment
+                target: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
                 actions: assign({
                   step1Responses: ({ event }) => event.responses,
+                  // Initialize step1Answers array for interview responses
+                  step1Answers: [],
                   updatedAt: () => new Date().toISOString(),
                 }),
               },
             },
           },
 
-          [STEP_STATES.STEP_1.ASSESSING_NEED]: {
+          // BUG-033 FIX: Add interview states for Step 1 (same pattern as Steps 2/3)
+          [STEP_STATES.INTERVIEW.FETCHING_QUESTION]: {
             invoke: {
-              src: "assessGapAnalysisNeed",
+              src: "fetchQuestion",
               input: ({ context }) => ({
                 projectId: context.projectId,
-                projectDescription:
-                  context.step1Responses.projectDescription || "",
-                hasExistingRequirements:
-                  context.step1Responses.existingRequirements || "",
+                stepNumber: 1,
+                previousAnswers:
+                  context.step1Answers?.map((a) => a.value) ?? [],
+                projectContext: context.step1Responses.projectDescription || "",
               }),
               onDone: {
-                // BUG-030 FIX: Always generate artifact after assessment
-                target: STEP_STATES.STEP_1.SUBMITTING,
+                target: STEP_STATES.INTERVIEW.AWAITING_ANSWER,
                 actions: assign({
-                  step1GapAnalysisNeeded: ({ event }) =>
-                    event.output?.needsGapAnalysis ?? null,
-                  step1GapAnalysisReasoning: ({ event }) =>
-                    event.output?.reasoning ?? null,
+                  step1CurrentQuestion: ({ event }) =>
+                    event.output?.question ?? null,
+                  step1CurrentOptions: ({ event }) =>
+                    event.output?.options ?? null,
+                  step1IsComplete: ({ event }) =>
+                    event.output?.isComplete ?? false,
                   updatedAt: () => new Date().toISOString(),
                 }),
               },
               onError: {
-                // On error, still generate artifact with fallback reasoning
-                target: STEP_STATES.STEP_1.SUBMITTING,
+                target: STEP_STATES.INTERVIEW.ERROR,
                 actions: assign({
-                  step1GapAnalysisNeeded: false,
-                  step1GapAnalysisReasoning:
-                    "Assessment failed, proceeding with artifact generation",
                   error: ({ event }) =>
                     event.error instanceof Error
                       ? event.error.message
-                      : "Failed to assess gap analysis need",
+                      : "Failed to fetch question",
                 }),
               },
             },
           },
 
-          [STEP_STATES.STEP_1.SUBMITTING]: {
+          [STEP_STATES.INTERVIEW.AWAITING_ANSWER]: {
+            on: {
+              [EVENT_TYPES.SUBMIT_ANSWER]: {
+                target: "persistingAnswer",
+              },
+              // Keep manual FINISH_INTERVIEW for backward compatibility (debug panel)
+              FINISH_INTERVIEW: {
+                target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+              },
+            },
+          },
+
+          // New state: Persist answer via workflow service
+          persistingAnswer: {
+            invoke: {
+              src: "persistAnswerService",
+              input: ({ context, event }) => {
+                // Guard: only process SUBMIT_ANSWER events
+                if (event.type !== EVENT_TYPES.SUBMIT_ANSWER) {
+                  throw new Error(`Expected SUBMIT_ANSWER, got ${event.type}`);
+                }
+                return {
+                  projectId: context.projectId,
+                  stepNumber: 1,
+                  question: event.question,
+                  answer: event.answer,
+                };
+              },
+              onDone: {
+                target: STEP_STATES.INTERVIEW.CHECKING_COMPLETE,
+                actions: assign({
+                  // Extract step1 answers from persisted state
+                  step1Answers: ({ event }) =>
+                    event.output?.steps?.[0]?.answers ?? [],
+                  step1CurrentQuestion: null,
+                  step1CurrentOptions: null,
+                  updatedAt: () => new Date().toISOString(),
+                }),
+              },
+              onError: {
+                target: STEP_STATES.INTERVIEW.ERROR,
+                actions: assign({
+                  error: ({ event }) =>
+                    event.error instanceof Error
+                      ? event.error.message
+                      : "Failed to persist answer",
+                }),
+              },
+            },
+          },
+
+          // New state: Check if interview is complete
+          [STEP_STATES.INTERVIEW.CHECKING_COMPLETE]: {
+            always: [
+              {
+                // If AI signaled completion, go to artifact generation
+                guard: ({ context }) => context.step1IsComplete === true,
+                target: STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+              },
+              {
+                // Otherwise, fetch next question
+                target: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+              },
+            ],
+          },
+
+          [STEP_STATES.INTERVIEW.GENERATING_ARTIFACT]: {
             invoke: {
               src: "generateArtifact",
               input: ({ context }) => ({
@@ -543,23 +625,22 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 stepNumber: 1,
                 accumulatedContext: {
                   step1Responses: context.step1Responses,
+                  step1Answers: context.step1Answers,
                 },
               }),
               onDone: {
-                // Transition to persisting state to use workflow service
                 target: "persistingArtifact",
                 actions: assign({
-                  // Store generated artifact temporarily for persistence
                   _tempArtifact: ({ event }) => event.output,
                 }),
               },
               onError: {
-                target: STEP_STATES.STEP_1.COLLECTING_INFO,
+                target: STEP_STATES.INTERVIEW.ERROR,
                 actions: assign({
                   error: ({ event }) =>
                     event.error instanceof Error
                       ? event.error.message
-                      : "Failed to generate gap analysis artifact",
+                      : "Failed to generate artifact",
                 }),
               },
             },
@@ -583,7 +664,6 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
               onDone: {
                 target: "completingStep",
                 actions: assign({
-                  // Keep generated artifact (machine context uses Artifact object)
                   artifacts: ({ context }) => ({
                     ...context.artifacts,
                     1: context._tempArtifact!,
@@ -593,12 +673,12 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
               onError: {
-                target: STEP_STATES.STEP_1.COLLECTING_INFO,
+                target: STEP_STATES.INTERVIEW.ERROR,
                 actions: assign({
                   error: ({ event }) =>
                     event.error instanceof Error
                       ? event.error.message
-                      : "Failed to persist gap analysis artifact",
+                      : "Failed to persist artifact",
                   _tempArtifact: undefined,
                 }),
               },
@@ -614,9 +694,8 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 stepNumber: 1,
               }),
               onDone: {
-                target: STEP_STATES.STEP_1.COMPLETE,
+                target: STEP_STATES.INTERVIEW.COMPLETE,
                 actions: assign({
-                  // Extract completion status from persisted state
                   completedSteps: ({ event }) =>
                     event.output?.steps
                       ?.filter((s) => s.status === "complete")
@@ -625,7 +704,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 }),
               },
               onError: {
-                target: STEP_STATES.STEP_1.COLLECTING_INFO,
+                target: STEP_STATES.INTERVIEW.ERROR,
                 actions: assign({
                   error: ({ event }) =>
                     event.error instanceof Error
@@ -636,7 +715,13 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
             },
           },
 
-          [STEP_STATES.STEP_1.COMPLETE]: {
+          [STEP_STATES.INTERVIEW.ERROR]: {
+            on: {
+              RETRY: STEP_STATES.INTERVIEW.FETCHING_QUESTION,
+            },
+          },
+
+          [STEP_STATES.INTERVIEW.COMPLETE]: {
             type: "final",
           },
         },

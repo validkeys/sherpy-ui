@@ -177,6 +177,28 @@ You must signal interview completion by setting \`isComplete: true\` in your res
 - Complex projects (e.g., "enterprise payment system"): 12-15 questions may be needed
 - **Stop when you have enough, not when you've exhausted all possible questions**
 
+${
+  process.env.QUICK_TEST_MODE === "true"
+    ? `
+**⚡ QUICK TEST MODE ENABLED ⚡**
+
+CRITICAL OVERRIDE: You are in QUICK TEST MODE for E2E testing.
+
+**MANDATORY RULES:**
+- Ask MAXIMUM 3 questions total
+- After the 3rd answer, you MUST set \`isComplete: true\`
+- Focus only on the most critical information:
+  1. What the project is (problem/goal)
+  2. Who it's for (users)
+  3. Basic scope (MVP)
+- Skip all other questions (constraints, timeline, metrics, etc.)
+- Generate artifact from these 3 answers even if not fully comprehensive
+
+This mode is for TESTING ONLY - artifact quality is not critical.
+`
+    : ""
+}
+
 **How to signal completion:**
 - Set \`isComplete: true\` in your JSON response
 - This will trigger artifact generation
