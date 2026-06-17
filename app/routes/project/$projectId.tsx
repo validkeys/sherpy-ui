@@ -58,6 +58,14 @@ export const Route = createFileRoute("/project/$projectId")({
 function ProjectComponent() {
   const { projectId } = Route.useParams();
 
+  // BUG-035 DEBUG: Log projectId from route params with timestamp and stack
+  const timestamp = new Date().toISOString();
+  console.log(`[BUG-035][${timestamp}] ProjectComponent render:`, {
+    projectId,
+    storageKey: `planning-machine-${projectId}`,
+    stack: new Error().stack?.split("\n").slice(2, 5).join("\n"),
+  });
+
   return (
     <PlanningMachineProvider
       input={{ projectId, entryPath: "new-project" }}
