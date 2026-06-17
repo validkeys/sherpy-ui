@@ -44,6 +44,7 @@ export interface WorkflowChatProps {
   formValues?: Record<string, string> | null;
   disabled?: boolean;
   isSubmitting?: boolean;
+  autoSubmit?: boolean;
 }
 
 export function WorkflowChat({
@@ -56,6 +57,7 @@ export function WorkflowChat({
   formValues,
   disabled = false,
   isSubmitting = false,
+  autoSubmit = false,
 }: WorkflowChatProps) {
   const [composerValue, setComposerValue] = useState("");
   const [selectedArtifact, setSelectedArtifact] =
@@ -180,6 +182,7 @@ export function WorkflowChat({
                   formValues={formValues}
                   disabled={disabled}
                   isSubmitting={isSubmitting}
+                  autoSubmit={autoSubmit}
                 />
               ))}
             </div>

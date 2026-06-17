@@ -44,6 +44,7 @@ interface ChatMessageProps {
   formValues?: Record<string, string> | null;
   disabled?: boolean;
   isSubmitting?: boolean;
+  autoSubmit?: boolean;
 }
 
 function ChatMessageComponent({
@@ -56,6 +57,7 @@ function ChatMessageComponent({
   formValues,
   disabled = false,
   isSubmitting = false,
+  autoSubmit = false,
 }: ChatMessageProps) {
   const handleSelectOption = useCallback(
     (option: string, index: number) => {
@@ -155,20 +157,25 @@ function ChatMessageComponent({
             <div className="text-[15px] leading-relaxed text-fg-1">
               <p>{message.question}</p>
             </div>
-            <AnswerCard
-              options={message.options}
-              formFields={message.formFields}
-              formValues={formValues ?? undefined}
-              disabled={
+            {(() => {
+              const answerCardDisabled =
                 disabled ||
                 Boolean(message.options && !onSelectOption) ||
-                Boolean(message.formFields && !onSubmitForm)
-              }
-              isSubmitting={isSubmitting}
-              onSelectOption={handleSelectOption}
-              onSubmitForm={handleSubmitForm}
-              onFormValueChange={handleFormValueChange}
-            />
+                Boolean(message.formFields && !onSubmitForm);
+              return (
+                <AnswerCard
+                  options={message.options}
+                  formFields={message.formFields}
+                  formValues={formValues ?? undefined}
+                  disabled={answerCardDisabled}
+                  isSubmitting={isSubmitting}
+                  autoSubmit={autoSubmit}
+                  onSelectOption={handleSelectOption}
+                  onSubmitForm={handleSubmitForm}
+                  onFormValueChange={handleFormValueChange}
+                />
+              );
+            })()}
           </>
         )}
 

@@ -31,6 +31,7 @@ type WorkflowChatController = WorkflowChatActions & {
   disabled: boolean;
   isSubmitting: boolean;
   formValues: Record<string, string> | null;
+  autoSubmit: boolean;
 };
 
 /**
@@ -66,12 +67,16 @@ export function useWorkflowChatController(): WorkflowChatController {
     [actor, currentStepNumber],
   );
 
+  const isInteractiveInterview =
+    currentStepNumber === 2 || currentStepNumber === 3;
+
   return {
     messages,
     artifacts,
     disabled: isSubmitting,
     isSubmitting,
     formValues,
+    autoSubmit: isInteractiveInterview,
     ...actions,
   };
 }

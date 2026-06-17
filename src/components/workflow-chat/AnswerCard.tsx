@@ -48,6 +48,13 @@ interface AnswerCardProps {
   onFormValueChange?: (fieldId: string, value: string) => void;
   onSelectOption?: (option: string, index: number) => void;
   onSubmitForm?: (values: FormValues) => void;
+  /**
+   * When true, the form auto-submits after all fields are filled (500ms delay).
+   * Only for interview-mode questions (Steps 2/3).
+   * Manual forms (Steps 1/5) should use the Submit button.
+   * BUG-035: Default false to prevent Step 1 forms from auto-submitting.
+   */
+  autoSubmit?: boolean;
 }
 
 function AnswerCardComponent({
@@ -60,6 +67,7 @@ function AnswerCardComponent({
   onFormValueChange,
   onSelectOption,
   onSubmitForm,
+  autoSubmit = false,
 }: AnswerCardProps) {
   const optionGroupName = useId();
   const [internalFormValues, setInternalFormValues] = useState<FormValues>({});
@@ -121,55 +129,31 @@ function AnswerCardComponent({
   }, [fields, values, canSubmitForm, onSubmitForm]);
 
   // Auto-submit when all required fields are filled (BUG-031 fix)
-  // This improves UX by eliminating the need to click the submit button
+  // BUG-035: Only auto-submit for interview-mode questions (autoSubmit prop).
+  // Manual forms (Steps 1/5) must use the Submit button.
   useEffect(() => {
-    console.log("[AnswerCard] Auto-submit check:", {
-      canSubmitForm,
-      disabled,
-      isSubmitting,
-      hasOnSubmitForm: !!onSubmitForm,
-    });
-
-    if (canSubmitForm && !isSubmitting && onSubmitForm) {
-      console.log(
-        "[AnswerCard] ✓ Auto-submit conditions met, scheduling submit in 500ms",
-      );
-
-      // Small delay to allow user to review their input
-      const timeoutId = setTimeout(() => {
-        console.log(
-          "[AnswerCard] Auto-submit timeout fired, validating fields",
-        );
-
-        // Validate all fields before submit
-        const newErrors: Record<string, string> = {};
-        fields.forEach((field) => {
-          if (!values[field.id]?.trim()) {
-            newErrors[field.id] = `${field.label} is required`;
-          }
-        });
-
-        if (Object.keys(newErrors).length === 0) {
-          console.log(
-            "[AnswerCard] ✓ Validation passed, calling onSubmitForm with:",
-            values,
-          );
-          // Clear errors and submit
-          setErrors({});
-          onSubmitForm(values);
-        } else {
-          console.log("[AnswerCard] ✗ Validation failed, errors:", newErrors);
-        }
-      }, 500);
-
-      return () => {
-        console.log("[AnswerCard] Auto-submit timeout cleared");
-        clearTimeout(timeoutId);
-      };
-    } else {
-      console.log("[AnswerCard] ✗ Auto-submit conditions not met");
+    if (!autoSubmit || !canSubmitForm || isSubmitting || !onSubmitForm) {
+      return;
     }
-  }, [canSubmitForm, isSubmitting, onSubmitForm, fields, values, disabled]);
+
+    // Small delay to allow user to review their input
+    const timeoutId = setTimeout(() => {
+      // Validate all fields before submit
+      const newErrors: Record<string, string> = {};
+      fields.forEach((field) => {
+        if (!values[field.id]?.trim()) {
+          newErrors[field.id] = `${field.label} is required`;
+        }
+      });
+
+      if (Object.keys(newErrors).length === 0) {
+        setErrors({});
+        onSubmitForm(values);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [autoSubmit, canSubmitForm, isSubmitting, onSubmitForm, fields, values]);
 
   return (
     <div className="border border-border-1 rounded-md bg-surface p-3.5 mt-1 flex flex-col gap-2.5">
