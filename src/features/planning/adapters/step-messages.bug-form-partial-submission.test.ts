@@ -124,8 +124,10 @@ describe("BUG: Form partial submission", () => {
       }
     });
 
-    it("should hide form question only when ALL fields are filled", () => {
-      // This is the CORRECT behavior - form should disappear only when complete
+    it("STILL shows form question when ALL fields are filled during collectingInfo", () => {
+      // BUG-035: Form stays visible during collectingInfo so the Submit button
+      // remains accessible (auto-submit was removed for manual form steps).
+      // Form hides only when state transitions away from collectingInfo.
       const context = createMockContext({
         existingRequirements: "No, starting from scratch",
         projectDescription: "A comprehensive healthcare patient portal",
@@ -136,12 +138,9 @@ describe("BUG: Form partial submission", () => {
 
       const questionMessage = messages.find((m) => m.type === "question");
 
-      // When ALL fields are filled, form should be hidden
-      expect(questionMessage).toBeUndefined();
-
-      // Should have answer messages for both fields
-      const answerMessages = messages.filter((m) => m.type === "answer");
-      expect(answerMessages).toHaveLength(2);
+      // Form should STILL be visible when all fields are filled (during collectingInfo)
+      expect(questionMessage).toBeDefined();
+      expect(questionMessage?.type).toBe("question");
     });
 
     it("should check against the actual form fields definition", () => {

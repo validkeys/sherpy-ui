@@ -1,6 +1,5 @@
 import type { Message } from "@/components/workflow-chat/types";
 import { STEP_STATES } from "../machines/constants";
-import type { PlanningContext } from "../machines/types";
 import { getStepName } from "../step-config";
 import {
   getWorkflowArtifactId,
@@ -12,7 +11,6 @@ import { createLoadingMessage } from "./message-creators/artifact-messages";
 import {
   createFormQuestionMessage,
   createFormResponseMessages,
-  FORM_FIELDS,
 } from "./message-creators/form-messages";
 import {
   createCurrentInterviewMessages,
@@ -54,14 +52,7 @@ export function createStepMessages(
     );
 
     // 2. Show form question if not yet submitted
-    if (
-      shouldShowFormQuestion(
-        isActiveStep,
-        activeState,
-        context.step1Responses,
-        1,
-      )
-    ) {
+    if (shouldShowFormQuestion(isActiveStep, activeState)) {
       messages.push(createFormQuestionMessage(context, stepNumber));
     }
 
@@ -97,14 +88,7 @@ export function createStepMessages(
         context.startedAt,
       ),
     );
-    if (
-      shouldShowFormQuestion(
-        isActiveStep,
-        activeState,
-        context.step5Responses,
-        5,
-      )
-    ) {
+    if (shouldShowFormQuestion(isActiveStep, activeState)) {
       messages.push(createFormQuestionMessage(context, stepNumber));
     }
   }
@@ -129,25 +113,20 @@ export function createStepMessages(
  * Shows form when:
  * - This is the active step
  * - Currently in collecting info state
- * - NOT ALL required fields have been filled yet
  *
- * BUG FIX (2026-06-15):
- * Previously checked `Object.keys(responses).length === 0` which caused the form
- * to disappear after filling just ONE field, preventing users from accessing the
- * second field. Now checks that ALL required form fields have values before hiding
- * the form.
+ * BUG-035: Previously hid the form once ALL fields were filled, relying on
+ * auto-submit to fire afterwards. With BUG-035 removing auto-submit for
+ * manual form steps (1/5), the form must stay visible so the Submit button
+ * remains accessible. The form now hides naturally once the state
+ * transitions away from collectingInfo (i.e. after actual submission).
  *
  * @param isActiveStep - Whether this is the currently active workflow step
  * @param activeState - Current normalized workflow state
- * @param responses - Current form field responses (may be partial)
- * @param stepNumber - Step number to determine which form fields are required
- * @returns true if form should be visible, false if all fields are complete
+ * @returns true if form should be visible
  */
 function shouldShowFormQuestion(
   isActiveStep: boolean,
   activeState: NormalizedWorkflowState,
-  responses: Record<string, string>,
-  stepNumber: 1 | 5,
 ): boolean {
   if (!isActiveStep) return false;
 
@@ -155,20 +134,7 @@ function shouldShowFormQuestion(
     activeState.status === STEP_STATES.STEP_1.COLLECTING_INFO ||
     activeState.status === STEP_STATES.STEP_5.COLLECTING_INFO;
 
-  if (!isCollectingInfo) return false;
-
-  // Get required form fields for this step
-  const requiredFields = FORM_FIELDS[stepNumber];
-
-  // Check if ALL required fields have non-empty values
-  // Form should remain visible until ALL fields are filled
-  const allFieldsFilled = requiredFields.every((field) => {
-    const value = responses[field.id];
-    return value !== undefined && value.trim().length > 0;
-  });
-
-  // Show form if NOT all fields are filled
-  return !allFieldsFilled;
+  return isCollectingInfo;
 }
 
 /**

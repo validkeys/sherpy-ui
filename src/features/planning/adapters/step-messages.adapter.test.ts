@@ -62,10 +62,10 @@ describe("step-messages.adapter", () => {
       expect(messages[2].type).toBe("loading");
     });
 
-    it("does not show form question when ALL responses exist", () => {
-      // BUG FIX (2026-06-15): Changed from partial to complete responses
-      // Old behavior: form hidden with any response
-      // New behavior: form hidden only when ALL required fields filled
+    it("STILL shows form question when all responses exist during collectingInfo", () => {
+      // BUG-035: Form must stay visible while in collectingInfo so the Submit
+      // button remains accessible (auto-submit was removed for manual form steps).
+      // Form hides only when state transitions away from collectingInfo.
       const context = {
         ...baseContext,
         step1Responses: {
@@ -81,7 +81,7 @@ describe("step-messages.adapter", () => {
       const messages = createStepMessages(context, 1, activeState);
 
       const hasFormQuestion = messages.some((m) => m.type === "question");
-      expect(hasFormQuestion).toBe(false);
+      expect(hasFormQuestion).toBe(true);
     });
 
     it("does not show form question when not active step", () => {
