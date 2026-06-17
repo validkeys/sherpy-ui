@@ -338,18 +338,17 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
   // ─────────────────────────────────────────────────────────────
 
   // M5: Step name mapping for navigation transitions
-  // NOTE: Steps 4-10 use placeholder names until BUG-029 Phase 7 updates them to match constants
   const STEP_NAMES: Record<number, string> = {
     1: STEP_KEYS.STEP_1_GAP_ANALYSIS,
     2: STEP_KEYS.STEP_2_BUSINESS_REQS,
     3: STEP_KEYS.STEP_3_TECH_REQS,
-    4: "step4_architecture", // TODO: Update to STEP_KEYS.STEP_4_STYLE_ANCHORS
-    5: "step5_dataModeling", // TODO: Update to STEP_KEYS.STEP_5_IMPL_PLANNER
-    6: "step6_testing", // TODO: Update to STEP_KEYS.STEP_6_DEFINITION_OF_DONE
-    7: "step7_refinement", // TODO: Update to STEP_KEYS.STEP_7_ARCH_DECISIONS
-    8: "step8_documentation", // TODO: Update to STEP_KEYS.STEP_8_DELIVERY_TIMELINE
-    9: "step9_deployment", // TODO: Update to STEP_KEYS.STEP_9_QA_TEST_PLAN
-    10: "step10_monitoring", // TODO: Update to STEP_KEYS.STEP_10_SUMMARIES
+    4: STEP_KEYS.STEP_4_STYLE_ANCHORS,
+    5: STEP_KEYS.STEP_5_IMPL_PLANNER,
+    6: STEP_KEYS.STEP_6_DEFINITION_OF_DONE,
+    7: STEP_KEYS.STEP_7_ARCH_DECISIONS,
+    8: STEP_KEYS.STEP_8_DELIVERY_TIMELINE,
+    9: STEP_KEYS.STEP_9_QA_TEST_PLAN,
+    10: STEP_KEYS.STEP_10_SUMMARIES,
   };
 
   return setup({
@@ -1109,49 +1108,49 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
       // ───────────────────────────────────────────────────────
       // STEPS 4-10: Placeholder states
       // ───────────────────────────────────────────────────────
-      step4_architecture: {
+      [STEP_KEYS.STEP_4_STYLE_ANCHORS]: {
         entry: assign({
           currentStepNumber: 4,
           completedSteps: ({ context }) => [...context.completedSteps, 4],
           updatedAt: () => new Date().toISOString(),
         }),
       },
-      step5_dataModeling: {
+      [STEP_KEYS.STEP_5_IMPL_PLANNER]: {
         entry: assign({
           currentStepNumber: 5,
           completedSteps: ({ context }) => [...context.completedSteps, 5],
           updatedAt: () => new Date().toISOString(),
         }),
       },
-      step6_testing: {
+      [STEP_KEYS.STEP_6_DEFINITION_OF_DONE]: {
         entry: assign({
           currentStepNumber: 6,
           completedSteps: ({ context }) => [...context.completedSteps, 6],
           updatedAt: () => new Date().toISOString(),
         }),
       },
-      step7_refinement: {
+      [STEP_KEYS.STEP_7_ARCH_DECISIONS]: {
         entry: assign({
           currentStepNumber: 7,
           completedSteps: ({ context }) => [...context.completedSteps, 7],
           updatedAt: () => new Date().toISOString(),
         }),
       },
-      step8_documentation: {
+      [STEP_KEYS.STEP_8_DELIVERY_TIMELINE]: {
         entry: assign({
           currentStepNumber: 8,
           completedSteps: ({ context }) => [...context.completedSteps, 8],
           updatedAt: () => new Date().toISOString(),
         }),
       },
-      step9_deployment: {
+      [STEP_KEYS.STEP_9_QA_TEST_PLAN]: {
         entry: assign({
           currentStepNumber: 9,
           completedSteps: ({ context }) => [...context.completedSteps, 9],
           updatedAt: () => new Date().toISOString(),
         }),
       },
-      step10_monitoring: {
+      [STEP_KEYS.STEP_10_SUMMARIES]: {
         entry: assign({
           currentStepNumber: 10,
           completedSteps: ({ context }) => [...context.completedSteps, 10],
