@@ -230,28 +230,95 @@ export function PlanningMachineProvider({
   // Use RESTORE_SNAPSHOT event (via hot-reload useEffect) to update
   // actor state when database arrives, instead of recreating the actor.
   //
+  // ✅ FIX (BUG-037): Prevent cross-project state leakage
+  //
+  // PROBLEM: When navigating project A → B without page reload, the useRef
+  // persisted project A's snapshot. Even though useMemo re-ran (input changed),
+  // it read the stale ref and created project B's actor from project A's state.
+  //
+  // SOLUTION (defense-in-depth):
+  // 1. Add key={projectId} to PlanningMachineProvider (app/routes/project/$projectId.tsx:70)
+  //    Forces full unmount/remount on project change, resetting all refs
+  // 2. Defensive validation: Reset ref if snapshot.context.projectId !== input.projectId
+  // 3. Fail-safe: If validation fails, create fresh actor (never use wrong-project snapshot)
+  //
   // Why useMemo with `input` dependency is correct:
   // - Actor should be recreated if projectId changes (different project)
   // - Input contains projectId and entryPath (project-specific, immutable per project)
   // - Actor should NOT be recreated when authoritative snapshot changes
   //   (that's what hot-reload is for)
   const initialSnapshot = React.useRef(authoritativeSnapshot);
+
+  // ✅ BUG-037 Defense: Reset ref if projectId changes
+  // This is redundant with key={projectId} but provides defense if key is removed
+  React.useEffect(() => {
+    const currentSnapshotProjectId =
+      initialSnapshot.current?.context?.projectId;
+    if (
+      currentSnapshotProjectId &&
+      currentSnapshotProjectId !== input.projectId
+    ) {
+      console.warn(
+        `[BUG-037] CROSS-PROJECT REF DETECTED — resetting initialSnapshot ref`,
+        {
+          staleProjectId: currentSnapshotProjectId,
+          newProjectId: input.projectId,
+          timestamp: new Date().toISOString(),
+        },
+      );
+      trackError(
+        "cross_project_ref_prevented",
+        new Error("Cross-project ref detected"),
+        {
+          staleProjectId: currentSnapshotProjectId,
+          newProjectId: input.projectId,
+        },
+      );
+      initialSnapshot.current = null; // Reset to force fresh actor
+    }
+  }, [input.projectId]);
+
   const actor = React.useMemo(() => {
     const snapshot = initialSnapshot.current;
     const timestamp = new Date().toISOString();
 
     if (snapshot) {
+      // ✅ BUG-037 Validation: Reject snapshot if projectId mismatch
+      const projectIdMismatch = snapshot.context?.projectId !== input.projectId;
+
       console.log(`[BUG-035][${timestamp}] Creating actor FROM SNAPSHOT:`, {
         projectIdFromSnapshot: snapshot.context?.projectId,
         projectIdFromInput: input.projectId,
         currentStepNumber: snapshot.context?.currentStepNumber,
         stateValue: snapshot.value,
         status: snapshot.status,
-        MISMATCH:
-          snapshot.context?.projectId !== input.projectId
-            ? "⚠️ PROJECT ID MISMATCH!"
-            : "✓ Match",
+        MISMATCH: projectIdMismatch ? "⚠️ PROJECT ID MISMATCH!" : "✓ Match",
       });
+
+      // ✅ BUG-037 Fail-safe: Never use wrong-project snapshot
+      if (projectIdMismatch) {
+        console.error(
+          `[BUG-037] CRITICAL: Prevented cross-project contamination!`,
+          {
+            rejectedProjectId: snapshot.context?.projectId,
+            correctProjectId: input.projectId,
+            timestamp,
+          },
+        );
+        trackError(
+          "cross_project_snapshot_rejected",
+          new Error("Cross-project snapshot rejected"),
+          {
+            rejectedProjectId: snapshot.context?.projectId,
+            correctProjectId: input.projectId,
+          },
+        );
+        // Create fresh actor instead of using contaminated snapshot
+        console.log(
+          `[BUG-037][${timestamp}] Creating FRESH actor (rejected cross-project snapshot)`,
+        );
+        return createActor(planningMachine, { input });
+      }
 
       // When restoring from snapshot, we still need to provide input for type safety,
       // but the snapshot's context will take precedence over the input's initial values.

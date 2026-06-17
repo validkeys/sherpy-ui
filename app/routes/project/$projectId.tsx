@@ -68,6 +68,7 @@ function ProjectComponent() {
 
   return (
     <PlanningMachineProvider
+      key={projectId}
       input={{ projectId, entryPath: "new-project" }}
       storageKey={`planning-machine-${projectId}`}
     >
