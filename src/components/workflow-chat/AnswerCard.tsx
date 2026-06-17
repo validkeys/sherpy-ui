@@ -28,7 +28,7 @@
  * - Optimizes when parent ChatMessage re-renders
  */
 
-import { memo, useCallback, useEffect, useId, useState } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type FormValues = Record<string, string>;
@@ -66,11 +66,21 @@ function AnswerCardComponent({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const values = formValues ?? internalFormValues;
   const fields = formFields ?? [];
-  const canSubmitForm =
-    fields.length > 0 &&
-    fields.every((field) => values[field.id]?.trim()) &&
-    !disabled &&
-    !isSubmitting;
+
+  // BUG-034 FIX: Use useMemo to ensure canSubmitForm recalculates when values change
+  // CRITICAL: Without useMemo, this calculation only runs on initial render.
+  // When parent updates controlled formValues prop, React won't recalculate this
+  // plain variable, so canSubmitForm stays false even after all fields filled.
+  // useMemo tracks dependencies and re-runs when values/fields/disabled/isSubmitting change,
+  // enabling auto-submit to trigger correctly (see useEffect below at line ~119).
+  const canSubmitForm = useMemo(
+    () =>
+      fields.length > 0 &&
+      fields.every((field) => values[field.id]?.trim()) &&
+      !disabled &&
+      !isSubmitting,
+    [fields, values, disabled, isSubmitting],
+  );
 
   const handleFormValueChange = useCallback(
     (fieldId: string, value: string) => {
@@ -113,9 +123,24 @@ function AnswerCardComponent({
   // Auto-submit when all required fields are filled (BUG-031 fix)
   // This improves UX by eliminating the need to click the submit button
   useEffect(() => {
+    console.log("[AnswerCard] Auto-submit check:", {
+      canSubmitForm,
+      disabled,
+      isSubmitting,
+      hasOnSubmitForm: !!onSubmitForm,
+    });
+
     if (canSubmitForm && !isSubmitting && onSubmitForm) {
+      console.log(
+        "[AnswerCard] ✓ Auto-submit conditions met, scheduling submit in 500ms",
+      );
+
       // Small delay to allow user to review their input
       const timeoutId = setTimeout(() => {
+        console.log(
+          "[AnswerCard] Auto-submit timeout fired, validating fields",
+        );
+
         // Validate all fields before submit
         const newErrors: Record<string, string> = {};
         fields.forEach((field) => {
@@ -125,15 +150,26 @@ function AnswerCardComponent({
         });
 
         if (Object.keys(newErrors).length === 0) {
+          console.log(
+            "[AnswerCard] ✓ Validation passed, calling onSubmitForm with:",
+            values,
+          );
           // Clear errors and submit
           setErrors({});
           onSubmitForm(values);
+        } else {
+          console.log("[AnswerCard] ✗ Validation failed, errors:", newErrors);
         }
       }, 500);
 
-      return () => clearTimeout(timeoutId);
+      return () => {
+        console.log("[AnswerCard] Auto-submit timeout cleared");
+        clearTimeout(timeoutId);
+      };
+    } else {
+      console.log("[AnswerCard] ✗ Auto-submit conditions not met");
     }
-  }, [canSubmitForm, isSubmitting, onSubmitForm, fields, values]);
+  }, [canSubmitForm, isSubmitting, onSubmitForm, fields, values, disabled]);
 
   return (
     <div className="border border-border-1 rounded-md bg-surface p-3.5 mt-1 flex flex-col gap-2.5">
