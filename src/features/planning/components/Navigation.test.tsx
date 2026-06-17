@@ -20,7 +20,8 @@ describe("Navigation", () => {
       </PlanningMachineProvider>,
     );
 
-    expect(screen.getByText(/Step 1 of 10/i)).toBeDefined();
+    expect(screen.getByText(/STEP 01/i)).toBeDefined();
+    expect(screen.getByText(/of 10/i)).toBeDefined();
   });
 
   it("disables Back button on step 1", () => {
@@ -79,6 +80,6 @@ describe("Navigation", () => {
     global.localStorage = originalLocalStorage;
 
     // Verify component rendered
-    expect(screen.getByText(/Step 1 of 10/i)).toBeDefined();
+    expect(screen.getByText(/STEP 01/i)).toBeDefined();
   });
 });

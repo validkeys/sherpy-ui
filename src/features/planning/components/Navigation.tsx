@@ -3,6 +3,8 @@
  * Displays step progress and provides Back/Next navigation controls
  */
 
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EVENT_TYPES } from "../machines/constants";
 import {
   usePlanningMachine,
@@ -39,27 +41,40 @@ export function Navigation() {
   };
 
   return (
-    <div className="navigation">
-      <div className="progress-indicator">
-        Step {currentStepNumber} of {TOTAL_STEPS}
+    <div className="flex items-center justify-between border-b border-border-1 px-8 py-4">
+      {/* Step Progress */}
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-xs text-fg-4 tracking-wide">
+          STEP {String(currentStepNumber).padStart(2, "0")}
+        </span>
+        <span className="text-fg-4">·</span>
+        <span className="font-mono text-xs text-fg-3">of {TOTAL_STEPS}</span>
       </div>
-      <div className="navigation-buttons">
-        <button
+
+      {/* Navigation Buttons */}
+      <div className="flex items-center gap-2">
+        <Button
           type="button"
           onClick={handleBack}
           disabled={!canGoBack}
-          className="btn-back"
+          variant="secondary"
+          size="sm"
+          className="gap-1"
         >
+          <ChevronLeft className="size-3.5" />
           Back
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={handleNext}
           disabled={!canGoNext}
-          className="btn-next"
+          variant="default"
+          size="sm"
+          className="gap-1"
         >
           Next
-        </button>
+          <ChevronRight className="size-3.5" />
+        </Button>
       </div>
     </div>
   );

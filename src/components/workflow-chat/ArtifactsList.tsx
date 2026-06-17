@@ -57,23 +57,27 @@ export function ArtifactsList({
             }
             className={`flex flex-col gap-1 p-2.5 border rounded-sm text-left transition-colors ${
               isViewable
-                ? "border-border-1 bg-surface hover:border-fg-1 cursor-pointer"
-                : "border-border-1 bg-sunken cursor-default opacity-50"
+                ? "border-border-1 bg-surface hover:border-border-emph cursor-pointer"
+                : "border-border-1 bg-sunken cursor-default opacity-80"
             }`}
           >
             <div className="flex items-center gap-2">
               <FileText
-                className={`w-3 h-3 ${isViewable ? "text-fg-3" : "text-fg-4"}`}
+                className={`w-3 h-3 ${isViewable ? "text-fg-1" : "text-fg-2"}`}
               />
               <span
                 className={`font-mono text-[11px] tracking-[0.04em] ${
-                  isViewable ? "text-fg-1" : "text-fg-4"
+                  isViewable ? "text-fg-1" : "text-fg-2"
                 }`}
               >
                 {artifact.name}
               </span>
             </div>
-            <div className="font-mono text-[10px] text-fg-4 flex items-center gap-1.5 pl-5">
+            <div
+              className={`font-mono text-[10px] flex items-center gap-1.5 pl-5 ${
+                isViewable ? "text-fg-1" : "text-fg-2"
+              }`}
+            >
               <span>
                 Stage {artifact.stage} · {artifact.stageName}
               </span>
