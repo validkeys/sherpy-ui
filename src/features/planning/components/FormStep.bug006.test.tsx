@@ -5,7 +5,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
+import { STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { FormStep } from "./FormStep";
 

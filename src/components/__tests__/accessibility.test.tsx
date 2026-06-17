@@ -364,15 +364,13 @@ describe("Accessibility Tests - WCAG 2.1 AA Compliance", () => {
   describe("WCAG 2.1 AA Criteria Coverage", () => {
     it("1.3.1 Info and Relationships - proper ARIA roles", () => {
       const { container } = render(
-        <>
-          <ErrorModal
-            open={true}
-            title="Error"
-            message="Test"
-            severity="error"
-            actions={[{ label: "Close", onClick: () => {} }]}
-          />
-        </>,
+        <ErrorModal
+          open={true}
+          title="Error"
+          message="Test"
+          severity="error"
+          actions={[{ label: "Close", onClick: () => {} }]}
+        />,
       );
 
       // Dialog role

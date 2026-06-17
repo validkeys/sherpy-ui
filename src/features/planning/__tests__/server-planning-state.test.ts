@@ -13,7 +13,7 @@ import {
   loadPlanningState,
   savePlanningState,
 } from "../../../lib/db/planning";
-import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
+import { EVENT_TYPES } from "../machines/constants";
 import { planningMachine } from "../machines/planningMachine";
 
 describe("Planning State Server Functions", () => {

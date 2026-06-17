@@ -5,7 +5,7 @@
 
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
+import { STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { AutomatedStep } from "./AutomatedStep";
 

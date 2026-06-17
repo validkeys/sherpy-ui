@@ -7,7 +7,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { createActor, waitFor } from "xstate";
-import { EVENT_TYPES, STEP_KEYS, STEP_STATES } from "./constants";
+import { EVENT_TYPES, STEP_STATES } from "./constants";
 import type { ServerFunctions } from "./planning-machine-factory";
 import { createPlanningMachine } from "./planning-machine-factory";
 

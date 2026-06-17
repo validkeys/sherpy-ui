@@ -25,7 +25,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
+import { STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { FormStep } from "./FormStep";
 

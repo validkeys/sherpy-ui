@@ -68,34 +68,9 @@ export function FormStep({ stepKey, stepName, status }: Props) {
   const questions = stepNumber === 1 ? STEP1_QUESTIONS : STEP5_QUESTIONS;
 
   // Get actor instance and create stable ref (BUG-012 fix)
-  // MUST be before conditional return to satisfy Rules of Hooks
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURN (React Rules of Hooks)
   const actor = usePlanningMachine();
   const actorRef = useActorRef(actor);
-
-  // BUG-034 FIX: Switch to interview UI for Step 1 AI follow-up questions
-  // After initial form submission, Step 1 enters interview phase (like Steps 2/3)
-  const isStep1InterviewPhase =
-    stepNumber === 1 &&
-    (status === "awaitingAnswer" ||
-      status === "fetchingQuestion" ||
-      status === "persistingAnswer" ||
-      status === "checkingComplete");
-
-  if (isStep1InterviewPhase) {
-    console.log(
-      "[FormStep] Rendering InterviewStep for Step 1 interview phase",
-    );
-    return (
-      <InterviewStep stepKey={stepKey} stepName={stepName} status={status} />
-    );
-  }
-
-  console.log(
-    "[FormStep] Actor instance ID:",
-    actor.id,
-    "Status:",
-    actor.getSnapshot().status,
-  );
 
   // Select existing responses from XState context
   const existingResponses = useSelector((state) => {
@@ -192,6 +167,32 @@ export function FormStep({ stepKey, stepName, status }: Props) {
       stepNumber,
       actorRef,
     ],
+  );
+
+  // BUG-034 FIX: Switch to interview UI for Step 1 AI follow-up questions
+  // After initial form submission, Step 1 enters interview phase (like Steps 2/3)
+  // MUST be after ALL hooks to comply with React Rules of Hooks
+  const isStep1InterviewPhase =
+    stepNumber === 1 &&
+    (status === "awaitingAnswer" ||
+      status === "fetchingQuestion" ||
+      status === "persistingAnswer" ||
+      status === "checkingComplete");
+
+  if (isStep1InterviewPhase) {
+    console.log(
+      "[FormStep] Rendering InterviewStep for Step 1 interview phase",
+    );
+    return (
+      <InterviewStep stepKey={stepKey} stepName={stepName} status={status} />
+    );
+  }
+
+  console.log(
+    "[FormStep] Actor instance ID:",
+    actor.id,
+    "Status:",
+    actor.getSnapshot().status,
   );
 
   console.log("[FormStep] Render state:", {

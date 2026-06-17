@@ -18,7 +18,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
+import { EVENT_TYPES } from "../machines/constants";
 import {
   PlanningMachineProvider,
   usePlanningMachine,

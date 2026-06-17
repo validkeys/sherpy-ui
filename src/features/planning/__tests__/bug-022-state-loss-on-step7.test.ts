@@ -34,9 +34,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createActor } from "xstate";
-import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import { planningMachine } from "../machines/planningMachine";
-import type { PlanningContext } from "../machines/types";
 
 // Mock server functions
 const mockSavePlanningState = vi.fn().mockResolvedValue({ success: true });
@@ -205,7 +203,7 @@ describe("BUG-022: State Loss During Step 7 Review", () => {
 // ============================================================================
 // HELPER: Create interview answer (from domain layer)
 // ============================================================================
-function createInterviewAnswer(
+function _createInterviewAnswer(
   questionNumber: number,
   question: string,
   answer: string,

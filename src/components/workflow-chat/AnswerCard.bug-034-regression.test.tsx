@@ -48,6 +48,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
         formValues={emptyFormValues}
         onFormValueChange={mockOnFormValueChange}
         onSubmitForm={mockOnSubmitForm}
+        autoSubmit
       />,
     );
 
@@ -69,6 +70,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
         formValues={{}}
         onFormValueChange={mockOnFormValueChange}
         onSubmitForm={mockOnSubmitForm}
+        autoSubmit
       />,
     );
 
@@ -80,6 +82,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
           formValues={filledFormValues}
           onFormValueChange={mockOnFormValueChange}
           onSubmitForm={mockOnSubmitForm}
+          autoSubmit
         />,
       );
     });
@@ -105,6 +108,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
         formValues={{}}
         onFormValueChange={mockOnFormValueChange}
         onSubmitForm={mockOnSubmitForm}
+        autoSubmit
       />,
     );
 
@@ -115,6 +119,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
         formValues={partialFormValues}
         onFormValueChange={mockOnFormValueChange}
         onSubmitForm={mockOnSubmitForm}
+        autoSubmit
       />,
     );
 
@@ -141,6 +146,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
         formValues={partialFormValues}
         onFormValueChange={mockOnFormValueChange}
         onSubmitForm={mockOnSubmitForm}
+        autoSubmit
       />,
     );
 
@@ -152,6 +158,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
           formValues={completeFormValues}
           onFormValueChange={mockOnFormValueChange}
           onSubmitForm={mockOnSubmitForm}
+          autoSubmit
         />,
       );
     });
@@ -172,6 +179,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
         formValues={{}}
         onFormValueChange={mockOnFormValueChange}
         onSubmitForm={mockOnSubmitForm}
+        autoSubmit
       />,
     );
 
@@ -183,6 +191,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
           formValues={{ existingRequirements: "Y", projectDescription: "" }}
           onFormValueChange={mockOnFormValueChange}
           onSubmitForm={mockOnSubmitForm}
+          autoSubmit
         />,
       );
     });
@@ -198,6 +207,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
           formValues={{ existingRequirements: "Yes", projectDescription: "" }}
           onFormValueChange={mockOnFormValueChange}
           onSubmitForm={mockOnSubmitForm}
+          autoSubmit
         />,
       );
     });
@@ -213,6 +223,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
           formValues={{ existingRequirements: "Yes", projectDescription: "A" }}
           onFormValueChange={mockOnFormValueChange}
           onSubmitForm={mockOnSubmitForm}
+          autoSubmit
         />,
       );
     });
@@ -232,6 +243,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
           }}
           onFormValueChange={mockOnFormValueChange}
           onSubmitForm={mockOnSubmitForm}
+          autoSubmit
         />,
       );
     });
@@ -262,6 +274,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
         disabled={true}
         onFormValueChange={mockOnFormValueChange}
         onSubmitForm={mockOnSubmitForm}
+        autoSubmit
       />,
     );
 
@@ -283,6 +296,7 @@ describe("BUG-034: Auto-submit with controlled formValues", () => {
         isSubmitting={true}
         onFormValueChange={mockOnFormValueChange}
         onSubmitForm={mockOnSubmitForm}
+        autoSubmit
       />,
     );
 

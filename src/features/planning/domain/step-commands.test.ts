@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PlanningStep, ProjectStepState } from "../types";
+import type { ProjectStepState } from "../types";
 import {
   advanceToNextStep,
   completeStep,

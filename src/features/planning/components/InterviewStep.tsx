@@ -21,25 +21,38 @@ type Props = {
 
 export function InterviewStep({ stepKey, stepName, status }: Props) {
   const actor = usePlanningMachine();
-  const stepNumber = stepKey === STEP_KEYS.STEP_2_BUSINESS_REQS ? 2 : 3;
+
+  // BUG-034 FIX: Support Step 1 in addition to Steps 2/3
+  const stepNumber =
+    stepKey === STEP_KEYS.STEP_1_GAP_ANALYSIS
+      ? 1
+      : stepKey === STEP_KEYS.STEP_2_BUSINESS_REQS
+        ? 2
+        : 3;
 
   // Select step-specific data with primitive selectors
   const answers = useSelector((state) => {
-    return stepNumber === 2
-      ? state.context.step2Answers
-      : state.context.step3Answers;
+    return stepNumber === 1
+      ? state.context.step1Answers
+      : stepNumber === 2
+        ? state.context.step2Answers
+        : state.context.step3Answers;
   });
 
   const currentQuestion = useSelector((state) => {
-    return stepNumber === 2
-      ? state.context.step2CurrentQuestion
-      : state.context.step3CurrentQuestion;
+    return stepNumber === 1
+      ? state.context.step1CurrentQuestion
+      : stepNumber === 2
+        ? state.context.step2CurrentQuestion
+        : state.context.step3CurrentQuestion;
   });
 
   const currentOptions = useSelector((state) => {
-    return stepNumber === 2
-      ? state.context.step2CurrentOptions
-      : state.context.step3CurrentOptions;
+    return stepNumber === 1
+      ? state.context.step1CurrentOptions
+      : stepNumber === 2
+        ? state.context.step2CurrentOptions
+        : state.context.step3CurrentOptions;
   });
 
   const error = useSelector((state) => state.context.error);
@@ -47,7 +60,12 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
   const [inputText, setInputText] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
 
-  const isLoading = status === "asking" || status === "checkingComplete";
+  // BUG-034 FIX: Handle Step 1 states (fetchingQuestion, awaitingAnswer, persistingAnswer)
+  const isLoading =
+    status === "asking" ||
+    status === "checkingComplete" ||
+    status === "fetchingQuestion" ||
+    status === "persistingAnswer";
   const isGenerating = status === "generatingArtifact";
 
   const handleSubmit = (answer: string) => {

@@ -16,7 +16,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createActor } from "xstate";
-import { EVENT_TYPES, STEP_KEYS } from "./constants";
+import { EVENT_TYPES } from "./constants";
 import { planningMachine } from "./planningMachine";
 
 // Mock the generateArtifact actor to avoid API calls

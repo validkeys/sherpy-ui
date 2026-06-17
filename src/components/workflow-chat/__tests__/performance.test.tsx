@@ -46,7 +46,7 @@ describe("WorkflowChat Performance Benchmarks", () => {
     const originalChatMessage = ChatMessage;
 
     // Create a spy wrapper that tracks renders
-    const ChatMessageSpy = vi.fn((props: any) => {
+    const _ChatMessageSpy = vi.fn((props: any) => {
       const count = renderCounts.get(props.message.id) || 0;
       renderCounts.set(props.message.id, count + 1);
       return originalChatMessage(props);
@@ -100,8 +100,8 @@ describe("WorkflowChat Performance Benchmarks", () => {
       },
     ];
 
-    let callbackRef1: any = null;
-    let callbackRef2: any = null;
+    let _callbackRef1: any = null;
+    let _callbackRef2: any = null;
 
     // First render
     const { rerender } = render(
@@ -109,7 +109,7 @@ describe("WorkflowChat Performance Benchmarks", () => {
         messages={messages}
         artifacts={artifacts}
         onArtifactClick={(id) => {
-          callbackRef1 = id;
+          _callbackRef1 = id;
         }}
       />,
     );
@@ -120,7 +120,7 @@ describe("WorkflowChat Performance Benchmarks", () => {
         messages={messages}
         artifacts={artifacts}
         onArtifactClick={(id) => {
-          callbackRef2 = id;
+          _callbackRef2 = id;
         }}
       />,
     );

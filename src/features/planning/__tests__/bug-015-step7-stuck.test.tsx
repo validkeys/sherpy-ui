@@ -18,7 +18,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
+import { STEP_KEYS } from "../machines/constants";
 import { planningMachine } from "../machines/planningMachine";
 
 describe("BUG-015: Step 7 machine definition", () => {

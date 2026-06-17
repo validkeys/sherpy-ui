@@ -15,7 +15,6 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { stepStateQueryKey } from "../application/queries";
-import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import type { ProjectStepState } from "../types";
 import {
   useCompleteStepMutation,
@@ -45,7 +44,7 @@ vi.mock("./server-functions", () => ({
 // Mock console.log to reduce test noise
 vi.spyOn(console, "log").mockImplementation(() => {});
 
-function createWrapper() {
+function _createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
