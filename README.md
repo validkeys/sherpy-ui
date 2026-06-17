@@ -178,7 +178,7 @@ USE_MOCK_STREAMING=false  # Use mock LLM responses for testing
 ## Testing
 
 This project uses a comprehensive testing framework with:
-- **Test Suite:** 654+ passing tests (Vitest)
+- **Test Suite:** 1033 passing tests (Vitest)
 - **Coverage:** Unit, integration, and E2E tests
 - **Test Helpers:** `PlanningStateBuilder` for fluent test data creation
 - **Snapshot System:** 26 validated snapshots (0.16 MB) for regression testing
