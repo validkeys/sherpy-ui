@@ -1,7 +1,0 @@
-{
-  "hasError": true,
-  "hasComplete": true,
-  "recentText": "anged to {\"step7_archDecisions\":\"generating\"}\n13:31:11.734: State changed to {\"step7_archDecisions\":\"reviewing\"}\nDOM Form Values (Real-time):\n{\n  \"existingRequirements\": \"(field not found)\",\n  \"projectDescription\": \"(field not found)\"\n}\nSnapshot Capture:📸 Capture Snapshot\nSaves current machine state to tests/fixtures/snapshots/ for testing\nManual Event Sender:\n🧪 Send Test SUBMIT_FORM Event (with hardcoded data)\nThis bypasses the form and sends the event directly to test if the machine responds",
-  "artifactCount": 0,
-  "artifacts": []
-}
