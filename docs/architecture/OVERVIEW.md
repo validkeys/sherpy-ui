@@ -9,10 +9,13 @@
 ## Quick Start
 
 **New to this codebase?** Read this document to understand the system architecture, technology choices, and critical patterns in ~30 minutes. Then see:
-- [`state-machine.md`](./state-machine.md) - XState workflow patterns
-- [`ai-providers.md`](./ai-providers.md) - AI integration architecture
-- [`../decisions/`](../decisions/) - Architecture Decision Records (ADRs)
-- [`../testing/troubleshooting.md`](../testing/troubleshooting.md) - Test patterns and fixes
+- [`state-machine.md`](./state-machine.md) - XState workflow patterns ✅
+- [`ai-providers.md`](./ai-providers.md) - AI integration architecture ✅
+- [`../decisions/`](../decisions/) - Architecture Decision Records (ADRs) ✅
+  - [ADR-001: XState for Workflow](../decisions/ADR-001-xstate-for-workflow.md)
+  - [ADR-002: Server Functions Over REST](../decisions/ADR-002-server-functions-over-rest.md)
+  - [ADR-003: Type-Safe Constants](../decisions/ADR-003-type-safe-constants.md)
+- [`../testing/troubleshooting.md`](../testing/troubleshooting.md) - Test patterns and fixes ✅
 
 ---
 
