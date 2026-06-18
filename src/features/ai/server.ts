@@ -29,6 +29,7 @@ import { getArtifactName } from "./skills-content";
 interface GenerateQuestionOutput {
   question: string;
   options?: string[];
+  isComplete?: boolean; // BUG-033: Signal from AI that interview is complete
 }
 
 interface AssessGapAnalysisNeedOutput {
@@ -88,6 +89,13 @@ export const $generateQuestion = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }): Promise<GenerateQuestionOutput> => {
+    console.log("[$generateQuestion] Starting:", {
+      projectId: data.projectId,
+      stepNumber: data.stepNumber,
+      previousAnswersCount: data.previousAnswers.length,
+      hasProjectContext: !!data.projectContext,
+    });
+
     const stepName = getStepName(data.stepNumber);
     if (!stepName || stepName === `Step ${data.stepNumber}`) {
       throw new Error(`Invalid step number: ${data.stepNumber}`);
@@ -116,6 +124,15 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       data.previousAnswers,
       projectOverview,
     );
+
+    console.log("[$generateQuestion] Built prompt:", {
+      messageCount: messages.length,
+      totalChars: messages.reduce((sum, m) => sum + m.content.length, 0),
+      estimatedTokens: Math.ceil(
+        messages.reduce((sum, m) => sum + m.content.length, 0) / 4,
+      ),
+    });
+
     const rawResult = await generateText(messages, data.stepNumber, {
       name: "interview-question",
       sessionId: data.projectId,
@@ -126,12 +143,23 @@ export const $generateQuestion = createServerFn({ method: "POST" })
       },
     });
 
+    console.log("[$generateQuestion] ✅ Generated question successfully:", {
+      projectId: data.projectId,
+      stepNumber: data.stepNumber,
+      hasOptions: !!(
+        rawResult &&
+        typeof rawResult === "object" &&
+        "options" in rawResult
+      ),
+    });
+
     // Structured output returns parsed object (InterviewQuestionResponse).
     // Extract question text and option labels for the interview UI.
     if (typeof rawResult === "object" && rawResult !== null) {
       const parsed = rawResult as {
         question?: string;
         options?: Array<{ letter: string; title: string }>;
+        isComplete?: boolean; // BUG-033: AI signals interview completion
       };
       if (parsed.question) {
         return {
@@ -139,6 +167,7 @@ export const $generateQuestion = createServerFn({ method: "POST" })
           options: Array.isArray(parsed.options)
             ? parsed.options.map((o) => `${o.letter}. ${o.title}`)
             : undefined,
+          isComplete: parsed.isComplete, // BUG-033: Pass through completion signal
         };
       }
     }

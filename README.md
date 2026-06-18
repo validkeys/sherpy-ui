@@ -89,11 +89,44 @@ All tokens live in `src/styles/tokens.css` and are consumed via CSS custom prope
 
 ## Environment Variables
 
-### AWS Bedrock Configuration
+### AI Provider Configuration
+
+The app supports three LLM providers, selected via a single env var:
 
 ```bash
-AWS_REGION=us-east-1
+AI_PROVIDER=bedrock    # bedrock | openai | anthropic
+```
+
+Set `AI_MODEL_ID` to override the default model for the selected provider:
+
+```bash
+AI_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+```
+
+**Provider-specific settings:**
+
+```bash
+# --- AWS Bedrock (default) ---
+AWS_REGION=ca-central-1
 BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+# Auth via AWS credential chain (env vars, SSO, or AWS_PROFILE)
+# AWS_PROFILE=your-profile
+
+# --- OpenAI ---
+# OPENAI_API_KEY=sk-...
+# Default model: gpt-4o
+
+# --- Anthropic (direct API) ---
+# ANTHROPIC_API_KEY=sk-ant-...
+# Default model: claude-sonnet-4-5-20250929
+```
+
+> **Backward compatible:** Existing Bedrock-only configs work unchanged — `AI_PROVIDER` defaults to `bedrock` and `AI_MODEL_ID` falls back to `BEDROCK_MODEL_ID`.
+
+**Verify your provider connection:**
+
+```sh
+pnpm check:provider    # Tests connectivity + a minimal model invocation
 ```
 
 ### Structured Output Feature (Gradual Rollout)
@@ -145,7 +178,7 @@ USE_MOCK_STREAMING=false  # Use mock LLM responses for testing
 ## Testing
 
 This project uses a comprehensive testing framework with:
-- **Test Suite:** 654+ passing tests (Vitest)
+- **Test Suite:** 1033 passing tests (Vitest)
 - **Coverage:** Unit, integration, and E2E tests
 - **Test Helpers:** `PlanningStateBuilder` for fluent test data creation
 - **Snapshot System:** 26 validated snapshots (0.16 MB) for regression testing

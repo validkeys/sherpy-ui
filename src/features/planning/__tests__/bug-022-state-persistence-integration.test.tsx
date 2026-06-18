@@ -18,6 +18,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EVENT_TYPES } from "../machines/constants";
 import {
   PlanningMachineProvider,
   usePlanningMachine,
@@ -41,10 +42,14 @@ vi.mock("../../ai/server", () => ({
     content: "# Mock Artifact",
     generatedAt: new Date().toISOString(),
   })),
-  $askQuestion: vi.fn(async () => ({
+  $generateQuestion: vi.fn(async () => ({
     question: "Mock question?",
     options: ["Option A", "Option B"],
-    isComplete: false,
+  })),
+  $assessGapAnalysisNeed: vi.fn(async () => ({
+    needsGapAnalysis: true,
+    reasoning: "Mock assessment",
+    confidence: "high" as const,
   })),
   $answerQuestion: vi.fn(async () => ({
     question: "Next question?",
@@ -91,7 +96,7 @@ describe("BUG-022: State Persistence Integration", () => {
         // Submit form data (internal transition)
         setTimeout(() => {
           actor.send({
-            type: "SUBMIT_FORM",
+            type: EVENT_TYPES.SUBMIT_FORM,
             stepNumber: 1,
             responses: {
               projectDescription: "Test project",
@@ -206,7 +211,7 @@ describe("BUG-022: State Persistence Integration", () => {
         // Trigger a meaningful state change
         setTimeout(() => {
           actor.send({
-            type: "SUBMIT_FORM",
+            type: EVENT_TYPES.SUBMIT_FORM,
             stepNumber: 1,
             responses: { projectDescription: "Integration test" },
           });

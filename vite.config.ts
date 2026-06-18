@@ -31,6 +31,8 @@ function openSeedDatabase() {
 const SERVER_ONLY_PACKAGES = [
   "ai",
   "@ai-sdk/amazon-bedrock",
+  "@ai-sdk/anthropic",
+  "@ai-sdk/openai",
   "@aws-sdk/credential-providers",
   "@aws-sdk/client-bedrock-runtime",
   "@aws-sdk/client-sts",
@@ -48,6 +50,8 @@ const STUB_NAMED_EXPORTS: Record<string, string[]> = {
     "NoSuchModelError",
   ],
   "@ai-sdk/amazon-bedrock": ["createAmazonBedrock"],
+  "@ai-sdk/anthropic": ["createAnthropic"],
+  "@ai-sdk/openai": ["createOpenAI"],
   "@aws-sdk/credential-providers": ["fromNodeProviderChain"],
   "@aws-sdk/client-bedrock-runtime": [
     "BedrockRuntimeClient",
@@ -98,6 +102,8 @@ export default defineConfig({
       "@aws-sdk/credential-providers",
       "ai",
       "@ai-sdk/amazon-bedrock",
+      "@ai-sdk/anthropic",
+      "@ai-sdk/openai",
     ],
   },
   ssr: {
@@ -108,6 +114,8 @@ export default defineConfig({
       "@aws-sdk/credential-providers",
       "ai",
       "@ai-sdk/amazon-bedrock",
+      "@ai-sdk/anthropic",
+      "@ai-sdk/openai",
       "langfuse",
     ],
   },

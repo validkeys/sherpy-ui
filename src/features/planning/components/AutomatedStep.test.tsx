@@ -5,6 +5,7 @@
 
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { AutomatedStep } from "./AutomatedStep";
 
@@ -16,7 +17,7 @@ describe("AutomatedStep", () => {
 
   describe("Step 4 - Style Anchors", () => {
     const step4Props = {
-      stepKey: "step4_styleAnchors",
+      stepKey: STEP_KEYS.STEP_4_STYLE_ANCHORS,
       stepName: "Style Anchors",
     };
 
@@ -45,7 +46,7 @@ describe("AutomatedStep", () => {
 
   describe("Step 6 - Definition of Done", () => {
     const step6Props = {
-      stepKey: "step6_definitionOfDone",
+      stepKey: STEP_KEYS.STEP_6_DEFINITION_OF_DONE,
       stepName: "Definition of Done",
     };
 
@@ -64,7 +65,7 @@ describe("AutomatedStep", () => {
 
   describe("Step 8 - Delivery Timeline", () => {
     const step8Props = {
-      stepKey: "step8_deliveryTimeline",
+      stepKey: STEP_KEYS.STEP_8_DELIVERY_TIMELINE,
       stepName: "Delivery Timeline",
     };
 
@@ -83,7 +84,7 @@ describe("AutomatedStep", () => {
 
   describe("Step 9 - QA Test Plan", () => {
     const step9Props = {
-      stepKey: "step9_qaTestPlan",
+      stepKey: STEP_KEYS.STEP_9_QA_TEST_PLAN,
       stepName: "QA Test Plan",
     };
 
@@ -122,7 +123,7 @@ describe("AutomatedStep", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep
-            stepKey="step4_styleAnchors"
+            stepKey={STEP_KEYS.STEP_4_STYLE_ANCHORS}
             stepName="Style Anchors"
           />
         </PlanningMachineProvider>,
@@ -136,7 +137,7 @@ describe("AutomatedStep", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep
-            stepKey="step4_styleAnchors"
+            stepKey={STEP_KEYS.STEP_4_STYLE_ANCHORS}
             stepName="Style Anchors"
           />
         </PlanningMachineProvider>,
@@ -154,7 +155,7 @@ describe("AutomatedStep", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep
-            stepKey="step4_styleAnchors"
+            stepKey={STEP_KEYS.STEP_4_STYLE_ANCHORS}
             stepName="Style Anchors"
           />
         </PlanningMachineProvider>,
@@ -165,10 +166,13 @@ describe("AutomatedStep", () => {
 
     it("renders without errors for all step keys", () => {
       const steps = [
-        { key: "step4_styleAnchors", name: "Style Anchors" },
-        { key: "step6_definitionOfDone", name: "Definition of Done" },
-        { key: "step8_deliveryTimeline", name: "Delivery Timeline" },
-        { key: "step9_qaTestPlan", name: "QA Test Plan" },
+        { key: STEP_KEYS.STEP_4_STYLE_ANCHORS, name: "Style Anchors" },
+        {
+          key: STEP_KEYS.STEP_6_DEFINITION_OF_DONE,
+          name: "Definition of Done",
+        },
+        { key: STEP_KEYS.STEP_8_DELIVERY_TIMELINE, name: "Delivery Timeline" },
+        { key: STEP_KEYS.STEP_9_QA_TEST_PLAN, name: "QA Test Plan" },
         { key: "step10_summaries", name: "Summaries" },
       ];
 
@@ -230,7 +234,7 @@ describe("AutomatedStep", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep
-            stepKey="step4_styleAnchors"
+            stepKey={STEP_KEYS.STEP_4_STYLE_ANCHORS}
             stepName="Style Anchors"
           />
         </PlanningMachineProvider>,
@@ -246,7 +250,7 @@ describe("AutomatedStep", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep
-            stepKey="step6_definitionOfDone"
+            stepKey={STEP_KEYS.STEP_6_DEFINITION_OF_DONE}
             stepName="Definition of Done"
           />
         </PlanningMachineProvider>,
@@ -261,7 +265,7 @@ describe("AutomatedStep", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep
-            stepKey="step8_deliveryTimeline"
+            stepKey={STEP_KEYS.STEP_8_DELIVERY_TIMELINE}
             stepName="Delivery Timeline"
           />
         </PlanningMachineProvider>,
@@ -275,7 +279,10 @@ describe("AutomatedStep", () => {
     it("maps step9_qaTestPlan to number 9", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
-          <AutomatedStep stepKey="step9_qaTestPlan" stepName="QA Test Plan" />
+          <AutomatedStep
+            stepKey={STEP_KEYS.STEP_9_QA_TEST_PLAN}
+            stepName="QA Test Plan"
+          />
         </PlanningMachineProvider>,
       );
 
@@ -300,7 +307,7 @@ describe("AutomatedStep", () => {
       const { container } = render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep
-            stepKey="step4_styleAnchors"
+            stepKey={STEP_KEYS.STEP_4_STYLE_ANCHORS}
             stepName="Style Anchors"
           />
         </PlanningMachineProvider>,
@@ -313,7 +320,7 @@ describe("AutomatedStep", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep
-            stepKey="step4_styleAnchors"
+            stepKey={STEP_KEYS.STEP_4_STYLE_ANCHORS}
             stepName="Style Anchors"
           />
         </PlanningMachineProvider>,
@@ -327,7 +334,7 @@ describe("AutomatedStep", () => {
       render(
         <PlanningMachineProvider input={defaultInput}>
           <AutomatedStep
-            stepKey="step4_styleAnchors"
+            stepKey={STEP_KEYS.STEP_4_STYLE_ANCHORS}
             stepName="Style Anchors"
           />
         </PlanningMachineProvider>,

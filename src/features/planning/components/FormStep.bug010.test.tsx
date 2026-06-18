@@ -29,6 +29,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { FormStep } from "./FormStep";
 
@@ -105,7 +106,7 @@ describe("BUG-010: Gap Analysis form data not captured", () => {
         storageKey={STORAGE_KEY}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -222,7 +223,7 @@ describe("BUG-010: Gap Analysis form data not captured", () => {
     });
 
     // State should transition to submitting (nested state)
-    expect(parsedFinal.value).toHaveProperty("step1_gapAnalysis");
+    expect(parsedFinal.value).toHaveProperty(STEP_KEYS.STEP_1_GAP_ANALYSIS);
 
     unmount();
   });
@@ -239,7 +240,7 @@ describe("BUG-010: Gap Analysis form data not captured", () => {
         storageKey={STORAGE_KEY}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -314,7 +315,7 @@ describe("BUG-010: Gap Analysis form data not captured", () => {
         storageKey={STORAGE_KEY}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />

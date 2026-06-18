@@ -52,20 +52,27 @@ export type PlanningContext = {
   startedAt: string;
   updatedAt: string;
 
-  // Step 1: Gap Analysis (form)
-  step1Responses: Record<string, string>;
-  step1GapAnalysisNeeded: boolean | null; // null = not yet assessed
-  step1GapAnalysisReasoning: string | null;
+  // Step 1: Gap Analysis (form + interview)
+  // BUG-033 FIX: Added interview fields to match Steps 2/3 pattern
+  step1Responses: Record<string, string>; // Initial form responses
+  step1Answers: InterviewAnswer[]; // AI interview answers
+  step1CurrentQuestion: string | null;
+  step1CurrentOptions: string[] | null;
+  step1IsComplete: boolean; // AI signals interview completion
+  step1GapAnalysisNeeded: boolean | null; // DEPRECATED: Will remove after migration
+  step1GapAnalysisReasoning: string | null; // DEPRECATED: Will remove after migration
 
   // Step 2: Business Requirements (interview)
   step2Answers: InterviewAnswer[];
   step2CurrentQuestion: string | null;
   step2CurrentOptions: string[] | null;
+  step2IsComplete: boolean; // BUG-033: AI signals interview completion
 
   // Step 3: Technical Requirements (interview)
   step3Answers: InterviewAnswer[];
   step3CurrentQuestion: string | null;
   step3CurrentOptions: string[] | null;
+  step3IsComplete: boolean; // BUG-033: AI signals interview completion
 
   // Step 5: Implementation Planner (form)
   step5Responses: Record<string, string>;
@@ -75,6 +82,9 @@ export type PlanningContext = {
 
   // Accumulated artifacts
   artifacts: StepArtifactMap;
+
+  // Temporary storage for artifact workflow (internal use only)
+  _tempArtifact?: Artifact;
 
   // Navigation tracking
   completedSteps: number[]; // Array of step numbers (1-10) that are complete
@@ -115,6 +125,12 @@ export type PlanningEvent =
         // biome-ignore lint/suspicious/noExplicitAny: XState snapshot value can be any state value
         value?: any;
       };
+    }
+  | {
+      type: "UPDATE_FORM_FIELD";
+      stepNumber: 1 | 5;
+      fieldId: string;
+      value: string;
     };
 
 /**

@@ -22,9 +22,13 @@
  * - Form fields: text inputs and textareas
  * - Submit button for forms
  * - Hover states on options
+ *
+ * Performance:
+ * - Wrapped in React.memo to prevent re-renders when props unchanged
+ * - Optimizes when parent ChatMessage re-renders
  */
 
-import { useId, useState } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type FormValues = Record<string, string>;
@@ -44,9 +48,16 @@ interface AnswerCardProps {
   onFormValueChange?: (fieldId: string, value: string) => void;
   onSelectOption?: (option: string, index: number) => void;
   onSubmitForm?: (values: FormValues) => void;
+  /**
+   * When true, the form auto-submits after all fields are filled (500ms delay).
+   * Only for interview-mode questions (Steps 2/3).
+   * Manual forms (Steps 1/5) should use the Submit button.
+   * BUG-035: Default false to prevent Step 1 forms from auto-submitting.
+   */
+  autoSubmit?: boolean;
 }
 
-export function AnswerCard({
+function AnswerCardComponent({
   options,
   formFields,
   selectedOption,
@@ -56,28 +67,93 @@ export function AnswerCard({
   onFormValueChange,
   onSelectOption,
   onSubmitForm,
+  autoSubmit = false,
 }: AnswerCardProps) {
   const optionGroupName = useId();
   const [internalFormValues, setInternalFormValues] = useState<FormValues>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const values = formValues ?? internalFormValues;
   const fields = formFields ?? [];
-  const canSubmitForm =
-    fields.length > 0 &&
-    fields.every((field) => values[field.id]?.trim()) &&
-    !disabled &&
-    !isSubmitting;
 
-  const handleFormValueChange = (fieldId: string, value: string) => {
-    if (!formValues) {
-      setInternalFormValues((current) => ({ ...current, [fieldId]: value }));
+  // BUG-034 FIX: Use useMemo to ensure canSubmitForm recalculates when values change
+  // CRITICAL: Without useMemo, this calculation only runs on initial render.
+  // When parent updates controlled formValues prop, React won't recalculate this
+  // plain variable, so canSubmitForm stays false even after all fields filled.
+  // useMemo tracks dependencies and re-runs when values/fields/disabled/isSubmitting change,
+  // enabling auto-submit to trigger correctly (see useEffect below at line ~119).
+  const canSubmitForm = useMemo(
+    () =>
+      fields.length > 0 &&
+      fields.every((field) => values[field.id]?.trim()) &&
+      !disabled &&
+      !isSubmitting,
+    [fields, values, disabled, isSubmitting],
+  );
+
+  const handleFormValueChange = useCallback(
+    (fieldId: string, value: string) => {
+      if (!formValues) {
+        setInternalFormValues((current) => ({ ...current, [fieldId]: value }));
+      }
+      onFormValueChange?.(fieldId, value);
+      // Clear error for this field when user starts typing
+      if (errors[fieldId]) {
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next[fieldId];
+          return next;
+        });
+      }
+    },
+    [formValues, onFormValueChange, errors],
+  );
+
+  const handleFormSubmit = useCallback(() => {
+    // Validate all fields before submit (WCAG 3.3.1 - Error Identification)
+    const newErrors: Record<string, string> = {};
+    fields.forEach((field) => {
+      if (!values[field.id]?.trim()) {
+        newErrors[field.id] = `${field.label} is required`;
+      }
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
     }
-    onFormValueChange?.(fieldId, value);
-  };
 
-  const handleFormSubmit = () => {
+    // Clear errors and submit
+    setErrors({});
     if (!canSubmitForm) return;
     onSubmitForm?.(values);
-  };
+  }, [fields, values, canSubmitForm, onSubmitForm]);
+
+  // Auto-submit when all required fields are filled (BUG-031 fix)
+  // BUG-035: Only auto-submit for interview-mode questions (autoSubmit prop).
+  // Manual forms (Steps 1/5) must use the Submit button.
+  useEffect(() => {
+    if (!autoSubmit || !canSubmitForm || isSubmitting || !onSubmitForm) {
+      return;
+    }
+
+    // Small delay to allow user to review their input
+    const timeoutId = setTimeout(() => {
+      // Validate all fields before submit
+      const newErrors: Record<string, string> = {};
+      fields.forEach((field) => {
+        if (!values[field.id]?.trim()) {
+          newErrors[field.id] = `${field.label} is required`;
+        }
+      });
+
+      if (Object.keys(newErrors).length === 0) {
+        setErrors({});
+        onSubmitForm(values);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [autoSubmit, canSubmitForm, isSubmitting, onSubmitForm, fields, values]);
 
   return (
     <div className="border border-border-1 rounded-md bg-surface p-3.5 mt-1 flex flex-col gap-2.5">
@@ -91,72 +167,96 @@ export function AnswerCard({
           role="radiogroup"
           aria-label="Answer options"
         >
-          {options.map((option, i) => (
-            <label
-              key={i}
-              className={`flex items-start gap-2.5 p-2.5 border rounded-sm bg-page transition-colors text-left ${
-                selectedOption === i
-                  ? "border-fg-1"
-                  : disabled || isSubmitting
-                    ? "border-border-1"
-                    : "border-border-1 hover:border-fg-1"
-              }`}
-            >
-              <input
-                type="radio"
-                name={optionGroupName}
-                value={option}
-                checked={selectedOption === i}
-                disabled={disabled || isSubmitting}
-                aria-label={option}
-                data-testid={`answer-option-${i}`}
-                onChange={() => onSelectOption?.(option, i)}
-                className="sr-only"
-              />
-              <span className="font-mono text-[11px] text-fg-4 mt-0.5">
-                {String.fromCharCode(65 + i)}
-              </span>
-              <span className="text-[13px] text-fg-1 flex-1">{option}</span>
-            </label>
-          ))}
+          {options.map((option, i) => {
+            const handleOptionSelect = () => onSelectOption?.(option, i);
+            return (
+              <label
+                key={option}
+                className={`flex items-start gap-2.5 p-2.5 border rounded-sm bg-page transition-colors text-left ${
+                  selectedOption === i
+                    ? "border-fg-1"
+                    : disabled || isSubmitting
+                      ? "border-border-1"
+                      : "border-border-1 hover:border-fg-1"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={optionGroupName}
+                  value={option}
+                  checked={selectedOption === i}
+                  disabled={disabled || isSubmitting}
+                  aria-label={option}
+                  data-testid={`answer-option-${i}`}
+                  onChange={handleOptionSelect}
+                  className="sr-only"
+                />
+                <span className="font-mono text-[11px] text-fg-4 mt-0.5">
+                  {String.fromCharCode(65 + i)}
+                </span>
+                <span className="text-[13px] text-fg-1 flex-1">{option}</span>
+              </label>
+            );
+          })}
         </div>
       ) : formFields ? (
         <div className="flex flex-col gap-3">
-          {formFields.map((field) => (
-            <div key={field.id} className="flex flex-col gap-1.5">
-              <label
-                htmlFor={field.id}
-                className="text-[13px] text-fg-2 font-medium"
-              >
-                {field.label}
-              </label>
-              {field.type === "textarea" ? (
-                <textarea
-                  id={field.id}
-                  rows={3}
-                  placeholder={field.placeholder}
-                  value={values[field.id] ?? ""}
-                  disabled={disabled || isSubmitting}
-                  onChange={(event) =>
-                    handleFormValueChange(field.id, event.target.value)
-                  }
-                  className="w-full px-3 py-2 text-sm bg-sunken border border-border-1 rounded-sm text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-fg-1"
-                />
-              ) : (
-                <input
-                  type="text"
-                  id={field.id}
-                  placeholder={field.placeholder}
-                  value={values[field.id] ?? ""}
-                  disabled={disabled || isSubmitting}
-                  onChange={(event) =>
-                    handleFormValueChange(field.id, event.target.value)
-                  }
-                  className="w-full px-3 py-2 text-sm bg-sunken border border-border-1 rounded-sm text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-fg-1"
-                />
-              )}
-            </div>
-          ))}
+          {formFields.map((field) => {
+            const hasError = !!errors[field.id];
+            const errorId = `${field.id}-error`;
+            const handleChange = (
+              event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+            ) => {
+              handleFormValueChange(field.id, event.target.value);
+            };
+
+            return (
+              <div key={field.id} className="flex flex-col gap-1.5">
+                <label
+                  htmlFor={field.id}
+                  className="text-[13px] text-fg-2 font-medium"
+                >
+                  {field.label}
+                </label>
+                {field.type === "textarea" ? (
+                  <textarea
+                    id={field.id}
+                    rows={3}
+                    placeholder={field.placeholder}
+                    value={values[field.id] ?? ""}
+                    disabled={disabled || isSubmitting}
+                    onChange={handleChange}
+                    aria-invalid={hasError}
+                    aria-describedby={hasError ? errorId : undefined}
+                    aria-required="true"
+                    className="w-full px-3 py-2 text-sm bg-sunken border border-border-1 rounded-sm text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-fg-1"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    id={field.id}
+                    placeholder={field.placeholder}
+                    value={values[field.id] ?? ""}
+                    disabled={disabled || isSubmitting}
+                    onChange={handleChange}
+                    aria-invalid={hasError}
+                    aria-describedby={hasError ? errorId : undefined}
+                    aria-required="true"
+                    className="w-full px-3 py-2 text-sm bg-sunken border border-border-1 rounded-sm text-fg-1 placeholder:text-fg-4 focus:outline-none focus:border-fg-1"
+                  />
+                )}
+                {hasError && (
+                  <div
+                    id={errorId}
+                    role="alert"
+                    className="text-[12px] text-red-600 mt-0.5"
+                  >
+                    {errors[field.id]}
+                  </div>
+                )}
+              </div>
+            );
+          })}
           <Button
             size="sm"
             className="self-end"
@@ -171,3 +271,8 @@ export function AnswerCard({
     </div>
   );
 }
+
+// Memoize to prevent re-renders when props unchanged
+// Optimizes when parent ChatMessage re-renders
+export const AnswerCard = memo(AnswerCardComponent);
+AnswerCard.displayName = "AnswerCard";

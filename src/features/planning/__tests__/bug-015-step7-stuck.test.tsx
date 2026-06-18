@@ -18,6 +18,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { STEP_KEYS } from "../machines/constants";
 import { planningMachine } from "../machines/planningMachine";
 
 describe("BUG-015: Step 7 machine definition", () => {
@@ -75,11 +76,11 @@ describe("BUG-015: Step 7 machine definition", () => {
   it("should match the pattern of other automated steps (4, 6, 8, 9, 10)", () => {
     // All automated steps should start with 'generating' state
     const automatedSteps = [
-      { number: 4, key: "step4_styleAnchors" },
-      { number: 6, key: "step6_definitionOfDone" },
-      { number: 7, key: "step7_archDecisions" },
-      { number: 8, key: "step8_deliveryTimeline" },
-      { number: 9, key: "step9_qaTestPlan" },
+      { number: 4, key: STEP_KEYS.STEP_4_STYLE_ANCHORS },
+      { number: 6, key: STEP_KEYS.STEP_6_DEFINITION_OF_DONE },
+      { number: 7, key: STEP_KEYS.STEP_7_ARCH_DECISIONS },
+      { number: 8, key: STEP_KEYS.STEP_8_DELIVERY_TIMELINE },
+      { number: 9, key: STEP_KEYS.STEP_9_QA_TEST_PLAN },
       { number: 10, key: "step10_summaries" },
     ];
 

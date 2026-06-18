@@ -20,6 +20,12 @@ import React, {
   useEffect,
 } from "react";
 import { createActor, type SnapshotFrom } from "xstate";
+import { parseOptions } from "../../ai/parse-options";
+import {
+  $assessGapAnalysisNeed,
+  $generateArtifact,
+  $generateQuestion,
+} from "../../ai/server";
 import {
   trackCacheHit,
   trackError,
@@ -27,8 +33,26 @@ import {
 } from "../infrastructure/metrics";
 import { StatePersistence } from "../infrastructure/persistence";
 import { $loadPlanningState } from "../infrastructure/server-functions";
-import { planningMachine } from "./planningMachine";
+import { parseSnapshot } from "../infrastructure/snapshot-guards";
+import { STEP_KEYS } from "./constants";
+import { createPlanningMachine } from "./planning-machine-factory";
 import type { PlanningInput } from "./types";
+
+// ─────────────────────────────────────────────────────────────
+// MACHINE CREATION
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Create planning machine with injected server functions.
+ * Server functions are imported at module level (server-side safe in TanStack Start).
+ * Dependencies are injected at machine creation time for better performance and testability.
+ */
+const planningMachine = createPlanningMachine({
+  $generateQuestion,
+  $assessGapAnalysisNeed,
+  $generateArtifact,
+  parseOptions,
+});
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -65,12 +89,29 @@ export function PlanningMachineProvider({
 }: PlanningMachineProviderProps) {
   const projectId = input.projectId;
 
+  // BUG-035 DEBUG: Log provider mount/update with timestamp
+  const timestamp = new Date().toISOString();
+  console.log(`[BUG-035][${timestamp}] PlanningMachineProvider render START:`, {
+    projectId,
+    storageKey,
+    inputObject: input,
+    stack: new Error().stack?.split("\n").slice(2, 4).join("\n"),
+  });
+
   // ============================================================================
   // STEP 1: Optimistic read from cache (synchronous, instant)
   // ============================================================================
+  // Need default snapshot for validation fallback - create temp actor to get it
+  const defaultSnapshotForValidation = React.useMemo(() => {
+    const tempActor = createActor(planningMachine, { input });
+    const snapshot = tempActor.getSnapshot();
+    // Don't start the actor, we just need the initial snapshot structure
+    return snapshot;
+  }, [input]);
+
   const cachedSnapshot = React.useMemo(
-    () => loadStateSync(storageKey),
-    [storageKey],
+    () => loadStateSync(storageKey, defaultSnapshotForValidation),
+    [storageKey, defaultSnapshotForValidation],
   );
 
   // ============================================================================
@@ -98,9 +139,10 @@ export function PlanningMachineProvider({
         throw error;
       }
     },
-    staleTime: 30000, // Consider fresh for 30 seconds (reduce DB load)
+    // Refetch on mount for fresh state; 10s staleTime for active workflows
+    staleTime: 10000, // Consider fresh for 10 seconds (real-time workflow behavior)
     gcTime: 5 * 60 * 1000, // Keep in memory for 5 minutes (better offline support)
-    refetchOnMount: false, // Don't refetch if cache is fresh
+    refetchOnMount: true, // Fetch fresh data on remount
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     retry: 3,
@@ -111,9 +153,18 @@ export function PlanningMachineProvider({
   // STEP 3: Determine authoritative snapshot
   // ============================================================================
   const authoritativeSnapshot = React.useMemo(() => {
+    const timestamp = new Date().toISOString();
+
     // Prefer database over cache
     if (dbSnapshot) {
-      console.log("[PlanningMachineProvider] Using database snapshot");
+      console.log(`[BUG-035][${timestamp}] Authoritative: DATABASE snapshot`, {
+        projectIdInSnapshot: dbSnapshot.context?.projectId,
+        expectedProjectId: projectId,
+        MISMATCH:
+          dbSnapshot.context?.projectId !== projectId
+            ? "⚠️ PROJECT ID MISMATCH!"
+            : "✓ Match",
+      });
       trackCacheHit(projectId, false); // Database fetch = cache miss
       return dbSnapshot;
     }
@@ -121,7 +172,15 @@ export function PlanningMachineProvider({
     // Fallback to cache while loading
     if (isLoadingDb && cachedSnapshot?.context?.projectId === projectId) {
       console.log(
-        "[PlanningMachineProvider] Using cached snapshot while loading",
+        `[BUG-035][${timestamp}] Authoritative: CACHED snapshot (while loading)`,
+        {
+          projectIdInSnapshot: cachedSnapshot.context?.projectId,
+          expectedProjectId: projectId,
+          MISMATCH:
+            cachedSnapshot.context?.projectId !== projectId
+              ? "⚠️ PROJECT ID MISMATCH!"
+              : "✓ Match",
+        },
       );
       trackCacheHit(projectId, true); // Using cache
       return cachedSnapshot;
@@ -130,8 +189,12 @@ export function PlanningMachineProvider({
     // If database errored but we have cache, use cache
     if (dbError && cachedSnapshot?.context?.projectId === projectId) {
       console.warn(
-        "[PlanningMachineProvider] Database error, falling back to cache:",
-        dbError,
+        `[BUG-035][${timestamp}] Authoritative: CACHED snapshot (DB error fallback)`,
+        {
+          projectIdInSnapshot: cachedSnapshot.context?.projectId,
+          expectedProjectId: projectId,
+          error: dbError,
+        },
       );
       trackCacheHit(projectId, true); // Using cache (error fallback)
       trackError("load_planning_state_fallback", dbError, { projectId });
@@ -140,7 +203,15 @@ export function PlanningMachineProvider({
 
     // Last resort: null (will create fresh actor)
     console.log(
-      "[PlanningMachineProvider] No snapshot available, creating fresh",
+      `[BUG-035][${timestamp}] Authoritative: NULL (creating fresh actor)`,
+      {
+        expectedProjectId: projectId,
+        isLoadingDb,
+        hasDbSnapshot: !!dbSnapshot,
+        hasCachedSnapshot: !!cachedSnapshot,
+        cachedProjectId: cachedSnapshot?.context?.projectId,
+        validationPassed: cachedSnapshot?.context?.projectId === projectId,
+      },
     );
     trackCacheHit(projectId, false); // No cache available
     return null;
@@ -159,48 +230,144 @@ export function PlanningMachineProvider({
   // Use RESTORE_SNAPSHOT event (via hot-reload useEffect) to update
   // actor state when database arrives, instead of recreating the actor.
   //
+  // ✅ FIX (BUG-037): Prevent cross-project state leakage
+  //
+  // PROBLEM: When navigating project A → B without page reload, the useRef
+  // persisted project A's snapshot. Even though useMemo re-ran (input changed),
+  // it read the stale ref and created project B's actor from project A's state.
+  //
+  // SOLUTION (defense-in-depth):
+  // 1. Add key={projectId} to PlanningMachineProvider (app/routes/project/$projectId.tsx:70)
+  //    Forces full unmount/remount on project change, resetting all refs
+  // 2. Defensive validation: Reset ref if snapshot.context.projectId !== input.projectId
+  // 3. Fail-safe: If validation fails, create fresh actor (never use wrong-project snapshot)
+  //
   // Why useMemo with `input` dependency is correct:
   // - Actor should be recreated if projectId changes (different project)
   // - Input contains projectId and entryPath (project-specific, immutable per project)
   // - Actor should NOT be recreated when authoritative snapshot changes
   //   (that's what hot-reload is for)
   const initialSnapshot = React.useRef(authoritativeSnapshot);
+
+  // ✅ BUG-037 Defense: Reset ref if projectId changes
+  // This is redundant with key={projectId} but provides defense if key is removed
+  React.useEffect(() => {
+    const currentSnapshotProjectId =
+      initialSnapshot.current?.context?.projectId;
+    if (
+      currentSnapshotProjectId &&
+      currentSnapshotProjectId !== input.projectId
+    ) {
+      console.warn(
+        `[BUG-037] CROSS-PROJECT REF DETECTED — resetting initialSnapshot ref`,
+        {
+          staleProjectId: currentSnapshotProjectId,
+          newProjectId: input.projectId,
+          timestamp: new Date().toISOString(),
+        },
+      );
+      trackError(
+        "cross_project_ref_prevented",
+        new Error("Cross-project ref detected"),
+        {
+          staleProjectId: currentSnapshotProjectId,
+          newProjectId: input.projectId,
+        },
+      );
+      initialSnapshot.current = null; // Reset to force fresh actor
+    }
+  }, [input.projectId]);
+
   const actor = React.useMemo(() => {
     const snapshot = initialSnapshot.current;
+    const timestamp = new Date().toISOString();
 
     if (snapshot) {
-      console.log("[PlanningMachineProvider] Creating actor from snapshot:", {
+      // ✅ BUG-037 Validation: Reject snapshot if projectId mismatch
+      const projectIdMismatch = snapshot.context?.projectId !== input.projectId;
+
+      console.log(`[BUG-035][${timestamp}] Creating actor FROM SNAPSHOT:`, {
+        projectIdFromSnapshot: snapshot.context?.projectId,
+        projectIdFromInput: input.projectId,
         currentStepNumber: snapshot.context?.currentStepNumber,
         stateValue: snapshot.value,
         status: snapshot.status,
+        MISMATCH: projectIdMismatch ? "⚠️ PROJECT ID MISMATCH!" : "✓ Match",
       });
 
-      // DO NOT provide `input` when restoring from snapshot.
-      // The snapshot already contains the complete context.
+      // ✅ BUG-037 Fail-safe: Never use wrong-project snapshot
+      if (projectIdMismatch) {
+        console.error(
+          `[BUG-037] CRITICAL: Prevented cross-project contamination!`,
+          {
+            rejectedProjectId: snapshot.context?.projectId,
+            correctProjectId: input.projectId,
+            timestamp,
+          },
+        );
+        trackError(
+          "cross_project_snapshot_rejected",
+          new Error("Cross-project snapshot rejected"),
+          {
+            rejectedProjectId: snapshot.context?.projectId,
+            correctProjectId: input.projectId,
+          },
+        );
+        // Create fresh actor instead of using contaminated snapshot
+        console.log(
+          `[BUG-037][${timestamp}] Creating FRESH actor (rejected cross-project snapshot)`,
+        );
+        return createActor(planningMachine, { input });
+      }
+
+      // When restoring from snapshot, we still need to provide input for type safety,
+      // but the snapshot's context will take precedence over the input's initial values.
       const newActor = createActor(planningMachine, {
+        input: {
+          projectId: snapshot.context.projectId,
+          entryPath: snapshot.context.entryPath,
+        },
         snapshot: snapshot as SnapshotType,
       });
 
-      console.log(
-        "[PlanningMachineProvider] Actor created, state before start:",
-        {
-          value: newActor.getSnapshot().value,
-          currentStepNumber: newActor.getSnapshot().context.currentStepNumber,
-        },
-      );
+      console.log(`[BUG-035][${timestamp}] Actor created, verifying state:`, {
+        value: newActor.getSnapshot().value,
+        projectId: newActor.getSnapshot().context.projectId,
+        currentStepNumber: newActor.getSnapshot().context.currentStepNumber,
+      });
 
       return newActor;
     }
 
-    console.log("[PlanningMachineProvider] Creating fresh actor");
+    console.log(
+      `[BUG-035][${timestamp}] Creating FRESH actor for projectId:`,
+      input.projectId,
+    );
     return createActor(planningMachine, { input });
   }, [input]); // Only recreate if input changes
+
+  // BUG-035 DEBUG: Track input object changes that trigger actor recreation
+  React.useEffect(() => {
+    const timestamp = new Date().toISOString();
+    console.log(
+      `[BUG-035][${timestamp}] Input object changed (useMemo dependency):`,
+      {
+        projectId: input.projectId,
+        entryPath: input.entryPath,
+        actorProjectId: actor.getSnapshot().context.projectId,
+      },
+    );
+  }, [input, actor]);
 
   // ============================================================================
   // STEP 5: Start actor and setup persistence
   // ============================================================================
   useEffect(() => {
-    console.log("[PlanningMachineProvider] Starting actor");
+    const timestamp = new Date().toISOString();
+    console.log(
+      `[BUG-035][${timestamp}] Starting actor for projectId:`,
+      actor.getSnapshot().context.projectId,
+    );
 
     try {
       actor.start();
@@ -374,11 +541,11 @@ function getRestoredAutomatedStep(snapshot: SnapshotType): number | null {
   if (typeof stateValue !== "object" || stateValue === null) return null;
 
   const automatedStates: Array<[string, number]> = [
-    ["step4_styleAnchors", 4],
-    ["step6_definitionOfDone", 6],
-    ["step8_deliveryTimeline", 8],
-    ["step9_qaTestPlan", 9],
-    ["step10_summaries", 10],
+    [STEP_KEYS.STEP_4_STYLE_ANCHORS, 4],
+    [STEP_KEYS.STEP_6_DEFINITION_OF_DONE, 6],
+    [STEP_KEYS.STEP_8_DELIVERY_TIMELINE, 8],
+    [STEP_KEYS.STEP_9_QA_TEST_PLAN, 9],
+    [STEP_KEYS.STEP_10_SUMMARIES, 10],
   ];
 
   for (const [stateName, stepNumber] of automatedStates) {
@@ -429,74 +596,83 @@ function snapshotsEqual(
 // PERSISTENCE HELPERS
 // ─────────────────────────────────────────────────────────────
 
-function toPlainSnapshot(snapshot: unknown): Record<string, unknown> {
+function _toPlainSnapshot(snapshot: unknown): Record<string, unknown> {
   return JSON.parse(JSON.stringify(snapshot)) as Record<string, unknown>;
 }
 
 /**
  * Load state synchronously from localStorage cache
  * Database serves as single source of truth, loaded via React Query
+ *
+ * Uses type-safe parseSnapshot() to validate structure before deserialization.
+ * Invalid/corrupted data results in null (fresh state), not a crash.
+ *
+ * @param key - localStorage key
+ * @param defaultSnapshot - Fallback snapshot if validation fails
  */
-function loadStateSync(key: string): SnapshotType | null {
+function loadStateSync(
+  key: string,
+  defaultSnapshot: SnapshotType,
+): SnapshotType | null {
   // Skip during SSR
   if (typeof window === "undefined") return null;
 
+  // BUG-035 DEBUG: Log localStorage lookup with timestamp
+  const timestamp = new Date().toISOString();
+  console.log(`[BUG-035][${timestamp}] loadStateSync called:`, {
+    key,
+    stack: new Error().stack?.split("\n").slice(2, 5).join("\n"),
+  });
+
   try {
     const stored = localStorage.getItem(key);
+    const parsedData = stored ? JSON.parse(stored) : null;
+    console.log(`[BUG-035][${timestamp}] localStorage.getItem result:`, {
+      key,
+      hasData: !!stored,
+      projectIdInData: parsedData?.context?.projectId,
+      currentStepInData: parsedData?.context?.currentStepNumber,
+      dataPreview: stored ? stored.substring(0, 200) : null,
+    });
     if (!stored) return null;
 
-    const parsed = JSON.parse(stored);
+    // Type-safe parsing with validation
+    const snapshot = parseSnapshot(stored, defaultSnapshot);
 
-    // Validate that we have a complete XState v5 snapshot
-    if (
-      !parsed ||
-      typeof parsed !== "object" ||
-      !parsed.status ||
-      !parsed.value ||
-      !parsed.context ||
-      typeof parsed.context !== "object"
-    ) {
-      throw new Error(
-        "Invalid snapshot structure: missing required fields (status, value, context). " +
-          "This may be from an old version. Clearing and starting fresh.",
+    // If validation failed, parseSnapshot returned default - treat as no cached state
+    if (snapshot === defaultSnapshot) {
+      console.warn(
+        "[PlanningMachineContext] Cached state invalid, clearing localStorage",
       );
+      try {
+        localStorage.removeItem(key);
+      } catch (clearError) {
+        console.error(
+          "[PlanningMachineContext] Failed to clear cache:",
+          clearError,
+        );
+      }
+      return null;
     }
 
-    // Validate critical context fields
-    if (
-      !parsed.context.projectId ||
-      typeof parsed.context.currentStepNumber !== "number"
-    ) {
-      throw new Error(
-        "Invalid context: missing projectId or currentStepNumber",
-      );
-    }
-
-    // Defensive reset of status to 'active'
-    if (parsed.status !== "active") {
+    // Defensive reset of status to 'active' (snapshots should always be active when loaded)
+    if (snapshot.status !== "active") {
       console.warn(
         "[PlanningMachineContext] Restoring snapshot with non-active status:",
-        parsed.status,
+        snapshot.status,
         "- forcing to active",
       );
-      parsed.status = "active";
+      // biome-ignore lint/suspicious/noExplicitAny: Snapshot mutation for status reset
+      (snapshot as any).status = "active";
     }
 
-    return parsed as unknown as SnapshotType;
+    return snapshot;
   } catch (error) {
-    // Auto-recover by clearing corrupted/outdated state
+    // parseSnapshot already handles parse errors, but catch any unexpected errors
     console.error(
-      "[PlanningMachineContext] ⚠️  Invalid state detected, clearing and starting fresh:",
+      "[PlanningMachineContext] Unexpected error loading state:",
       error,
     );
-    try {
-      localStorage.removeItem(key);
-    } catch (clearError) {
-      console.error(
-        "[PlanningMachineContext] Failed to clear invalid state:",
-        clearError,
-      );
-    }
-    return null; // Start with fresh state
+    return null;
   }
 }

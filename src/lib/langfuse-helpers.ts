@@ -66,7 +66,7 @@ export function createTrace(
  *
  * @example
  * const span = createGenerationSpan(trace, {
- *   name: "bedrock-invoke",
+ *   name: "ai-invoke",
  *   modelId: "claude-sonnet-4-5",
  *   input: { messages },
  * });

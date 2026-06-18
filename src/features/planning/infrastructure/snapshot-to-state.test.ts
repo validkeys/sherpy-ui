@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { STEP_KEYS } from "../machines/constants";
 import {
   createDefaultStepState,
   snapshotToStepState,
@@ -13,7 +14,7 @@ describe("snapshotToStepState", () => {
     // Create a minimal snapshot structure
     const snapshot = {
       status: "active",
-      value: "step1_gapAnalysis",
+      value: STEP_KEYS.STEP_1_GAP_ANALYSIS,
       context: {
         projectId: "test-123",
         entryPath: "new-project" as const,
@@ -86,7 +87,7 @@ describe("snapshotToStepState", () => {
 
     const snapshot = {
       status: "active",
-      value: "step3_techReqs",
+      value: STEP_KEYS.STEP_3_TECH_REQS,
       context,
     } as any;
 
@@ -137,7 +138,7 @@ describe("snapshotToStepState", () => {
 
     const snapshot = {
       status: "active",
-      value: "step3_techReqs",
+      value: STEP_KEYS.STEP_3_TECH_REQS,
       context,
     } as any;
 
@@ -185,7 +186,7 @@ describe("snapshotToStepState", () => {
 
     const snapshot = {
       status: "active",
-      value: "step4_qaTestPlan",
+      value: STEP_KEYS.STEP_4_QA_TEST_PLAN,
       context,
     } as any;
 

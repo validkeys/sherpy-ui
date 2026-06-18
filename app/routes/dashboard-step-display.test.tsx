@@ -52,9 +52,11 @@ vi.mock("@tanstack/react-router", async () => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useParams: () => ({ projectId: "test-project-id" }),
     createFileRoute: (_path: string) => (config: any) => ({
       ...config,
       options: config,
+      useSearch: () => ({ error: undefined, projectId: undefined }),
     }),
   };
 });

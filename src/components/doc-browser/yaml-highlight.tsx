@@ -108,7 +108,10 @@ function HighlightedLine({ line, isGap }: Omit<LineProps, "lineNum">) {
   const content = (
     <span>
       {tokens.map((tok, i) => (
-        <span key={i} className={TOKEN_CLASS[tok.type]}>
+        <span
+          key={`${i}-${tok.type}-${tok.text.slice(0, 10)}`}
+          className={TOKEN_CLASS[tok.type]}
+        >
           {tok.text}
         </span>
       ))}
@@ -137,8 +140,8 @@ export function YamlHighlight({ code }: YamlHighlightProps) {
     <div className="grid grid-cols-[auto_1fr] flex-1 min-h-0 overflow-auto [scrollbar-width:thin] [scrollbar-color:var(--border-2)_transparent]">
       {/* Gutter */}
       <div className="font-mono text-[12px] text-fg-4 py-4 px-[14px] pl-[22px] text-right select-none border-r border-border-1 bg-sunken leading-[1.7]">
-        {lines.map((_, i) => (
-          <span key={i} className="block">
+        {lines.map((line, i) => (
+          <span key={`gutter-${i + 1}-${line.slice(0, 30)}`} className="block">
             {i + 1}
           </span>
         ))}
@@ -147,7 +150,13 @@ export function YamlHighlight({ code }: YamlHighlightProps) {
       <div className="font-mono text-[12.5px] leading-[1.7] py-4 px-[22px] text-fg-1 whitespace-pre">
         {lines.map((line, i) => {
           const isGap = line.includes("⚠");
-          return <HighlightedLine key={i} line={line} isGap={isGap} />;
+          return (
+            <HighlightedLine
+              key={`code-${i + 1}-${line.slice(0, 30)}`}
+              line={line}
+              isGap={isGap}
+            />
+          );
         })}
       </div>
     </div>

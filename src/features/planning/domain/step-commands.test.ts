@@ -1,295 +1,302 @@
-/**
- * Tests for domain command functions (write-side logic).
- *
- * All commands must be pure functions that return new state without mutations.
- * Tests verify immutability and business rule enforcement.
- *
- * @module features/planning/domain/step-commands
- */
-
 import { describe, expect, it } from "vitest";
-import type { PlanningStep, ProjectStepState, StepAnswer } from "../types";
+import type { ProjectStepState } from "../types";
 import {
+  advanceToNextStep,
   completeStep,
   setStepArtifact,
-  skipStep,
   submitStepAnswer,
 } from "./step-commands";
-import type { StepNumber } from "./types";
 
-describe("Domain: step-commands", () => {
-  // Test fixture helpers
-  const createMockStep = (
-    stepNumber: number,
-    status: "complete" | "now" | "pending" | "skipped" = "pending",
-    answers?: StepAnswer[],
-  ): PlanningStep => ({
-    stepNumber,
-    name: `Step ${stepNumber}`,
-    status,
-    question: `Question for step ${stepNumber}?`,
-    ...(answers && { answers }),
-  });
-
-  const createMockState = (currentStep: number): ProjectStepState => ({
+describe("step-commands domain functions", () => {
+  // Test fixture: typical project state
+  const mockState: ProjectStepState = {
     projectId: "test-project",
-    currentStep,
-    steps: Array.from({ length: 10 }, (_, i) =>
-      createMockStep(
-        i + 1,
-        i < currentStep - 1
-          ? "complete"
-          : i === currentStep - 1
-            ? "now"
-            : "pending",
-      ),
-    ),
-  });
+    currentStep: 3,
+    steps: [
+      {
+        stepNumber: 1,
+        name: "Project Goals",
+        status: "complete",
+        question: "What are your goals?",
+        answer: {
+          question: "What are your goals?",
+          value: "Build app",
+          submittedAt: "2024-01-01",
+        },
+      },
+      {
+        stepNumber: 2,
+        name: "Target Users",
+        status: "complete",
+        question: "Who are your users?",
+        answer: {
+          question: "Who are your users?",
+          value: "Developers",
+          submittedAt: "2024-01-02",
+        },
+      },
+      {
+        stepNumber: 3,
+        name: "Key Features",
+        status: "now",
+        question: "What features do you need?",
+      },
+      {
+        stepNumber: 4,
+        name: "Technical Stack",
+        status: "pending",
+        question: "What tech stack?",
+      },
+      {
+        stepNumber: 5,
+        name: "Architecture",
+        status: "pending",
+        question: "System architecture?",
+      },
+      {
+        stepNumber: 6,
+        name: "Data Model",
+        status: "pending",
+        question: "Data structure?",
+      },
+      {
+        stepNumber: 7,
+        name: "API Design",
+        status: "pending",
+        question: "API endpoints?",
+      },
+      {
+        stepNumber: 8,
+        name: "Security",
+        status: "pending",
+        question: "Security requirements?",
+      },
+      {
+        stepNumber: 9,
+        name: "Testing",
+        status: "pending",
+        question: "Testing strategy?",
+      },
+      {
+        stepNumber: 10,
+        name: "Deployment",
+        status: "pending",
+        question: "Deployment plan?",
+      },
+    ],
+  };
 
   describe("submitStepAnswer", () => {
-    it("should add an answer to a step immutably", () => {
-      const state = createMockState(2);
-      const question = "What problem does this solve?";
-      const answer = "Customer pain point X";
+    it("adds answer to current step", () => {
+      const newState = submitStepAnswer(mockState, {
+        stepNumber: 3,
+        question: "What features do you need?",
+        value: "Authentication, Dashboard, Reports",
+      });
 
-      const newState = submitStepAnswer(state, 2, question, answer);
+      // Original state unchanged (immutable)
+      expect(mockState.steps[2].answer).toBeUndefined();
 
-      // Verify original state unchanged (immutability)
-      expect(state.steps[1].answers).toBeUndefined();
-
-      // Verify new state has answer
-      expect(newState.steps[1].answers).toHaveLength(1);
-      expect(newState.steps[1].answers?.[0].question).toBe(question);
-      expect(newState.steps[1].answers?.[0].value).toBe(answer);
-      expect(newState.steps[1].answers?.[0].submittedAt).toBeDefined();
-
-      // Verify timestamp is valid ISO 8601
-      const timestamp = newState.steps[1].answers?.[0].submittedAt;
-      expect(new Date(timestamp!).toISOString()).toBe(timestamp);
+      // New state has answer
+      expect(newState.steps[2].answer).toEqual({
+        question: "What features do you need?",
+        value: "Authentication, Dashboard, Reports",
+        submittedAt: expect.any(String),
+      });
+      expect(newState.projectId).toBe(mockState.projectId);
+      expect(newState.currentStep).toBe(mockState.currentStep);
     });
 
-    it("should append to existing answers", () => {
-      const existingAnswer: StepAnswer = {
-        question: "Question 1?",
-        value: "Answer 1",
-        submittedAt: new Date().toISOString(),
+    it("adds to answers array for multi-turn Q&A", () => {
+      const stateWithAnswer: ProjectStepState = {
+        ...mockState,
+        steps: mockState.steps.map((s) =>
+          s.stepNumber === 3
+            ? {
+                ...s,
+                answers: [
+                  { question: "Q1", value: "A1", submittedAt: "2024-01-01" },
+                ],
+              }
+            : s,
+        ),
       };
 
-      const state = createMockState(2);
-      state.steps[1].answers = [existingAnswer];
+      const newState = submitStepAnswer(stateWithAnswer, {
+        stepNumber: 3,
+        question: "Follow-up question?",
+        value: "Follow-up answer",
+      });
 
-      const newState = submitStepAnswer(state, 2, "Question 2?", "Answer 2");
-
-      // Verify original answers preserved
-      expect(newState.steps[1].answers).toHaveLength(2);
-      expect(newState.steps[1].answers?.[0]).toEqual(existingAnswer);
-      expect(newState.steps[1].answers?.[1].question).toBe("Question 2?");
-      expect(newState.steps[1].answers?.[1].value).toBe("Answer 2");
+      expect(newState.steps[2].answers).toHaveLength(2);
+      expect(newState.steps[2].answers?.[1]).toEqual({
+        question: "Follow-up question?",
+        value: "Follow-up answer",
+        submittedAt: expect.any(String),
+      });
     });
 
-    it("should throw error for invalid step number", () => {
-      const state = createMockState(2);
+    it("does not mutate original state", () => {
+      const originalSteps = JSON.stringify(mockState.steps);
+
+      submitStepAnswer(mockState, {
+        stepNumber: 3,
+        question: "Test?",
+        answer: "Test answer",
+      });
+
+      expect(JSON.stringify(mockState.steps)).toBe(originalSteps);
+    });
+
+    it("throws error if step number is out of range", () => {
+      expect(() =>
+        submitStepAnswer(mockState, {
+          stepNumber: 0,
+          question: "Invalid",
+          answer: "Invalid",
+        }),
+      ).toThrow("Invalid step number: 0");
 
       expect(() =>
-        submitStepAnswer(state, 99 as StepNumber, "Question?", "Answer"),
-      ).toThrow("Step 99 not found");
-    });
-
-    it("should not mutate original state", () => {
-      const state = createMockState(2);
-      const originalSteps = JSON.parse(JSON.stringify(state.steps));
-
-      submitStepAnswer(state, 2, "Question?", "Answer");
-
-      // Verify original state unchanged
-      expect(state.steps).toEqual(originalSteps);
-    });
-
-    it("should handle empty answers array gracefully", () => {
-      const state = createMockState(2);
-      state.steps[1].answers = undefined;
-
-      const newState = submitStepAnswer(state, 2, "Question?", "Answer");
-
-      expect(newState.steps[1].answers).toHaveLength(1);
+        submitStepAnswer(mockState, {
+          stepNumber: 11,
+          question: "Invalid",
+          answer: "Invalid",
+        }),
+      ).toThrow("Invalid step number: 11");
     });
   });
 
   describe("completeStep", () => {
-    it("should mark step as complete and advance to next step", () => {
-      const state = createMockState(2);
+    it("marks step as complete", () => {
+      const newState = completeStep(mockState, 3);
 
-      const newState = completeStep(state, 2);
-
-      // Verify step 2 marked complete
-      expect(newState.steps[1].status).toBe("complete");
-
-      // Verify step 3 now active
-      expect(newState.steps[2].status).toBe("now");
-      expect(newState.currentStep).toBe(3);
-
-      // Verify original state unchanged
-      expect(state.steps[1].status).toBe("now");
-      expect(state.currentStep).toBe(2);
+      expect(mockState.steps[2].status).toBe("now"); // Original unchanged
+      expect(newState.steps[2].status).toBe("complete"); // New state updated
     });
 
-    it("should handle completing the last step (step 10)", () => {
-      const state = createMockState(10);
+    it("does not mutate original state", () => {
+      const originalSteps = JSON.stringify(mockState.steps);
 
-      const newState = completeStep(state, 10);
+      completeStep(mockState, 3);
 
-      // Verify step 10 marked complete
-      expect(newState.steps[9].status).toBe("complete");
-
-      // Verify currentStep stays at 10 (workflow complete)
-      expect(newState.currentStep).toBe(10);
+      expect(JSON.stringify(mockState.steps)).toBe(originalSteps);
     });
 
-    it("should not mutate original state", () => {
-      const state = createMockState(3);
-      const originalSteps = JSON.parse(JSON.stringify(state.steps));
-
-      completeStep(state, 3);
-
-      expect(state.steps).toEqual(originalSteps);
-    });
-
-    it("should advance through multiple steps correctly", () => {
-      let state = createMockState(1);
-
-      // Complete steps 1 through 5
-      for (let i = 1; i <= 5; i++) {
-        state = completeStep(state, i as StepNumber);
-        expect(state.currentStep).toBe(i < 10 ? i + 1 : 10);
-        expect(state.steps[i - 1].status).toBe("complete");
-      }
-
-      // Verify final state
-      expect(state.currentStep).toBe(6);
-      expect(state.steps[4].status).toBe("complete");
-      expect(state.steps[5].status).toBe("now");
+    it("throws error if step number is out of range", () => {
+      expect(() => completeStep(mockState, 0)).toThrow(
+        "Invalid step number: 0",
+      );
+      expect(() => completeStep(mockState, 11)).toThrow(
+        "Invalid step number: 11",
+      );
     });
   });
 
   describe("setStepArtifact", () => {
-    it("should set artifact for a step immutably", () => {
-      const state = createMockState(2);
-      const artifact = "artifact: business-requirements\nversion: 1.0";
+    it("sets artifact for a step", () => {
+      const newState = setStepArtifact(mockState, {
+        stepNumber: 3,
+        artifactKey: "features-plan",
+        artifact: "yaml: content here",
+      });
 
-      const newState = setStepArtifact(state, 2, artifact);
-
-      // Verify artifact set
-      expect(newState.steps[1].artifact).toBe(artifact);
-
-      // Verify original state unchanged
-      expect(state.steps[1].artifact).toBeUndefined();
+      expect(mockState.steps[2].artifactKey).toBeUndefined(); // Original unchanged
+      expect(newState.steps[2].artifactKey).toBe("features-plan");
+      expect(newState.steps[2].artifact).toBe("yaml: content here");
     });
 
-    it("should overwrite existing artifact", () => {
-      const state = createMockState(2);
-      state.steps[1].artifact = "old-artifact";
+    it("does not mutate original state", () => {
+      const originalSteps = JSON.stringify(mockState.steps);
 
-      const newArtifact = "new-artifact";
-      const newState = setStepArtifact(state, 2, newArtifact);
+      setStepArtifact(mockState, {
+        stepNumber: 3,
+        artifactKey: "test-key",
+        artifact: "test-content",
+      });
 
-      expect(newState.steps[1].artifact).toBe(newArtifact);
+      expect(JSON.stringify(mockState.steps)).toBe(originalSteps);
     });
 
-    it("should not mutate original state", () => {
-      const state = createMockState(2);
-      const originalSteps = JSON.parse(JSON.stringify(state.steps));
+    it("throws error if step number is out of range", () => {
+      expect(() =>
+        setStepArtifact(mockState, {
+          stepNumber: 0,
+          artifactKey: "key",
+          artifact: "content",
+        }),
+      ).toThrow("Invalid step number: 0");
 
-      setStepArtifact(state, 2, "artifact-content");
-
-      expect(state.steps).toEqual(originalSteps);
+      expect(() =>
+        setStepArtifact(mockState, {
+          stepNumber: 11,
+          artifactKey: "key",
+          artifact: "content",
+        }),
+      ).toThrow("Invalid step number: 11");
     });
   });
 
-  describe("skipStep", () => {
-    it("should mark step as skipped and advance to next step", () => {
-      const state = createMockState(3);
+  describe("advanceToNextStep", () => {
+    it("advances to next step and updates statuses", () => {
+      const newState = advanceToNextStep(mockState);
 
-      const newState = skipStep(state, 3);
-
-      // Verify step 3 marked skipped
-      expect(newState.steps[2].status).toBe("skipped");
-
-      // Verify step 4 now active
-      expect(newState.steps[3].status).toBe("now");
+      expect(mockState.currentStep).toBe(3); // Original unchanged
       expect(newState.currentStep).toBe(4);
-
-      // Verify original state unchanged
-      expect(state.steps[2].status).toBe("now");
-      expect(state.currentStep).toBe(3);
+      expect(newState.steps[2].status).toBe("complete"); // Previous step
+      expect(newState.steps[3].status).toBe("now"); // New current step
     });
 
-    it("should not mutate original state", () => {
-      const state = createMockState(5);
-      const originalSteps = JSON.parse(JSON.stringify(state.steps));
+    it("does not advance beyond step 10", () => {
+      const finalState: ProjectStepState = {
+        ...mockState,
+        currentStep: 10,
+        steps: mockState.steps.map((s, i) => ({
+          ...s,
+          status: i === 9 ? "now" : "complete",
+        })),
+      };
 
-      skipStep(state, 5);
+      const newState = advanceToNextStep(finalState);
 
-      expect(state.steps).toEqual(originalSteps);
+      expect(newState.currentStep).toBe(10); // Stays at 10
+      expect(newState.steps[9].status).toBe("now"); // Last step remains current
     });
 
-    it("should advance current step number when skipping", () => {
-      const state = createMockState(7);
+    it("does not mutate original state", () => {
+      const originalState = JSON.stringify(mockState);
 
-      const newState = skipStep(state, 7);
+      advanceToNextStep(mockState);
 
-      expect(newState.currentStep).toBe(8);
-      expect(newState.steps[6].status).toBe("skipped");
-      expect(newState.steps[7].status).toBe("now");
-    });
-  });
-
-  describe("Immutability verification", () => {
-    it("should not mutate state in any command", () => {
-      const state = createMockState(5);
-
-      // Deep clone for comparison
-      const originalState = JSON.parse(JSON.stringify(state));
-
-      // Execute all commands
-      submitStepAnswer(state, 5, "Q?", "A");
-      completeStep(state, 5);
-      setStepArtifact(state, 5, "artifact");
-      skipStep(state, 5);
-
-      // Verify original state completely unchanged
-      expect(state).toEqual(originalState);
+      expect(JSON.stringify(mockState)).toBe(originalState);
     });
   });
 
-  describe("Edge cases", () => {
-    it("should handle step 1 completion", () => {
-      const state = createMockState(1);
+  describe("immutability validation", () => {
+    it("all commands return new state objects", () => {
+      const state1 = submitStepAnswer(mockState, {
+        stepNumber: 3,
+        question: "Q",
+        answer: "A",
+      });
+      expect(state1).not.toBe(mockState);
+      expect(state1.steps).not.toBe(mockState.steps);
 
-      const newState = completeStep(state, 1);
+      const state2 = completeStep(mockState, 3);
+      expect(state2).not.toBe(mockState);
+      expect(state2.steps).not.toBe(mockState.steps);
 
-      expect(newState.currentStep).toBe(2);
-      expect(newState.steps[0].status).toBe("complete");
-      expect(newState.steps[1].status).toBe("now");
-    });
+      const state3 = setStepArtifact(mockState, {
+        stepNumber: 3,
+        artifactKey: "key",
+        artifact: "content",
+      });
+      expect(state3).not.toBe(mockState);
+      expect(state3.steps).not.toBe(mockState.steps);
 
-    it("should handle step 9 completion", () => {
-      const state = createMockState(9);
-
-      const newState = completeStep(state, 9);
-
-      expect(newState.currentStep).toBe(10);
-      expect(newState.steps[8].status).toBe("complete");
-      expect(newState.steps[9].status).toBe("now");
-    });
-
-    it("should handle multiple answers on same step", () => {
-      let state = createMockState(2);
-
-      state = submitStepAnswer(state, 2, "Question 1?", "Answer 1");
-      state = submitStepAnswer(state, 2, "Question 2?", "Answer 2");
-      state = submitStepAnswer(state, 2, "Question 3?", "Answer 3");
-
-      expect(state.steps[1].answers).toHaveLength(3);
+      const state4 = advanceToNextStep(mockState);
+      expect(state4).not.toBe(mockState);
+      expect(state4.steps).not.toBe(mockState.steps);
     });
   });
 });

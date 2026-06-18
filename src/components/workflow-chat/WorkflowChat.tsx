@@ -21,11 +21,13 @@
  * - mode: Legacy prop, ignored (kept for backwards compat)
  */
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAutoScroll } from "../../hooks/useAutoScroll";
 import { ArtifactDialog } from "./ArtifactDialog";
 import { ArtifactsList } from "./ArtifactsList";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessage } from "./ChatMessage";
+import { ScrollToBottomButton } from "./ScrollToBottomButton";
 import type { Artifact, CreatedArtifact, Message } from "./types";
 
 export interface WorkflowChatProps {
@@ -34,8 +36,15 @@ export interface WorkflowChatProps {
   onSubmitMessage?: (message: string) => void;
   onSelectOption?: (question: string, option: string, index: number) => void;
   onSubmitForm?: (question: string, values: Record<string, string>) => void;
+  onFormValueChange?: (
+    question: string,
+    fieldId: string,
+    value: string,
+  ) => void;
+  formValues?: Record<string, string> | null;
   disabled?: boolean;
   isSubmitting?: boolean;
+  autoSubmit?: boolean;
 }
 
 export function WorkflowChat({
@@ -44,34 +53,83 @@ export function WorkflowChat({
   onSubmitMessage,
   onSelectOption,
   onSubmitForm,
+  onFormValueChange,
+  formValues,
   disabled = false,
   isSubmitting = false,
+  autoSubmit = false,
 }: WorkflowChatProps) {
   const [composerValue, setComposerValue] = useState("");
   const [selectedArtifact, setSelectedArtifact] =
     useState<CreatedArtifact | null>(null);
 
-  const isViewableArtifact = (
-    artifact: Artifact | undefined,
-  ): artifact is CreatedArtifact =>
-    artifact?.status === "created" && artifact.content.trim().length > 0;
+  // Auto-scroll hook for chat messages
+  const { scrollRef, scrollToBottom, shouldShowScrollButton } = useAutoScroll(
+    messages,
+    {
+      enabled: !disabled,
+      threshold: 100,
+      scrollDelay: 100,
+      behavior: "smooth",
+    },
+  );
 
-  const canOpenArtifact = (artifactId: string) =>
-    isViewableArtifact(
-      artifacts.find((artifact) => artifact.id === artifactId),
-    );
+  // Track new messages for scroll button badge
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  const lastSeenMessageCount = useRef(messages.length);
 
-  const handleArtifactClick = (artifactId: string) => {
-    const artifact = artifacts.find((a) => a.id === artifactId);
-    if (isViewableArtifact(artifact)) {
-      setSelectedArtifact(artifact);
+  // Update new message count when not at bottom
+  useEffect(() => {
+    const currentCount = messages.length;
+    const newMessages = currentCount - lastSeenMessageCount.current;
+
+    if (newMessages > 0 && shouldShowScrollButton) {
+      setNewMessageCount((prev) => prev + newMessages);
     }
-  };
 
-  const handleSubmitMessage = (message: string) => {
-    onSubmitMessage?.(message);
-    setComposerValue("");
-  };
+    if (!shouldShowScrollButton) {
+      setNewMessageCount(0);
+      lastSeenMessageCount.current = currentCount;
+    }
+  }, [messages.length, shouldShowScrollButton]);
+
+  const isViewableArtifact = useCallback(
+    (artifact: Artifact | undefined): artifact is CreatedArtifact =>
+      artifact?.status === "created" && artifact.content.trim().length > 0,
+    [],
+  );
+
+  const canOpenArtifact = useCallback(
+    (artifactId: string) =>
+      isViewableArtifact(
+        artifacts.find((artifact) => artifact.id === artifactId),
+      ),
+    [artifacts, isViewableArtifact],
+  );
+
+  const handleArtifactClick = useCallback(
+    (artifactId: string) => {
+      const artifact = artifacts.find((a) => a.id === artifactId);
+      if (isViewableArtifact(artifact)) {
+        setSelectedArtifact(artifact);
+      }
+    },
+    [artifacts, isViewableArtifact],
+  );
+
+  const handleSubmitMessage = useCallback(
+    (message: string) => {
+      onSubmitMessage?.(message);
+      setComposerValue("");
+    },
+    [onSubmitMessage],
+  );
+
+  const handleScrollToBottom = useCallback(() => {
+    scrollToBottom();
+    setNewMessageCount(0);
+    lastSeenMessageCount.current = messages.length;
+  }, [scrollToBottom, messages.length]);
 
   const isComposerDisabled = disabled || !onSubmitMessage;
   const composerPlaceholder = onSubmitMessage
@@ -107,7 +165,10 @@ export function WorkflowChat({
         data-testid="workflow-chat-messages"
       >
         <div className="flex-1 min-h-0 relative">
-          <div className="absolute inset-0 overflow-y-auto pb-32">
+          <div
+            ref={scrollRef}
+            className="absolute inset-0 overflow-y-auto pb-32"
+          >
             <div className="flex flex-col gap-7 py-8">
               {messages.map((message) => (
                 <ChatMessage
@@ -117,12 +178,22 @@ export function WorkflowChat({
                   canOpenArtifact={canOpenArtifact}
                   onSelectOption={onSelectOption}
                   onSubmitForm={onSubmitForm}
+                  onFormValueChange={onFormValueChange}
+                  formValues={formValues}
                   disabled={disabled}
                   isSubmitting={isSubmitting}
+                  autoSubmit={autoSubmit}
                 />
               ))}
             </div>
           </div>
+
+          {/* Scroll to bottom button */}
+          <ScrollToBottomButton
+            onClick={handleScrollToBottom}
+            visible={shouldShowScrollButton}
+            newMessageCount={newMessageCount}
+          />
           <ChatComposer
             value={composerValue}
             onChange={setComposerValue}

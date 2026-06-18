@@ -1,11 +1,16 @@
 import { useMemo } from "react";
-import { adaptMachineContextToArtifacts } from "../adapters/machine-to-artifacts.adapter";
-import { adaptMachineSnapshotToMessages } from "../adapters/machine-to-messages.adapter";
+import {
+  type ArtifactRelevantContext,
+  adaptMachineContextToArtifacts,
+} from "../adapters/machine-to-artifacts.adapter";
+import {
+  adaptMachineSnapshotToMessages,
+  type MessageRelevantContext,
+} from "../adapters/machine-to-messages.adapter";
 import {
   usePlanningMachine,
   useSelector,
 } from "../machines/PlanningMachineContext";
-import type { PlanningContext } from "../machines/types";
 
 const SUBMITTING_STATES = new Set([
   "submitting",
@@ -16,39 +21,82 @@ const SUBMITTING_STATES = new Set([
 
 export function useWorkflowChatData() {
   const actor = usePlanningMachine();
-  const { context, stateValue } = useSelector((snapshot) => ({
-    context: snapshot.context,
-    stateValue: snapshot.value,
-  }));
+
+  // Use selective useSelector to only subscribe to message-relevant fields (M7-010)
+  const messageContext = useSelector(
+    (snapshot): MessageRelevantContext => ({
+      currentStepNumber: snapshot.context.currentStepNumber,
+      completedSteps: snapshot.context.completedSteps,
+      artifacts: snapshot.context.artifacts,
+      step7Edits: snapshot.context.step7Edits,
+      step1Responses: snapshot.context.step1Responses,
+      step5Responses: snapshot.context.step5Responses,
+      step2Answers: snapshot.context.step2Answers,
+      step3Answers: snapshot.context.step3Answers,
+      step2CurrentQuestion: snapshot.context.step2CurrentQuestion,
+      step3CurrentQuestion: snapshot.context.step3CurrentQuestion,
+      step2CurrentOptions: snapshot.context.step2CurrentOptions,
+      step3CurrentOptions: snapshot.context.step3CurrentOptions,
+      startedAt: snapshot.context.startedAt,
+      updatedAt: snapshot.context.updatedAt,
+    }),
+  );
+
+  // Use selective useSelector to only subscribe to artifact-relevant fields (M7-010)
+  const artifactContext = useSelector(
+    (snapshot): ArtifactRelevantContext => ({
+      artifacts: snapshot.context.artifacts,
+      step7Edits: snapshot.context.step7Edits,
+    }),
+  );
+
+  const stateValue = useSelector((snapshot) => snapshot.value);
+
+  // BUG-032 FIX: Direct selector for formValues to ensure React sees updates
+  // Problem: messageContext object creates new reference but shallow equality
+  // check might miss nested step1Responses/step5Responses changes
+  // Solution: Dedicated selector that returns the actual form values object
+  const currentStepNumber = messageContext.currentStepNumber;
+  const formValues = useSelector((snapshot) => {
+    if (snapshot.context.currentStepNumber === 1) {
+      return snapshot.context.step1Responses;
+    }
+    if (snapshot.context.currentStepNumber === 5) {
+      return snapshot.context.step5Responses;
+    }
+    return null;
+  });
 
   const messages = useMemo(
-    () => adaptMachineSnapshotToMessages({ context, stateValue }),
-    [context, stateValue],
+    () =>
+      adaptMachineSnapshotToMessages({ context: messageContext, stateValue }),
+    [messageContext, stateValue],
   );
   const artifacts = useMemo(
-    () => adaptMachineContextToArtifacts(context),
-    [context],
+    () => adaptMachineContextToArtifacts(artifactContext),
+    [artifactContext],
   );
 
   return {
     messages,
     artifacts,
-    currentStepNumber: context.currentStepNumber,
-    currentQuestion: getCurrentQuestion(context),
-    currentOptions: getCurrentOptions(context),
+    currentStepNumber,
+    currentQuestion: getCurrentQuestion(messageContext),
+    currentOptions: getCurrentOptions(messageContext),
+    formValues,
     isSubmitting: isSubmittingState(stateValue),
     actor,
   };
 }
 
-function getCurrentQuestion(context: PlanningContext): string | null {
+function getCurrentQuestion(context: MessageRelevantContext): string | null {
   if (context.currentStepNumber === 2) return context.step2CurrentQuestion;
   if (context.currentStepNumber === 3) return context.step3CurrentQuestion;
 
   return null;
 }
 
-function getCurrentOptions(context: PlanningContext): string[] | null {
+function getCurrentOptions(context: MessageRelevantContext): string[] | null {
   if (context.currentStepNumber === 2) return context.step2CurrentOptions;
   if (context.currentStepNumber === 3) return context.step3CurrentOptions;
 

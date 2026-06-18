@@ -17,6 +17,7 @@
  */
 
 import { FileText } from "lucide-react";
+import { useCallback } from "react";
 import type { Artifact } from "./types";
 
 interface ArtifactsListProps {
@@ -28,6 +29,15 @@ export function ArtifactsList({
   artifacts,
   onArtifactClick,
 }: ArtifactsListProps) {
+  const handleClick = useCallback(
+    (artifactId: string, isViewable: boolean) => {
+      if (isViewable) {
+        onArtifactClick(artifactId);
+      }
+    },
+    [onArtifactClick],
+  );
+
   return (
     <div className="flex flex-col gap-1.5 p-4">
       {artifacts.map((artifact) => {
@@ -38,7 +48,7 @@ export function ArtifactsList({
           <button
             key={artifact.id}
             type="button"
-            onClick={() => isViewable && onArtifactClick(artifact.id)}
+            onClick={() => handleClick(artifact.id, isViewable)}
             disabled={!isViewable}
             aria-label={
               isViewable

@@ -38,7 +38,10 @@ export function Header({
       <nav aria-label="breadcrumb">
         <ol className="flex items-center gap-[6px] font-mono text-[11px] text-fg-3 tracking-[0.04em] list-none m-0 p-0">
           {breadcrumb.map((item, i) => (
-            <li key={i} className="flex items-center gap-[6px]">
+            <li
+              key={item.href || item.label}
+              className="flex items-center gap-[6px]"
+            >
               {i > 0 && <span className="text-fg-4">/</span>}
               {i === breadcrumb.length - 1 ? (
                 <span className="text-fg-1">{item.label}</span>

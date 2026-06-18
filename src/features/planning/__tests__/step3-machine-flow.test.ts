@@ -11,6 +11,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createActor, waitFor } from "xstate";
+import { EVENT_TYPES } from "../machines/constants";
 import { planningMachine } from "../machines/planningMachine";
 
 // Mock the AI server functions
@@ -132,7 +133,7 @@ describe("Step 3: Machine State Transitions", () => {
 
     // Submit Step 1 form
     actor.send({
-      type: "SUBMIT_FORM",
+      type: EVENT_TYPES.SUBMIT_FORM,
       responses: {
         existingRequirements: "Yes",
         projectDescription: "Test project",
@@ -163,7 +164,7 @@ describe("Step 3: Machine State Transitions", () => {
     );
 
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 2,
       question: "What problem does this solve?",
       answer: "Automate",
@@ -180,7 +181,7 @@ describe("Step 3: Machine State Transitions", () => {
 
     // Answer Step 2 question 2 (completes interview)
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 2,
       question: "Who are the users?",
       answer: "Internal",
@@ -217,7 +218,7 @@ describe("Step 3: Machine State Transitions", () => {
     );
 
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 3,
       question: "What is the deployment environment?",
       answer: "Cloud",
@@ -234,7 +235,7 @@ describe("Step 3: Machine State Transitions", () => {
 
     // Answer Step 3 question 2 (completes interview)
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber: 3,
       question: "What is the expected scale?",
       answer: "Medium",

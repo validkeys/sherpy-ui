@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   $createProject,
   $getProject,
+  $healthCheck,
   $listProjects,
   $updateProjectStatus,
 } from "./server";
@@ -44,5 +45,15 @@ export function useUpdateProjectStatus() {
     onSuccess: () => qc.invalidateQueries({ queryKey: projectsQueryKey }),
     onError: (err) =>
       console.error("[useUpdateProjectStatus]", toErrorMessage(err)),
+  });
+}
+
+export function useProjectHealth(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["project-health", projectId],
+    queryFn: () => $healthCheck({ data: { projectId } }),
+    enabled,
+    refetchInterval: 30000, // Check every 30 seconds
+    retry: 1, // Only retry once
   });
 }

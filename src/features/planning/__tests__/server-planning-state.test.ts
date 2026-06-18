@@ -13,6 +13,7 @@ import {
   loadPlanningState,
   savePlanningState,
 } from "../../../lib/db/planning";
+import { EVENT_TYPES } from "../machines/constants";
 import { planningMachine } from "../machines/planningMachine";
 
 describe("Planning State Server Functions", () => {
@@ -79,7 +80,7 @@ describe("Planning State Server Functions", () => {
 
       // Send an event to change state
       actor1.send({
-        type: "SUBMIT_FORM",
+        type: EVENT_TYPES.SUBMIT_FORM,
         stepNumber: 1,
         responses: { test: "value" },
       });

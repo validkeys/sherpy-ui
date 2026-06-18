@@ -25,8 +25,27 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { FormStep } from "./FormStep";
+
+// Mock server functions
+vi.mock("../../ai/server", () => ({
+  $generateArtifact: vi.fn().mockResolvedValue({
+    format: "markdown",
+    content: "# Gap Analysis\n\nTest content",
+    generatedAt: new Date().toISOString(),
+  }),
+  $generateQuestion: vi.fn().mockResolvedValue({
+    question: "Mock question?",
+    options: ["Option A", "Option B"],
+  }),
+  $assessGapAnalysisNeed: vi.fn().mockResolvedValue({
+    needsGapAnalysis: true,
+    reasoning: "Mock assessment",
+    confidence: "high" as const,
+  }),
+}));
 
 describe("BUG-009: XState Machine Not Initializing", () => {
   const TEST_PROJECT_ID = "L5WIIxKU";
@@ -132,7 +151,7 @@ describe("BUG-009: XState Machine Not Initializing", () => {
         storageKey={STORAGE_KEY}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="active"
         />
@@ -215,7 +234,7 @@ describe("BUG-009: XState Machine Not Initializing", () => {
           storageKey={STORAGE_KEY}
         >
           <FormStep
-            stepKey="step1_gapAnalysis"
+            stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
             stepName="Gap Analysis"
             status="active"
           />
@@ -311,7 +330,7 @@ describe("BUG-009: XState Machine Not Initializing", () => {
         storageKey={STORAGE_KEY}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="active"
         />

@@ -17,6 +17,7 @@ import {
   loadPlanningState,
   savePlanningState,
 } from "../../../lib/db/planning";
+import { EVENT_TYPES } from "../machines/constants";
 import { planningMachine } from "../machines/planningMachine";
 import type { PlanningInput } from "../machines/types";
 
@@ -107,7 +108,7 @@ describe("Planning State Integration Tests (Task 3.5)", () => {
 
       // Modify state by sending an event
       actor1.send({
-        type: "SUBMIT_FORM",
+        type: EVENT_TYPES.SUBMIT_FORM,
         stepNumber: 1,
         responses: {
           existingRequirements: "No",
@@ -158,7 +159,7 @@ describe("Planning State Integration Tests (Task 3.5)", () => {
       actorA.start();
 
       actorA.send({
-        type: "SUBMIT_FORM",
+        type: EVENT_TYPES.SUBMIT_FORM,
         stepNumber: 1,
         responses: {
           existingRequirements: "Yes",
@@ -254,7 +255,7 @@ describe("Planning State Integration Tests (Task 3.5)", () => {
 
       // Both send updates
       actor1.send({
-        type: "SUBMIT_FORM",
+        type: EVENT_TYPES.SUBMIT_FORM,
         stepNumber: 1,
         responses: {
           existingRequirements: "No",
@@ -263,7 +264,7 @@ describe("Planning State Integration Tests (Task 3.5)", () => {
       });
 
       actor2.send({
-        type: "SUBMIT_FORM",
+        type: EVENT_TYPES.SUBMIT_FORM,
         stepNumber: 1,
         responses: {
           existingRequirements: "Yes",
@@ -298,7 +299,7 @@ describe("Planning State Integration Tests (Task 3.5)", () => {
 
       // Make a change
       actor.send({
-        type: "SUBMIT_FORM",
+        type: EVENT_TYPES.SUBMIT_FORM,
         stepNumber: 1,
         responses: {
           existingRequirements: "Yes",
@@ -334,7 +335,7 @@ describe("Planning State Integration Tests (Task 3.5)", () => {
         actor.start();
 
         actor.send({
-          type: "SUBMIT_FORM",
+          type: EVENT_TYPES.SUBMIT_FORM,
           stepNumber: 1,
           responses: {
             existingRequirements: "Yes",
@@ -393,7 +394,7 @@ describe("Planning State Integration Tests (Task 3.5)", () => {
       };
 
       actor.send({
-        type: "SUBMIT_FORM",
+        type: EVENT_TYPES.SUBMIT_FORM,
         stepNumber: 1,
         responses: largeResponse,
       });

@@ -5,6 +5,8 @@
 
 import type React from "react";
 import { useState } from "react";
+import { LiveRegion } from "@/components/ui/live-region";
+import { EVENT_TYPES, STEP_KEYS } from "../machines/constants";
 import {
   usePlanningMachine,
   useSelector,
@@ -19,25 +21,38 @@ type Props = {
 
 export function InterviewStep({ stepKey, stepName, status }: Props) {
   const actor = usePlanningMachine();
-  const stepNumber = stepKey === "step2_businessReqs" ? 2 : 3;
+
+  // BUG-034 FIX: Support Step 1 in addition to Steps 2/3
+  const stepNumber =
+    stepKey === STEP_KEYS.STEP_1_GAP_ANALYSIS
+      ? 1
+      : stepKey === STEP_KEYS.STEP_2_BUSINESS_REQS
+        ? 2
+        : 3;
 
   // Select step-specific data with primitive selectors
   const answers = useSelector((state) => {
-    return stepNumber === 2
-      ? state.context.step2Answers
-      : state.context.step3Answers;
+    return stepNumber === 1
+      ? state.context.step1Answers
+      : stepNumber === 2
+        ? state.context.step2Answers
+        : state.context.step3Answers;
   });
 
   const currentQuestion = useSelector((state) => {
-    return stepNumber === 2
-      ? state.context.step2CurrentQuestion
-      : state.context.step3CurrentQuestion;
+    return stepNumber === 1
+      ? state.context.step1CurrentQuestion
+      : stepNumber === 2
+        ? state.context.step2CurrentQuestion
+        : state.context.step3CurrentQuestion;
   });
 
   const currentOptions = useSelector((state) => {
-    return stepNumber === 2
-      ? state.context.step2CurrentOptions
-      : state.context.step3CurrentOptions;
+    return stepNumber === 1
+      ? state.context.step1CurrentOptions
+      : stepNumber === 2
+        ? state.context.step2CurrentOptions
+        : state.context.step3CurrentOptions;
   });
 
   const error = useSelector((state) => state.context.error);
@@ -45,14 +60,19 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
   const [inputText, setInputText] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
 
-  const isLoading = status === "asking" || status === "checkingComplete";
+  // BUG-034 FIX: Handle Step 1 states (fetchingQuestion, awaitingAnswer, persistingAnswer)
+  const isLoading =
+    status === "asking" ||
+    status === "checkingComplete" ||
+    status === "fetchingQuestion" ||
+    status === "persistingAnswer";
   const isGenerating = status === "generatingArtifact";
 
   const handleSubmit = (answer: string) => {
     if (!currentQuestion || !answer.trim()) return;
 
     actor.send({
-      type: "SUBMIT_ANSWER",
+      type: EVENT_TYPES.SUBMIT_ANSWER,
       stepNumber,
       question: currentQuestion,
       answer: answer.trim(),
@@ -74,25 +94,33 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
 
   if (isLoading) {
     return (
-      <div className="interview-step loading">
-        <h2>{stepName}</h2>
-        <div className="loading-indicator">
-          <p>Loading next question...</p>
+      <>
+        <LiveRegion priority="polite">Loading next question.</LiveRegion>
+        <div className="interview-step loading">
+          <h2>{stepName}</h2>
+          <div className="loading-indicator">
+            <p>Loading next question...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (isGenerating) {
     return (
-      <div className="interview-step generating">
-        <h2>{stepName}</h2>
-        <div className="generating-indicator">
-          <p>
-            Generating {stepName} artifact from {answers.length} answers...
-          </p>
+      <>
+        <LiveRegion priority="polite">
+          Generating {stepName} artifact from {answers.length} answers.
+        </LiveRegion>
+        <div className="interview-step generating">
+          <h2>{stepName}</h2>
+          <div className="generating-indicator">
+            <p>
+              Generating {stepName} artifact from {answers.length} answers...
+            </p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -102,15 +130,18 @@ export function InterviewStep({ stepKey, stepName, status }: Props) {
       <p className="answer-count">{answers.length} questions answered</p>
 
       {error && (
-        <div className="error-message">
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={() => actor.send({ type: "RETRY", stepNumber })}
-          >
-            Retry
-          </button>
-        </div>
+        <>
+          <LiveRegion priority="assertive">Error: {error}</LiveRegion>
+          <div className="error-message">
+            <p>{error}</p>
+            <button
+              type="button"
+              onClick={() => actor.send({ type: "RETRY", stepNumber })}
+            >
+              Retry
+            </button>
+          </div>
+        </>
       )}
 
       {answers.length > 0 && (

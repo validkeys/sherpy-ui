@@ -102,9 +102,17 @@ export function ArtifactDialog({
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-[2px] px-[22px] border-b border-border-1 flex-shrink-0">
+          <div
+            role="tablist"
+            aria-label="Artifact views"
+            className="flex gap-[2px] px-[22px] border-b border-border-1 flex-shrink-0"
+          >
             <button
               type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="artifact-source-panel"
+              id="artifact-source-tab"
               className="font-mono text-[11px] tracking-[0.04em] px-[10px] py-2 cursor-pointer border-b-2 -mb-px transition-colors duration-[140ms] text-fg-1 border-border-emph"
             >
               Source
@@ -112,7 +120,12 @@ export function ArtifactDialog({
           </div>
 
           {/* Content */}
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <div
+            role="tabpanel"
+            id="artifact-source-panel"
+            aria-labelledby="artifact-source-tab"
+            className="flex-1 min-h-0 overflow-hidden flex flex-col"
+          >
             <YamlHighlight code={artifact.content} />
           </div>
 

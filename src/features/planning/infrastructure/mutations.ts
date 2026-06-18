@@ -132,14 +132,14 @@ export function useSubmitAnswerMutation() {
       }
     },
 
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       logMutation("submitAnswer.success", {
         projectId: variables.projectId,
         stepNumber: variables.stepNumber,
       });
     },
 
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       // Refetch to ensure cache matches server
       const queryKey = stepStateQueryKey(variables.projectId);
       queryClient.invalidateQueries({ queryKey });
@@ -219,14 +219,14 @@ export function useCompleteStepMutation() {
       }
     },
 
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       logMutation("completeStep.success", {
         projectId: variables.projectId,
         stepNumber: variables.stepNumber,
       });
     },
 
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       const queryKey = stepStateQueryKey(variables.projectId);
       queryClient.invalidateQueries({ queryKey });
     },
@@ -319,14 +319,14 @@ export function useUpdateStepOptionsMutation() {
       }
     },
 
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       logMutation("updateStepOptions.success", {
         projectId: variables.projectId,
         stepNumber: variables.stepNumber,
       });
     },
 
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       const queryKey = stepStateQueryKey(variables.projectId);
       queryClient.invalidateQueries({ queryKey });
     },
@@ -402,14 +402,14 @@ export function useSkipStepMutation() {
       }
     },
 
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       logMutation("skipStep.success", {
         projectId: variables.projectId,
         stepNumber: variables.stepNumber,
       });
     },
 
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       const queryKey = stepStateQueryKey(variables.projectId);
       queryClient.invalidateQueries({ queryKey });
     },
@@ -496,14 +496,14 @@ export function useSetStepArtifactMutation() {
       }
     },
 
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       logMutation("setStepArtifact.success", {
         projectId: variables.projectId,
         artifactKey: variables.artifactKey,
       });
     },
 
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       const queryKey = stepStateQueryKey(variables.projectId);
       queryClient.invalidateQueries({ queryKey });
     },

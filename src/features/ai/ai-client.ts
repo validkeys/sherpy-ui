@@ -1,6 +1,6 @@
 import { generateText, Output, streamText } from "ai";
 import type { z } from "zod";
-import { BEDROCK_MODEL_ID, getBedrockModel } from "@/lib/ai-provider";
+import { AI_MODEL_ID, getModel } from "@/lib/ai-provider";
 import {
   createGenerationSpan,
   createTrace,
@@ -47,17 +47,29 @@ export async function aiGenerateText(
 
   const span = createGenerationSpan(trace, {
     name: "ai-generate-text",
-    modelId: modelId ?? BEDROCK_MODEL_ID,
+    modelId: modelId ?? AI_MODEL_ID,
     input: { messages },
     maxTokens,
   });
 
   const startTime = Date.now();
 
+  // Log request details for debugging
+  console.log("[aiGenerateText] Starting request:", {
+    modelId: modelId ?? AI_MODEL_ID,
+    maxTokens,
+    messageCount: messages.length,
+    totalChars: messages.reduce((sum, m) => sum + m.content.length, 0),
+    estimatedTokens: Math.ceil(
+      messages.reduce((sum, m) => sum + m.content.length, 0) / 4,
+    ),
+    providerContext,
+  });
+
   let result: Awaited<ReturnType<typeof generateText>>;
   try {
     result = await generateText({
-      model: getBedrockModel(modelId),
+      model: getModel(modelId),
       messages: messages as Array<{
         role: "user" | "assistant";
         content: string;
@@ -66,7 +78,18 @@ export async function aiGenerateText(
       ...(temperature !== undefined && { temperature }),
       abortSignal,
     });
+
+    console.log("[aiGenerateText] ✅ Success:", {
+      latencyMs: Date.now() - startTime,
+      outputTokens: result.usage?.outputTokens,
+      finishReason: result.finishReason,
+      providerContext,
+    });
   } catch (error) {
+    console.error("[aiGenerateText] ❌ Request failed:", {
+      latencyMs: Date.now() - startTime,
+      providerContext,
+    });
     throw logAIProviderError(error, {
       operation: "generateText",
       ...providerContext,
@@ -118,17 +141,30 @@ export async function aiGenerateObject<T>(
 
   const span = createGenerationSpan(trace, {
     name: "ai-generate-object",
-    modelId: modelId ?? BEDROCK_MODEL_ID,
+    modelId: modelId ?? AI_MODEL_ID,
     input: { messages },
     maxTokens,
   });
 
   const startTime = Date.now();
 
+  // Log request details for debugging
+  console.log("[aiGenerateObject] Starting request:", {
+    modelId: modelId ?? AI_MODEL_ID,
+    maxTokens,
+    messageCount: messages.length,
+    totalChars: messages.reduce((sum, m) => sum + m.content.length, 0),
+    estimatedTokens: Math.ceil(
+      messages.reduce((sum, m) => sum + m.content.length, 0) / 4,
+    ),
+    structuredOutput: true,
+    providerContext,
+  });
+
   let result: Awaited<ReturnType<typeof generateText>>;
   try {
     result = await generateText({
-      model: getBedrockModel(modelId),
+      model: getModel(modelId),
       messages: messages as Array<{
         role: "user" | "assistant";
         content: string;
@@ -138,7 +174,18 @@ export async function aiGenerateObject<T>(
       output: Output.object({ schema }),
       abortSignal,
     });
+
+    console.log("[aiGenerateObject] ✅ Success:", {
+      latencyMs: Date.now() - startTime,
+      outputTokens: result.usage?.outputTokens,
+      finishReason: result.finishReason,
+      providerContext,
+    });
   } catch (error) {
+    console.error("[aiGenerateObject] ❌ Request failed:", {
+      latencyMs: Date.now() - startTime,
+      providerContext,
+    });
     throw logAIProviderError(error, {
       operation: "generateText",
       ...providerContext,
@@ -192,7 +239,7 @@ export async function aiStreamText(
 
   const span = createGenerationSpan(trace, {
     name: "ai-stream-text",
-    modelId: modelId ?? BEDROCK_MODEL_ID,
+    modelId: modelId ?? AI_MODEL_ID,
     input: { messages },
     maxTokens,
   });
@@ -203,7 +250,7 @@ export async function aiStreamText(
   let streamResult: Awaited<ReturnType<typeof streamText>>;
   try {
     streamResult = await streamText({
-      model: getBedrockModel(modelId),
+      model: getModel(modelId),
       messages: messages as Array<{
         role: "user" | "assistant";
         content: string;
@@ -285,7 +332,7 @@ export async function aiStreamObject<T>(
 
   const span = createGenerationSpan(trace, {
     name: "ai-stream-object",
-    modelId: modelId ?? BEDROCK_MODEL_ID,
+    modelId: modelId ?? AI_MODEL_ID,
     input: { messages },
     maxTokens,
   });
@@ -295,7 +342,7 @@ export async function aiStreamObject<T>(
   let streamResult: Awaited<ReturnType<typeof streamText>>;
   try {
     streamResult = await streamText({
-      model: getBedrockModel(modelId),
+      model: getModel(modelId),
       messages: messages as Array<{
         role: "user" | "assistant";
         content: string;

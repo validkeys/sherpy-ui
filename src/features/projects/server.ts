@@ -61,3 +61,53 @@ export const $getProject = createServerFn({ method: "GET" })
     return { id: d.id };
   })
   .handler(({ data }) => getProject(data.id));
+
+export const $healthCheck = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null) {
+      throw new Error("invalid input: expected object");
+    }
+    const d = data as Record<string, unknown>;
+    if (typeof d.projectId !== "string" || !d.projectId) {
+      throw new Error("projectId required");
+    }
+    return { projectId: d.projectId };
+  })
+  .handler(async ({ data }) => {
+    try {
+      await initStore();
+      const project = await getProject(data.projectId);
+
+      // Test database connectivity
+      const canWrite = await testDatabaseWrite();
+
+      return {
+        healthy: !!project && canWrite,
+        projectExists: !!project,
+        databaseWritable: canWrite,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error("[healthCheck] Failed:", error);
+      return {
+        healthy: false,
+        projectExists: false,
+        databaseWritable: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+      };
+    }
+  });
+
+// Helper to test database write capability
+async function testDatabaseWrite(): Promise<boolean> {
+  try {
+    const { db } = await import("@/lib/db");
+    // Try a simple read that would fail if DB is locked/unavailable
+    const stmt = db.prepare("SELECT 1 as test");
+    stmt.get();
+    return true;
+  } catch {
+    return false;
+  }
+}

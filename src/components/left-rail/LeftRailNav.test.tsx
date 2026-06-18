@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +9,11 @@ import { LeftRailNav } from "./LeftRailNav";
 
 vi.mock("@/features/projects/hooks", () => ({
   useProjects: vi.fn(),
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: vi.fn(() => vi.fn()),
+  useParams: vi.fn(() => ({})),
 }));
 
 function makeProject(overrides: Partial<Project> = {}): Project {
@@ -72,5 +78,38 @@ describe("LeftRailNav", () => {
     const btn = screen.getByText("My Project").closest("button");
     expect(btn).toBeInTheDocument();
     expect(btn?.tagName).toBe("BUTTON");
+  });
+
+  it("marks active project with aria-current='page'", () => {
+    vi.mocked(useParams).mockReturnValue({ projectId: "proj-2" });
+    vi.mocked(useProjects).mockReturnValue({
+      data: [
+        makeProject({ id: "proj-1", name: "Project One" }),
+        makeProject({ id: "proj-2", name: "Project Two" }),
+        makeProject({ id: "proj-3", name: "Project Three" }),
+      ],
+    } as unknown as ReturnType<typeof useProjects>);
+
+    wrap(<LeftRailNav onNewProject={mockOnNewProject} />);
+
+    const btn1 = screen.getByText("Project One").closest("button");
+    const btn2 = screen.getByText("Project Two").closest("button");
+    const btn3 = screen.getByText("Project Three").closest("button");
+
+    expect(btn1).not.toHaveAttribute("aria-current");
+    expect(btn2).toHaveAttribute("aria-current", "page");
+    expect(btn3).not.toHaveAttribute("aria-current");
+  });
+
+  it("wraps navigation in semantic nav element with aria-label", () => {
+    vi.mocked(useProjects).mockReturnValue({
+      data: [makeProject({ name: "Test Project" })],
+    } as unknown as ReturnType<typeof useProjects>);
+
+    const { container } = wrap(<LeftRailNav onNewProject={mockOnNewProject} />);
+
+    const nav = container.querySelector("nav");
+    expect(nav).toBeInTheDocument();
+    expect(nav).toHaveAttribute("aria-label", "Project navigation");
   });
 });

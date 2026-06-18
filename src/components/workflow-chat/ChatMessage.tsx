@@ -16,9 +16,14 @@
  * - Avatar (left): Sparkles for assistant, "U" for user
  * - Content (right): Name, timestamp, message body
  * - Max width: 720px, centered
+ *
+ * Performance:
+ * - Wrapped in React.memo to prevent re-renders when props unchanged
+ * - Optimizes list rendering (30+ messages)
  */
 
 import { Sparkles } from "lucide-react";
+import { memo, useCallback } from "react";
 import { AnswerCard } from "./AnswerCard";
 import { ArtifactPill } from "./ArtifactPill";
 import { StageDivider } from "./StageDivider";
@@ -31,19 +36,67 @@ interface ChatMessageProps {
   canOpenArtifact?: (artifactId: string) => boolean;
   onSelectOption?: (question: string, option: string, index: number) => void;
   onSubmitForm?: (question: string, values: Record<string, string>) => void;
+  onFormValueChange?: (
+    question: string,
+    fieldId: string,
+    value: string,
+  ) => void;
+  formValues?: Record<string, string> | null;
   disabled?: boolean;
   isSubmitting?: boolean;
+  autoSubmit?: boolean;
 }
 
-export function ChatMessage({
+function ChatMessageComponent({
   message,
   onArtifactClick,
   canOpenArtifact,
   onSelectOption,
   onSubmitForm,
+  onFormValueChange,
+  formValues,
   disabled = false,
   isSubmitting = false,
+  autoSubmit = false,
 }: ChatMessageProps) {
+  const handleSelectOption = useCallback(
+    (option: string, index: number) => {
+      if (message.type === "question") {
+        onSelectOption?.(message.question, option, index);
+      }
+    },
+    [message, onSelectOption],
+  );
+
+  const handleSubmitForm = useCallback(
+    (values: Record<string, string>) => {
+      if (message.type === "question") {
+        onSubmitForm?.(message.question, values);
+      }
+    },
+    [message, onSubmitForm],
+  );
+
+  const handleFormValueChange = useCallback(
+    (fieldId: string, value: string) => {
+      if (message.type === "question") {
+        onFormValueChange?.(message.question, fieldId, value);
+      }
+    },
+    [message, onFormValueChange],
+  );
+
+  const handleArtifactClick = useCallback(() => {
+    if (
+      message.type === "artifact" &&
+      onArtifactClick &&
+      message.artifactId &&
+      canOpenArtifact?.(message.artifactId)
+    ) {
+      onArtifactClick(message.artifactId);
+    }
+  }, [message, onArtifactClick, canOpenArtifact]);
+
   if (message.type === "divider") {
     return (
       <StageDivider
@@ -64,6 +117,8 @@ export function ChatMessage({
     <div className="mx-auto flex w-full max-w-[720px] gap-3.5 px-4 sm:px-8">
       {/* Avatar */}
       <div
+        role="img"
+        aria-label={isAssistant ? "Assistant message" : "User message"}
         className={`w-[26px] h-[26px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
           isAssistant
             ? "bg-inverse text-fg-on-inverse"
@@ -71,9 +126,11 @@ export function ChatMessage({
         }`}
       >
         {isAssistant ? (
-          <Sparkles className="w-3.5 h-3.5" />
+          <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
         ) : (
-          <span className="font-mono text-[11px]">U</span>
+          <span className="font-mono text-[11px]" aria-hidden="true">
+            U
+          </span>
         )}
       </div>
 
@@ -100,22 +157,25 @@ export function ChatMessage({
             <div className="text-[15px] leading-relaxed text-fg-1">
               <p>{message.question}</p>
             </div>
-            <AnswerCard
-              options={message.options}
-              formFields={message.formFields}
-              disabled={
+            {(() => {
+              const answerCardDisabled =
                 disabled ||
                 Boolean(message.options && !onSelectOption) ||
-                Boolean(message.formFields && !onSubmitForm)
-              }
-              isSubmitting={isSubmitting}
-              onSelectOption={(option, index) =>
-                onSelectOption?.(message.question, option, index)
-              }
-              onSubmitForm={(values) =>
-                onSubmitForm?.(message.question, values)
-              }
-            />
+                Boolean(message.formFields && !onSubmitForm);
+              return (
+                <AnswerCard
+                  options={message.options}
+                  formFields={message.formFields}
+                  formValues={formValues ?? undefined}
+                  disabled={answerCardDisabled}
+                  isSubmitting={isSubmitting}
+                  autoSubmit={autoSubmit}
+                  onSelectOption={handleSelectOption}
+                  onSubmitForm={handleSubmitForm}
+                  onFormValueChange={handleFormValueChange}
+                />
+              );
+            })()}
           </>
         )}
 
@@ -149,15 +209,7 @@ export function ChatMessage({
             <ArtifactPill
               name={message.artifactName}
               disabled={!canOpenArtifact?.(message.artifactId)}
-              onClick={() => {
-                if (
-                  onArtifactClick &&
-                  message.artifactId &&
-                  canOpenArtifact?.(message.artifactId)
-                ) {
-                  onArtifactClick(message.artifactId);
-                }
-              }}
+              onClick={handleArtifactClick}
             />
           </>
         )}
@@ -165,3 +217,8 @@ export function ChatMessage({
     </div>
   );
 }
+
+// Memoize to prevent re-renders when props unchanged
+// Critical for list performance with 30+ messages
+export const ChatMessage = memo(ChatMessageComponent);
+ChatMessage.displayName = "ChatMessage";

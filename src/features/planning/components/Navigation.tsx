@@ -3,6 +3,7 @@
  * Displays step progress and provides Back/Next navigation controls
  */
 
+import { EVENT_TYPES } from "../machines/constants";
 import {
   usePlanningMachine,
   useSelector,
@@ -27,13 +28,13 @@ export function Navigation() {
 
   const handleBack = () => {
     if (canGoBack) {
-      actor.send({ type: "BACK" });
+      actor.send({ type: EVENT_TYPES.BACK });
     }
   };
 
   const handleNext = () => {
     if (canGoNext) {
-      actor.send({ type: "NEXT" });
+      actor.send({ type: EVENT_TYPES.NEXT });
     }
   };
 

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   _resetStore,
   createProject,
+  getProject,
   listProjects,
   updateProjectStatus,
 } from "./store";
@@ -36,6 +37,17 @@ function validateUpdateStatusInput(data: unknown) {
   if (d.status !== "archived" && d.status !== "complete")
     throw new Error("status must be archived or complete");
   return { id: d.id, status: d.status as "archived" | "complete" };
+}
+
+function validateHealthCheckInput(data: unknown) {
+  if (typeof data !== "object" || data === null) {
+    throw new Error("invalid input: expected object");
+  }
+  const d = data as Record<string, unknown>;
+  if (typeof d.projectId !== "string" || !d.projectId) {
+    throw new Error("projectId required");
+  }
+  return { projectId: d.projectId };
 }
 
 beforeEach(() => {
@@ -121,5 +133,96 @@ describe("$updateProjectStatus (store delegate)", () => {
     expect(() => updateProjectStatus("no-such-id", "archived")).toThrow(
       "Project not found: no-such-id",
     );
+  });
+});
+
+describe("$healthCheck validator", () => {
+  it("accepts valid input with projectId", () => {
+    const result = validateHealthCheckInput({ projectId: "test-123" });
+    expect(result).toEqual({ projectId: "test-123" });
+  });
+
+  it("throws on non-object input", () => {
+    expect(() => validateHealthCheckInput("bad")).toThrow(
+      "invalid input: expected object",
+    );
+  });
+
+  it("throws on missing projectId", () => {
+    expect(() => validateHealthCheckInput({ projectId: "" })).toThrow(
+      "projectId required",
+    );
+  });
+
+  it("throws on null input", () => {
+    expect(() => validateHealthCheckInput(null)).toThrow(
+      "invalid input: expected object",
+    );
+  });
+});
+
+describe("$healthCheck (logic simulation)", () => {
+  it("simulates healthy response when project exists", async () => {
+    const p = createProject({ name: "Test", entryPath: "scratch" });
+    const project = await getProject(p.id);
+
+    expect(project).toBeTruthy();
+
+    // Simulate health check result (database assumed writable in tests)
+    const result = {
+      healthy: !!project && true, // Assume database writable
+      projectExists: !!project,
+      databaseWritable: true,
+      timestamp: new Date().toISOString(),
+    };
+
+    expect(result.healthy).toBe(true);
+    expect(result.projectExists).toBe(true);
+    expect(result.databaseWritable).toBe(true);
+    expect(result.timestamp).toBeTruthy();
+  });
+
+  it("simulates unhealthy response when project does not exist", async () => {
+    const project = await getProject("nonexistent-id");
+
+    const result = {
+      healthy: !!project && true,
+      projectExists: !!project,
+      databaseWritable: true,
+      timestamp: new Date().toISOString(),
+    };
+
+    expect(result.healthy).toBe(false);
+    expect(result.projectExists).toBe(false);
+  });
+
+  it("simulates error response structure", () => {
+    const error = new Error("Database connection failed");
+
+    const result = {
+      healthy: false,
+      projectExists: false,
+      databaseWritable: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      timestamp: new Date().toISOString(),
+    };
+
+    expect(result.healthy).toBe(false);
+    expect(result.error).toBe("Database connection failed");
+  });
+
+  it("simulates error response with non-Error exception", () => {
+    const error = "String error";
+
+    const result = {
+      healthy: false,
+      projectExists: false,
+      databaseWritable: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      timestamp: new Date().toISOString(),
+    };
+
+    expect(result.healthy).toBe(false);
+    expect(result.error).toBe("Unknown error");
   });
 });

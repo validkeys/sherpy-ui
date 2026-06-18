@@ -44,7 +44,7 @@ vi.mock("./server-functions", () => ({
 // Mock console.log to reduce test noise
 vi.spyOn(console, "log").mockImplementation(() => {});
 
-function createWrapper() {
+function _createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },

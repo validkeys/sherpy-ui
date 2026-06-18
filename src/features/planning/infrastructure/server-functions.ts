@@ -23,9 +23,11 @@ import type { StepNumber } from "../domain/types";
 import type { ProjectStepState, StepOption } from "../types";
 import {
   loadPlanningState,
+  loadStepState,
   saveFormResponse,
   saveInterviewAnswer,
   savePlanningState,
+  saveStepState,
 } from "./repository";
 
 /**
@@ -57,10 +59,10 @@ export const $saveInterviewAnswer = createServerFn({ method: "POST" })
     if (stepNumber !== 2 && stepNumber !== 3) {
       throw new Error("stepNumber must be 2 or 3");
     }
-    if (typeof d.question !== "string") {
+    if (typeof d.question !== "string" || !d.question) {
       throw new Error("question required");
     }
-    if (typeof d.answer !== "string") {
+    if (typeof d.answer !== "string" || !d.answer) {
       throw new Error("answer required");
     }
     return {
@@ -187,10 +189,10 @@ export const $submitAnswer = createServerFn({ method: "POST" })
     if (typeof d.stepNumber !== "number") {
       throw new Error("stepNumber required");
     }
-    if (typeof d.question !== "string") {
+    if (typeof d.question !== "string" || !d.question) {
       throw new Error("question required");
     }
-    if (typeof d.answer !== "string") {
+    if (typeof d.answer !== "string" || !d.answer) {
       throw new Error("answer required");
     }
     return {
@@ -217,29 +219,23 @@ export const $submitAnswer = createServerFn({ method: "POST" })
       });
 
       try {
-        // 1. Load current state
-        const currentState = (await loadPlanningState(
-          data.projectId,
-        )) as ProjectStepState | null;
+        // 1. Load current state (using domain-friendly repository function)
+        const currentState = await loadStepState(data.projectId);
         if (!currentState) {
           throw new Error("Project not found");
         }
 
         // 2. Apply domain logic (pure function)
-        const newState = submitStepAnswer(
-          currentState,
-          data.stepNumber,
-          data.question,
-          data.answer,
-        );
+        const newState = submitStepAnswer(currentState, {
+          stepNumber: data.stepNumber,
+          question: data.question,
+          value: data.answer,
+        });
 
         // 3. Persist new state (parallel operations)
         if (data.stepNumber === 2 || data.stepNumber === 3) {
           await Promise.all([
-            savePlanningState(
-              data.projectId,
-              newState as unknown as Record<string, unknown>,
-            ),
+            saveStepState(newState),
             saveInterviewAnswer(
               data.projectId,
               data.stepNumber,
@@ -249,10 +245,7 @@ export const $submitAnswer = createServerFn({ method: "POST" })
           ]);
         } else {
           // For other steps, just save planning state
-          await savePlanningState(
-            data.projectId,
-            newState as unknown as Record<string, unknown>,
-          );
+          await saveStepState(newState);
         }
 
         logServerAction("submitAnswer.success", {
@@ -288,10 +281,10 @@ export const $submitAnswerAndComplete = createServerFn({ method: "POST" })
     if (typeof d.stepNumber !== "number") {
       throw new Error("stepNumber required");
     }
-    if (typeof d.question !== "string") {
+    if (typeof d.question !== "string" || !d.question) {
       throw new Error("question required");
     }
-    if (typeof d.answer !== "string") {
+    if (typeof d.answer !== "string" || !d.answer) {
       throw new Error("answer required");
     }
     return {
@@ -318,27 +311,21 @@ export const $submitAnswerAndComplete = createServerFn({ method: "POST" })
       });
 
       try {
-        const currentState = (await loadPlanningState(
-          data.projectId,
-        )) as ProjectStepState | null;
+        const currentState = await loadStepState(data.projectId);
         if (!currentState) {
           throw new Error("Project not found");
         }
 
-        const answeredState = submitStepAnswer(
-          currentState,
-          data.stepNumber,
-          data.question,
-          data.answer,
-        );
+        const answeredState = submitStepAnswer(currentState, {
+          stepNumber: data.stepNumber,
+          question: data.question,
+          value: data.answer,
+        });
         const newState = completeStep(answeredState, data.stepNumber);
 
         if (data.stepNumber === 2 || data.stepNumber === 3) {
           await Promise.all([
-            savePlanningState(
-              data.projectId,
-              newState as unknown as Record<string, unknown>,
-            ),
+            saveStepState(newState),
             saveInterviewAnswer(
               data.projectId,
               data.stepNumber,
@@ -347,10 +334,7 @@ export const $submitAnswerAndComplete = createServerFn({ method: "POST" })
             ),
           ]);
         } else {
-          await savePlanningState(
-            data.projectId,
-            newState as unknown as Record<string, unknown>,
-          );
+          await saveStepState(newState);
         }
 
         logServerAction("submitAnswerAndComplete.success", {
@@ -409,9 +393,7 @@ export const $completeStep = createServerFn({ method: "POST" })
 
       try {
         // 1. Load current state
-        const currentState = (await loadPlanningState(
-          data.projectId,
-        )) as ProjectStepState | null;
+        const currentState = await loadStepState(data.projectId);
         if (!currentState) {
           throw new Error("Project not found");
         }
@@ -420,10 +402,7 @@ export const $completeStep = createServerFn({ method: "POST" })
         const newState = completeStep(currentState, data.stepNumber);
 
         // 3. Persist
-        await savePlanningState(
-          data.projectId,
-          newState as unknown as Record<string, unknown>,
-        );
+        await saveStepState(newState);
 
         logServerAction("completeStep.success", {
           projectId: data.projectId,
@@ -482,9 +461,7 @@ export const $updateStepOptions = createServerFn({ method: "POST" })
       });
 
       try {
-        const currentState = (await loadPlanningState(
-          data.projectId,
-        )) as ProjectStepState | null;
+        const currentState = await loadStepState(data.projectId);
         if (!currentState) {
           throw new Error("Project not found");
         }
@@ -498,10 +475,7 @@ export const $updateStepOptions = createServerFn({ method: "POST" })
           ),
         };
 
-        await savePlanningState(
-          data.projectId,
-          newState as unknown as Record<string, unknown>,
-        );
+        await saveStepState(newState);
 
         logServerAction("updateStepOptions.success", {
           projectId: data.projectId,
@@ -559,9 +533,7 @@ export const $skipStep = createServerFn({ method: "POST" })
 
       try {
         // 1. Load current state
-        const currentState = (await loadPlanningState(
-          data.projectId,
-        )) as ProjectStepState | null;
+        const currentState = await loadStepState(data.projectId);
         if (!currentState) {
           throw new Error("Project not found");
         }
@@ -570,10 +542,7 @@ export const $skipStep = createServerFn({ method: "POST" })
         const newState = skipStep(currentState, data.stepNumber);
 
         // 3. Persist
-        await savePlanningState(
-          data.projectId,
-          newState as unknown as Record<string, unknown>,
-        );
+        await saveStepState(newState);
 
         logServerAction("skipStep.success", {
           projectId: data.projectId,
@@ -636,25 +605,20 @@ export const $setStepArtifact = createServerFn({ method: "POST" })
 
       try {
         // 1. Load current state
-        const currentState = (await loadPlanningState(
-          data.projectId,
-        )) as ProjectStepState | null;
+        const currentState = await loadStepState(data.projectId);
         if (!currentState) {
           throw new Error("Project not found");
         }
 
         // 2. Apply domain logic
-        const newState = setStepArtifact(
-          currentState,
-          data.stepNumber,
-          data.artifact,
-        );
+        const newState = setStepArtifact(currentState, {
+          stepNumber: data.stepNumber,
+          artifactKey: `step-${data.stepNumber}`,
+          artifact: data.artifact,
+        });
 
         // 3. Persist
-        await savePlanningState(
-          data.projectId,
-          newState as unknown as Record<string, unknown>,
-        );
+        await saveStepState(newState);
 
         logServerAction("setStepArtifact.success", {
           projectId: data.projectId,
@@ -698,11 +662,11 @@ export const $getStepState = createServerFn({ method: "GET" })
     });
 
     try {
-      // Load XState snapshot
-      const snapshot = await loadPlanningState(data.projectId);
+      // Load domain-friendly state directly
+      const state = await loadStepState(data.projectId);
 
-      // If no snapshot exists (new project), return default state
-      if (!snapshot) {
+      // If no state exists (new project), return default state
+      if (!state) {
         logServerAction("getStepState.success", {
           projectId: data.projectId,
           currentStep: 1,
@@ -713,10 +677,6 @@ export const $getStepState = createServerFn({ method: "GET" })
         const { createDefaultStepState } = await import("./snapshot-to-state");
         return createDefaultStepState(data.projectId);
       }
-
-      // Convert XState snapshot to ProjectStepState
-      const { snapshotToStepState } = await import("./snapshot-to-state");
-      const state = snapshotToStepState(snapshot as any);
 
       logServerAction("getStepState.success", {
         projectId: data.projectId,
@@ -753,30 +713,32 @@ export const $savePlanningState = createServerFn({ method: "POST" })
       snapshot: d.snapshot,
     };
   })
-  .handler(async ({ data }: { data: { projectId: string; snapshot: any } }) => {
-    logServerAction("savePlanningState.start", {
-      projectId: data.projectId,
-    });
-
-    try {
-      await savePlanningState(
-        data.projectId,
-        data.snapshot as Record<string, unknown>,
-      );
-
-      logServerAction("savePlanningState.success", {
+  .handler(
+    async ({ data }: { data: { projectId: string; snapshot: unknown } }) => {
+      logServerAction("savePlanningState.start", {
         projectId: data.projectId,
       });
 
-      return { success: true };
-    } catch (error) {
-      logServerAction("savePlanningState.error", {
-        projectId: data.projectId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-      throw error;
-    }
-  });
+      try {
+        await savePlanningState(
+          data.projectId,
+          data.snapshot as Record<string, unknown>,
+        );
+
+        logServerAction("savePlanningState.success", {
+          projectId: data.projectId,
+        });
+
+        return { success: true };
+      } catch (error) {
+        logServerAction("savePlanningState.error", {
+          projectId: data.projectId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+        throw error;
+      }
+    },
+  );
 
 /**
  * Server function: Load planning machine state (XState snapshot) from database
@@ -794,25 +756,27 @@ export const $loadPlanningState = createServerFn({ method: "GET" })
       projectId: d.projectId,
     };
   })
-  .handler(async ({ data }: { data: { projectId: string } }): Promise<any> => {
-    logServerAction("loadPlanningState.start", {
-      projectId: data.projectId,
-    });
-
-    try {
-      const snapshot = await loadPlanningState(data.projectId);
-
-      logServerAction("loadPlanningState.success", {
+  .handler(
+    async ({ data }: { data: { projectId: string } }): Promise<unknown> => {
+      logServerAction("loadPlanningState.start", {
         projectId: data.projectId,
-        hasSnapshot: !!snapshot,
       });
 
-      return snapshot as any;
-    } catch (error) {
-      logServerAction("loadPlanningState.error", {
-        projectId: data.projectId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-      throw error;
-    }
-  });
+      try {
+        const snapshot = await loadPlanningState(data.projectId);
+
+        logServerAction("loadPlanningState.success", {
+          projectId: data.projectId,
+          hasSnapshot: !!snapshot,
+        });
+
+        return snapshot;
+      } catch (error) {
+        logServerAction("loadPlanningState.error", {
+          projectId: data.projectId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+        throw error;
+      }
+    },
+  );

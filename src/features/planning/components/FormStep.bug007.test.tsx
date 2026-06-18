@@ -8,6 +8,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { STEP_KEYS } from "../machines/constants";
 import { PlanningMachineProvider } from "../machines/PlanningMachineContext";
 import { FormStep } from "./FormStep";
 
@@ -17,6 +18,15 @@ vi.mock("../../ai/server", () => ({
     format: "markdown",
     content: "# Gap Analysis\n\nTest content",
     generatedAt: new Date().toISOString(),
+  }),
+  $generateQuestion: vi.fn().mockResolvedValue({
+    question: "Mock question?",
+    options: ["Option A", "Option B"],
+  }),
+  $assessGapAnalysisNeed: vi.fn().mockResolvedValue({
+    needsGapAnalysis: true,
+    reasoning: "Mock assessment",
+    confidence: "high",
   }),
 }));
 
@@ -51,7 +61,7 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -119,7 +129,7 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -135,9 +145,9 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
     fireEvent.change(requirementsField, { target: { value: "No" } });
     fireEvent.change(descriptionField, { target: { value: "Test project" } });
 
-    // Check if formData is being updated
+    // Check if formData is being updated (now logged from useFormState hook)
     const formDataLogs = consoleLogs.filter((log) =>
-      log.includes("[FormStep] Updated formData:"),
+      log.includes("[useFormState] Updated formData:"),
     );
     expect(formDataLogs.length).toBeGreaterThan(0);
 
@@ -169,7 +179,7 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -186,7 +196,7 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
         input={{ ...defaultInput, projectId: "LcINIWVz" }}
       >
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -242,7 +252,7 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
     render(
       <PlanningMachineProvider input={defaultInput}>
         <FormStep
-          stepKey="step1_gapAnalysis"
+          stepKey={STEP_KEYS.STEP_1_GAP_ANALYSIS}
           stepName="Gap Analysis"
           status="collecting"
         />
@@ -264,10 +274,10 @@ describe("BUG-007: Gap Analysis Submit No API Call", () => {
       fireEvent.submit(form);
     }
 
-    // Verify defensive check logged error
+    // Verify defensive check logged error (now from useFormState hook)
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("DEFENSIVE CHECK FAILED"),
+        expect.stringContaining("VALIDATION FAILED"),
         expect.objectContaining({
           missingFieldIds: expect.arrayContaining(["projectDescription"]),
           requiredFieldIds: expect.arrayContaining([

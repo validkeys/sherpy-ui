@@ -5,13 +5,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProjectStepState } from "../types";
 import { InterviewThread } from "./InterviewThread";
 
-vi.mock("../hooks", () => ({
-  useSubmitAnswer: vi.fn(),
-  useStepState: vi.fn(),
-  useCompleteStep: vi.fn(),
-  useUpdateStepOptions: vi.fn(),
-  stepStateQueryKey: vi.fn(),
-}));
+// Partially mock hooks - keep useInterviewState as real implementation
+vi.mock("../hooks", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../hooks")>();
+  const { useInterviewState } = mod;
+  return {
+    useSubmitAnswer: vi.fn(),
+    useStepState: vi.fn(),
+    useCompleteStep: vi.fn(),
+    useUpdateStepOptions: vi.fn(),
+    useInterviewState, // Explicitly return real implementation
+    stepStateQueryKey: vi.fn(),
+  };
+});
 
 vi.mock("@/features/ai/hooks", () => ({
   useStreamingQuestion: vi.fn(),
