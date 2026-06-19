@@ -131,6 +131,7 @@ function ChatMessageComponent({
               <button
                 type="button"
                 onClick={onRetry}
+                aria-label="Retry fetching question"
                 className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--danger)] transition-opacity hover:opacity-80"
               >
                 <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />

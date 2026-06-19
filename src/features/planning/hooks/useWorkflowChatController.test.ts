@@ -173,7 +173,7 @@ describe("createWorkflowChatActions", () => {
     expect(actions.onSubmitForm).toBeUndefined();
   });
 
-  it("onRetry sends RETRY event with current step number", () => {
+  it("onRetry is not part of createWorkflowChatActions (handled by main hook)", () => {
     const actor = { send: vi.fn() };
     const currentQuestionRef = createRef<string | null>();
     (currentQuestionRef as any).current = null;
@@ -183,24 +183,8 @@ describe("createWorkflowChatActions", () => {
       currentQuestionRef,
     });
 
-    actions.onRetry?.();
-
-    expect(actor.send).toHaveBeenCalledWith({
-      type: "RETRY",
-      stepNumber: 2,
-    });
-  });
-
-  it("onRetry is always defined regardless of step type", () => {
-    const actor = { send: vi.fn() };
-    const currentQuestionRef = createRef<string | null>();
-    (currentQuestionRef as any).current = null;
-    const actions = createWorkflowChatActions({
-      actor,
-      currentStepNumber: 4,
-      currentQuestionRef,
-    });
-
-    expect(actions.onRetry).toBeDefined();
+    // onRetry is now defined in useWorkflowChatController with useCallback,
+    // not in the createWorkflowChatActions helper
+    expect(actions.onRetry).toBeUndefined();
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Artifact, Message } from "@/components/workflow-chat";
 import { EVENT_TYPES } from "../machines/constants";
 import type { PlanningEvent } from "../machines/types";
@@ -68,6 +68,10 @@ export function useWorkflowChatController(): WorkflowChatController {
     [actor, currentStepNumber],
   );
 
+  const onRetry = useCallback(() => {
+    actor.send({ type: "RETRY", stepNumber: currentStepNumber });
+  }, [actor, currentStepNumber]);
+
   const isInteractiveInterview =
     currentStepNumber === 2 || currentStepNumber === 3;
 
@@ -79,6 +83,7 @@ export function useWorkflowChatController(): WorkflowChatController {
     formValues,
     autoSubmit: isInteractiveInterview,
     ...actions,
+    onRetry,
   };
 }
 
@@ -122,9 +127,6 @@ export function createWorkflowChatActions({
           updateFormField(actor, currentStepNumber as 1 | 5, fieldId, value);
         }
       : undefined,
-    onRetry: () => {
-      actor.send({ type: "RETRY", stepNumber: currentStepNumber });
-    },
   };
 }
 
