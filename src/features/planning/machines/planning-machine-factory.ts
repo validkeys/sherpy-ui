@@ -553,7 +553,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           [STEP_STATES.INTERVIEW.AWAITING_ANSWER]: {
             on: {
               [EVENT_TYPES.SUBMIT_ANSWER]: {
-                target: "persistingAnswer",
+                target: STEP_STATES.WORKFLOW.PERSISTING_ANSWER,
               },
               // Keep manual FINISH_INTERVIEW for backward compatibility (debug panel)
               FINISH_INTERVIEW: {
@@ -563,7 +563,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           },
 
           // New state: Persist answer via workflow service
-          persistingAnswer: {
+          [STEP_STATES.WORKFLOW.PERSISTING_ANSWER]: {
             invoke: {
               src: "persistAnswerService",
               input: ({ context, event }) => {
@@ -628,7 +628,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 },
               }),
               onDone: {
-                target: "persistingArtifact",
+                target: STEP_STATES.WORKFLOW.PERSISTING_ARTIFACT,
                 actions: assign({
                   _tempArtifact: ({ event }) => event.output,
                 }),
@@ -646,7 +646,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           },
 
           // New state: Persist artifact via workflow service
-          persistingArtifact: {
+          [STEP_STATES.WORKFLOW.PERSISTING_ARTIFACT]: {
             invoke: {
               src: "persistArtifactService",
               input: ({ context }) => {
@@ -661,7 +661,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 };
               },
               onDone: {
-                target: "completingStep",
+                target: STEP_STATES.WORKFLOW.COMPLETING_STEP,
                 actions: assign({
                   artifacts: ({ context }) => ({
                     ...context.artifacts,
@@ -685,7 +685,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           },
 
           // New state: Complete step via workflow service
-          completingStep: {
+          [STEP_STATES.WORKFLOW.COMPLETING_STEP]: {
             invoke: {
               src: "completeStepService",
               input: ({ context }) => ({
@@ -773,7 +773,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           [STEP_STATES.INTERVIEW.AWAITING_ANSWER]: {
             on: {
               [EVENT_TYPES.SUBMIT_ANSWER]: {
-                target: "persistingAnswer",
+                target: STEP_STATES.WORKFLOW.PERSISTING_ANSWER,
               },
               // BUG-033: Keep manual FINISH_INTERVIEW for backward compatibility (debug panel)
               FINISH_INTERVIEW: {
@@ -783,7 +783,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           },
 
           // New state: Persist answer via workflow service
-          persistingAnswer: {
+          [STEP_STATES.WORKFLOW.PERSISTING_ANSWER]: {
             invoke: {
               src: "persistAnswerService",
               input: ({ context, event }) => {
@@ -932,7 +932,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           [STEP_STATES.INTERVIEW.AWAITING_ANSWER]: {
             on: {
               [EVENT_TYPES.SUBMIT_ANSWER]: {
-                target: "persistingAnswer",
+                target: STEP_STATES.WORKFLOW.PERSISTING_ANSWER,
               },
               // BUG-033: Keep manual FINISH_INTERVIEW for backward compatibility (debug panel)
               FINISH_INTERVIEW: {
@@ -942,7 +942,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           },
 
           // New state: Persist answer via workflow service
-          persistingAnswer: {
+          [STEP_STATES.WORKFLOW.PERSISTING_ANSWER]: {
             invoke: {
               src: "persistAnswerService",
               input: ({ context, event }) => {
@@ -1007,7 +1007,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 },
               }),
               onDone: {
-                target: "persistingArtifact",
+                target: STEP_STATES.WORKFLOW.PERSISTING_ARTIFACT,
                 actions: assign({
                   _tempArtifact: ({ event }) => event.output,
                 }),
@@ -1025,7 +1025,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           },
 
           // New state: Persist artifact via workflow service
-          persistingArtifact: {
+          [STEP_STATES.WORKFLOW.PERSISTING_ARTIFACT]: {
             invoke: {
               src: "persistArtifactService",
               input: ({ context }) => {
@@ -1040,7 +1040,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
                 };
               },
               onDone: {
-                target: "completingStep",
+                target: STEP_STATES.WORKFLOW.COMPLETING_STEP,
                 actions: assign({
                   artifacts: ({ context }) => ({
                     ...context.artifacts,
@@ -1064,7 +1064,7 @@ export function createPlanningMachine(serverFunctions: ServerFunctions) {
           },
 
           // New state: Complete step via workflow service
-          completingStep: {
+          [STEP_STATES.WORKFLOW.COMPLETING_STEP]: {
             invoke: {
               src: "completeStepService",
               input: ({ context }) => ({

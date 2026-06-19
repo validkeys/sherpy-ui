@@ -47,6 +47,11 @@ export interface LoadingMessage extends BaseMessage {
   content: string;
 }
 
+export interface ErrorMessage extends BaseMessage {
+  type: "error";
+  content: string;
+}
+
 export interface DividerMessage {
   type: "divider";
   id: string;
@@ -61,6 +66,7 @@ export type Message =
   | AnswerMessage
   | ArtifactMessage
   | LoadingMessage
+  | ErrorMessage
   | DividerMessage;
 
 export interface BaseArtifact {

@@ -230,6 +230,29 @@ export const STEP_STATES = {
      */
     ERROR: "error",
   },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Workflow transient states (server-call intermediates)
+  // ────────────────────────────────────────────────────────────────────────────
+  WORKFLOW: {
+    /**
+     * Persisting an interview answer via server call.
+     * UI should show loading spinner with "Saving your answer..." text.
+     */
+    PERSISTING_ANSWER: "persistingAnswer",
+
+    /**
+     * Persisting a generated artifact via server call.
+     * UI should show loading spinner with "Saving artifact..." text.
+     */
+    PERSISTING_ARTIFACT: "persistingArtifact",
+
+    /**
+     * Completing a step (marking done, transitioning).
+     * UI should show loading spinner with "Finalizing step..." text.
+     */
+    COMPLETING_STEP: "completingStep",
+  },
 } as const;
 
 /**
@@ -243,7 +266,8 @@ export type StepState =
   | (typeof STEP_STATES.STEP_1)[keyof typeof STEP_STATES.STEP_1]
   | (typeof STEP_STATES.INTERVIEW)[keyof typeof STEP_STATES.INTERVIEW]
   | (typeof STEP_STATES.STEP_5)[keyof typeof STEP_STATES.STEP_5]
-  | (typeof STEP_STATES.AUTOMATED)[keyof typeof STEP_STATES.AUTOMATED];
+  | (typeof STEP_STATES.AUTOMATED)[keyof typeof STEP_STATES.AUTOMATED]
+  | (typeof STEP_STATES.WORKFLOW)[keyof typeof STEP_STATES.WORKFLOW];
 
 /**
  * Flat list of ALL valid states.
@@ -257,6 +281,7 @@ export const ALL_STEP_STATES: readonly StepState[] = [
   ...Object.values(STEP_STATES.INTERVIEW),
   ...Object.values(STEP_STATES.STEP_5),
   ...Object.values(STEP_STATES.AUTOMATED),
+  ...Object.values(STEP_STATES.WORKFLOW),
 ] as const;
 
 // ══════════════════════════════════════════════════════════════════════════════

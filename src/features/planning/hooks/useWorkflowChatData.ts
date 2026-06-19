@@ -14,9 +14,15 @@ import {
 
 const SUBMITTING_STATES = new Set([
   "submitting",
+  "assessingNeed",
+  "fetchingQuestion",
   "checkingComplete",
   "generatingArtifact",
   "generating",
+  "persistingAnswer",
+  "persistingArtifact",
+  "completingStep",
+  "error",
 ]);
 
 export function useWorkflowChatData() {
@@ -39,6 +45,7 @@ export function useWorkflowChatData() {
       step3CurrentOptions: snapshot.context.step3CurrentOptions,
       startedAt: snapshot.context.startedAt,
       updatedAt: snapshot.context.updatedAt,
+      error: snapshot.context.error,
     }),
   );
 

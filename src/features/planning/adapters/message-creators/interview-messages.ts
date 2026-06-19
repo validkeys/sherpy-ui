@@ -92,6 +92,42 @@ export function createCurrentInterviewMessages(
     ];
   }
 
+  if (activeState.status === STEP_STATES.WORKFLOW.PERSISTING_ANSWER) {
+    return [
+      {
+        type: "loading",
+        id: `step-${stepNumber}-saving-answer`,
+        role: "assistant",
+        timestamp: context.updatedAt,
+        content: "Saving your answer...",
+      },
+    ];
+  }
+
+  if (activeState.status === STEP_STATES.WORKFLOW.PERSISTING_ARTIFACT) {
+    return [
+      {
+        type: "loading",
+        id: `step-${stepNumber}-saving-artifact`,
+        role: "assistant",
+        timestamp: context.updatedAt,
+        content: "Saving artifact...",
+      },
+    ];
+  }
+
+  if (activeState.status === STEP_STATES.WORKFLOW.COMPLETING_STEP) {
+    return [
+      {
+        type: "loading",
+        id: `step-${stepNumber}-completing`,
+        role: "assistant",
+        timestamp: context.updatedAt,
+        content: "Finalizing step...",
+      },
+    ];
+  }
+
   if (!currentQuestion) return [];
 
   return [

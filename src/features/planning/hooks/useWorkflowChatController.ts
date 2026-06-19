@@ -23,6 +23,7 @@ type WorkflowChatActions = {
     fieldId: string,
     value: string,
   ) => void;
+  onRetry?: () => void;
 };
 
 type WorkflowChatController = WorkflowChatActions & {
@@ -121,6 +122,9 @@ export function createWorkflowChatActions({
           updateFormField(actor, currentStepNumber as 1 | 5, fieldId, value);
         }
       : undefined,
+    onRetry: () => {
+      actor.send({ type: "RETRY", stepNumber: currentStepNumber });
+    },
   };
 }
 

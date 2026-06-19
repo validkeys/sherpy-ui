@@ -428,4 +428,72 @@ describe("adaptMachineSnapshotToMessages", () => {
       },
     ]);
   });
+
+  it("shows 'Saving your answer...' during persistingAnswer state", () => {
+    const messages = adaptMachineSnapshotToMessages({
+      context: createContext({ currentStepNumber: 2 }),
+      stateValue: {
+        step2_businessReqs: STEP_STATES.WORKFLOW.PERSISTING_ANSWER,
+      },
+    });
+
+    expect(messages).toContainEqual({
+      type: "loading",
+      id: "step-2-saving-answer",
+      role: "assistant",
+      timestamp: "2026-05-26T10:15:00.000Z",
+      content: "Saving your answer...",
+    });
+  });
+
+  it("shows 'Saving artifact...' during persistingArtifact state", () => {
+    const messages = adaptMachineSnapshotToMessages({
+      context: createContext({ currentStepNumber: 2 }),
+      stateValue: {
+        step2_businessReqs: STEP_STATES.WORKFLOW.PERSISTING_ARTIFACT,
+      },
+    });
+
+    expect(messages).toContainEqual({
+      type: "loading",
+      id: "step-2-saving-artifact",
+      role: "assistant",
+      timestamp: "2026-05-26T10:15:00.000Z",
+      content: "Saving artifact...",
+    });
+  });
+
+  it("shows 'Finalizing step...' during completingStep state", () => {
+    const messages = adaptMachineSnapshotToMessages({
+      context: createContext({ currentStepNumber: 2 }),
+      stateValue: {
+        step2_businessReqs: STEP_STATES.WORKFLOW.COMPLETING_STEP,
+      },
+    });
+
+    expect(messages).toContainEqual({
+      type: "loading",
+      id: "step-2-completing",
+      role: "assistant",
+      timestamp: "2026-05-26T10:15:00.000Z",
+      content: "Finalizing step...",
+    });
+  });
+
+  it("does not duplicate error message across reached steps", () => {
+    const messages = adaptMachineSnapshotToMessages({
+      context: createContext({
+        currentStepNumber: 2,
+        error: "Network error",
+        step2Answers: [{ question: "Q1", value: "A1", timestamp: "t" }],
+      }),
+      stateValue: {
+        step2_businessReqs: STEP_STATES.INTERVIEW.ERROR,
+      },
+    });
+
+    const errorMessages = messages.filter((m) => m.type === "error");
+    expect(errorMessages).toHaveLength(1);
+    expect(errorMessages[0].id).toBe("step-2-error");
+  });
 });

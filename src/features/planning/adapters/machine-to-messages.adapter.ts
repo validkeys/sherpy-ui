@@ -43,6 +43,7 @@ export type MessageRelevantContext = Pick<
   | "step3CurrentOptions"
   | "startedAt"
   | "updatedAt"
+  | "error" // BUG-038: Surface error state for retry UI
 >;
 
 export type WorkflowChatAdapterInput = {
