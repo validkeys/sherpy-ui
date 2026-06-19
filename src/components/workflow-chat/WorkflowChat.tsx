@@ -41,6 +41,7 @@ export interface WorkflowChatProps {
     fieldId: string,
     value: string,
   ) => void;
+  onRetry?: () => void;
   formValues?: Record<string, string> | null;
   disabled?: boolean;
   isSubmitting?: boolean;
@@ -54,6 +55,7 @@ export function WorkflowChat({
   onSelectOption,
   onSubmitForm,
   onFormValueChange,
+  onRetry,
   formValues,
   disabled = false,
   isSubmitting = false,
@@ -179,6 +181,7 @@ export function WorkflowChat({
                   onSelectOption={onSelectOption}
                   onSubmitForm={onSubmitForm}
                   onFormValueChange={onFormValueChange}
+                  onRetry={onRetry}
                   formValues={formValues}
                   disabled={disabled}
                   isSubmitting={isSubmitting}

@@ -22,7 +22,7 @@
  * - Optimizes list rendering (30+ messages)
  */
 
-import { Sparkles } from "lucide-react";
+import { AlertCircle, RotateCcw, Sparkles } from "lucide-react";
 import { memo, useCallback } from "react";
 import { AnswerCard } from "./AnswerCard";
 import { ArtifactPill } from "./ArtifactPill";
@@ -41,6 +41,7 @@ interface ChatMessageProps {
     fieldId: string,
     value: string,
   ) => void;
+  onRetry?: () => void;
   formValues?: Record<string, string> | null;
   disabled?: boolean;
   isSubmitting?: boolean;
@@ -54,6 +55,7 @@ function ChatMessageComponent({
   onSelectOption,
   onSubmitForm,
   onFormValueChange,
+  onRetry,
   formValues,
   disabled = false,
   isSubmitting = false,
@@ -109,6 +111,36 @@ function ChatMessageComponent({
 
   if (message.type === "loading") {
     return <TypingIndicator message={message.content} />;
+  }
+
+  if (message.type === "error") {
+    return (
+      <div
+        className="mx-auto w-full max-w-[720px] px-4 sm:px-8"
+        role="alert"
+        aria-live="assertive"
+      >
+        <div className="flex items-start gap-3 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-4">
+          <AlertCircle
+            className="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--danger)]"
+            aria-hidden="true"
+          />
+          <div className="flex-1">
+            <p className="text-sm text-[var(--danger)]">{message.content}</p>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--danger)] transition-opacity hover:opacity-80"
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                Try again
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const isAssistant = message.role === "assistant";

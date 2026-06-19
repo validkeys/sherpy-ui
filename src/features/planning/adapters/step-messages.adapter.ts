@@ -8,6 +8,7 @@ import {
 } from "./machine-to-artifacts.adapter";
 import type { MessageRelevantContext } from "./machine-to-messages.adapter";
 import { createLoadingMessage } from "./message-creators/artifact-messages";
+import { createErrorMessage } from "./message-creators/error-messages";
 import {
   createFormQuestionMessage,
   createFormResponseMessages,
@@ -102,6 +103,11 @@ export function createStepMessages(
   );
   if (artifactMessage) {
     messages.push(artifactMessage);
+  }
+
+  const errorMessage = createErrorMessage(context, stepNumber, activeState);
+  if (errorMessage) {
+    messages.push(errorMessage);
   }
 
   return messages;

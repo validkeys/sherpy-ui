@@ -305,8 +305,13 @@ export class StatePersistence {
   /**
    * Check if state is transient and should be skipped.
    *
-   * Transient states like "submitting" or "generatingArtifact" are
-   * short-lived and don't need to be persisted.
+   * Transient states invoke server calls that are lost on page refresh.
+   * If persisted, the actor restores expecting an async resolution that
+   * will never come — the machine gets stuck.
+   *
+   * NOTE: `fetchingQuestion` is intentionally NOT skipped. On restore, the
+   * machine re-enters the state and re-invokes the actor — correct self-healing.
+   * `error` is also NOT skipped — user should still see the error + retry on refresh.
    */
   private isTransientState(snapshot: SnapshotType): boolean {
     // biome-ignore lint/suspicious/noExplicitAny: XState value can be string or nested object (type-safe in M1)
@@ -319,7 +324,10 @@ export class StatePersistence {
     return Object.values(stateValue).some(
       (v: any) =>
         v === STEP_STATES.STEP_5.SUBMITTING ||
-        v === STEP_STATES.INTERVIEW.GENERATING_ARTIFACT,
+        v === STEP_STATES.INTERVIEW.GENERATING_ARTIFACT ||
+        v === STEP_STATES.WORKFLOW.PERSISTING_ANSWER ||
+        v === STEP_STATES.WORKFLOW.PERSISTING_ARTIFACT ||
+        v === STEP_STATES.WORKFLOW.COMPLETING_STEP,
     );
   }
 }
