@@ -283,8 +283,11 @@ export function PlanningMachineProvider({
     const timestamp = new Date().toISOString();
 
     if (snapshot) {
-      // ✅ BUG-037 Validation: Reject snapshot if projectId mismatch
-      const projectIdMismatch = snapshot.context?.projectId !== input.projectId;
+      // ✅ BUG-037 Validation: Reject snapshot if projectId mismatch or malformed context
+      const hasValidContext =
+        snapshot.context && typeof snapshot.context === "object";
+      const projectIdMismatch =
+        !hasValidContext || snapshot.context?.projectId !== input.projectId;
 
       console.log(`[BUG-035][${timestamp}] Creating actor FROM SNAPSHOT:`, {
         projectIdFromSnapshot: snapshot.context?.projectId,
@@ -292,30 +295,33 @@ export function PlanningMachineProvider({
         currentStepNumber: snapshot.context?.currentStepNumber,
         stateValue: snapshot.value,
         status: snapshot.status,
+        hasValidContext,
         MISMATCH: projectIdMismatch ? "⚠️ PROJECT ID MISMATCH!" : "✓ Match",
       });
 
-      // ✅ BUG-037 Fail-safe: Never use wrong-project snapshot
+      // ✅ BUG-037 Fail-safe: Never use wrong-project or malformed snapshot
       if (projectIdMismatch) {
         console.error(
-          `[BUG-037] CRITICAL: Prevented cross-project contamination!`,
+          `[BUG-037] CRITICAL: Prevented cross-project contamination or malformed snapshot!`,
           {
             rejectedProjectId: snapshot.context?.projectId,
             correctProjectId: input.projectId,
+            hasValidContext,
             timestamp,
           },
         );
         trackError(
           "cross_project_snapshot_rejected",
-          new Error("Cross-project snapshot rejected"),
+          new Error("Cross-project or malformed snapshot rejected"),
           {
             rejectedProjectId: snapshot.context?.projectId,
             correctProjectId: input.projectId,
+            hasValidContext,
           },
         );
-        // Create fresh actor instead of using contaminated snapshot
+        // Create fresh actor instead of using contaminated or malformed snapshot
         console.log(
-          `[BUG-037][${timestamp}] Creating FRESH actor (rejected cross-project snapshot)`,
+          `[BUG-037][${timestamp}] Creating FRESH actor (rejected cross-project or malformed snapshot)`,
         );
         return createActor(planningMachine, { input });
       }
