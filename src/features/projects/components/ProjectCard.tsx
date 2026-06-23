@@ -1,11 +1,14 @@
+import { X } from "lucide-react";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { IconButton } from "@/components/ui/icon-button";
 import type { Project } from "../types";
 
 const STEP_LABELS: Record<number, string> = {
@@ -36,6 +39,7 @@ interface ProjectCardProps {
   project: Project;
   onArchive: () => void;
   onComplete: () => void;
+  onDelete: () => void;
   onClick: () => void;
 }
 
@@ -43,6 +47,7 @@ export function ProjectCard({
   project,
   onArchive,
   onComplete,
+  onDelete,
   onClick,
 }: ProjectCardProps) {
   return (
@@ -52,6 +57,19 @@ export function ProjectCard({
       onClick={onClick}
     >
       <CardHeader>
+        <CardAction>
+          <div className="opacity-0 group-hover/card:opacity-100 transition-opacity">
+            <IconButton
+              icon={<X size={14} strokeWidth={2} />}
+              label={`Delete ${project.name}`}
+              variant="danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            />
+          </div>
+        </CardAction>
         <CardTitle>{project.name}</CardTitle>
         <CardDescription>
           <span className="font-mono text-xs">{project.code}</span>

@@ -4,7 +4,6 @@ import type { DBProject } from "@/lib/db/types";
 import type { CreateProjectInput, Project } from "./types";
 
 const counterRef = { value: 42 };
-let _lastTimestamp = "";
 
 function initializeCounter(): void {
   const stmt = db.prepare(`
@@ -34,7 +33,6 @@ function getNewTimestamp(previousTimestamp?: string): string {
     date.setMilliseconds(date.getMilliseconds() + 1);
     timestamp = date.toISOString();
   }
-  _lastTimestamp = timestamp;
   return timestamp;
 }
 
@@ -147,6 +145,15 @@ export function getProject(id: string): Project | undefined {
     createdAt: row.created_at,
     lastTouchedAt: row.last_touched_at,
   };
+}
+
+export function deleteProject(id: string): void {
+  const project = getProject(id);
+  if (!project) throw new Error(`Project not found: ${id}`);
+
+  // Delete project and cascade to related records (planning_state, interview_answers, etc.)
+  const stmt = db.prepare("DELETE FROM projects WHERE id = ?");
+  stmt.run(id);
 }
 
 export function _resetStore(): void {
