@@ -15,11 +15,23 @@ export function LeftRailNav({ onNewProject }: LeftRailNavProps) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const currentProjectId = params.projectId;
-  const { mutate: deleteProject } = useDeleteProject();
   const [deleteConfirm, setDeleteConfirm] = useState<{
     projectId: string;
     projectName: string;
   } | null>(null);
+
+  // Handle navigation after successful deletion
+  const { mutate: deleteProject, isPending } = useDeleteProject({
+    onSuccess: (deletedId) => {
+      // Navigate to dashboard if deleted project was current
+      if (deletedId === currentProjectId) {
+        navigate({
+          to: "/dashboard",
+          search: { error: undefined, projectId: undefined },
+        });
+      }
+    },
+  });
 
   const activeProjects = projects?.filter((p) => p.status === "active") ?? [];
 
@@ -43,23 +55,9 @@ export function LeftRailNav({ onNewProject }: LeftRailNavProps) {
   const handleDeleteConfirm = useCallback(() => {
     if (!deleteConfirm) return;
 
-    try {
-      deleteProject(deleteConfirm.projectId);
-      setDeleteConfirm(null);
-
-      // Navigate to dashboard if deleting current project
-      if (deleteConfirm.projectId === currentProjectId) {
-        navigate({
-          to: "/dashboard",
-          search: { error: undefined, projectId: undefined },
-        });
-      }
-    } catch (error) {
-      alert(
-        `Failed to delete project: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    }
-  }, [deleteConfirm, deleteProject, currentProjectId, navigate]);
+    deleteProject(deleteConfirm.projectId);
+    setDeleteConfirm(null);
+  }, [deleteConfirm, deleteProject]);
 
   const handleDeleteCancel = useCallback(() => {
     setDeleteConfirm(null);
@@ -72,6 +70,7 @@ export function LeftRailNav({ onNewProject }: LeftRailNavProps) {
           projectName={deleteConfirm.projectName}
           onConfirm={handleDeleteConfirm}
           onCancel={handleDeleteCancel}
+          isDeleting={isPending}
         />
       )}
       <div className="flex flex-col gap-[2px]">

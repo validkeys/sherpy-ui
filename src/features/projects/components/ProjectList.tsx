@@ -22,7 +22,7 @@ export function ProjectList({ onProjectClick }: ProjectListProps) {
   } | null>(null);
   const { data: projects, isLoading, isError, refetch } = useProjects();
   const { mutate: updateStatus } = useUpdateProjectStatus();
-  const { mutate: deleteProject } = useDeleteProject();
+  const { mutate: deleteProject, isPending: isDeleting } = useDeleteProject();
 
   const activeProjects = projects?.filter((p) => p.status === "active") ?? [];
   const pastProjects =
@@ -39,14 +39,8 @@ export function ProjectList({ onProjectClick }: ProjectListProps) {
   const handleDeleteConfirm = useCallback(() => {
     if (!deleteConfirm) return;
 
-    try {
-      deleteProject(deleteConfirm.projectId);
-      setDeleteConfirm(null);
-    } catch (error) {
-      alert(
-        `Failed to delete project: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    }
+    deleteProject(deleteConfirm.projectId);
+    setDeleteConfirm(null);
   }, [deleteConfirm, deleteProject]);
 
   const handleDeleteCancel = useCallback(() => {
@@ -60,6 +54,7 @@ export function ProjectList({ onProjectClick }: ProjectListProps) {
           projectName={deleteConfirm.projectName}
           onConfirm={handleDeleteConfirm}
           onCancel={handleDeleteCancel}
+          isDeleting={isDeleting}
         />
       )}
       <div className="flex gap-4 px-6 py-4 border-b border-border-1">

@@ -49,11 +49,16 @@ export function useUpdateProjectStatus() {
   });
 }
 
-export function useDeleteProject() {
+export function useDeleteProject(options?: {
+  onSuccess?: (deletedId: string) => void;
+}) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => $deleteProject({ data: { id } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: projectsQueryKey }),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: projectsQueryKey });
+      options?.onSuccess?.(id);
+    },
     onError: (err) => console.error("[useDeleteProject]", toErrorMessage(err)),
   });
 }

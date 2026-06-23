@@ -1,73 +1,117 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 interface DeleteConfirmDialogProps {
   projectName: string;
   onConfirm: () => void;
   onCancel: () => void;
+  isDeleting?: boolean;
 }
 
 export function DeleteConfirmDialog({
   projectName,
   onConfirm,
   onCancel,
+  isDeleting = false,
 }: DeleteConfirmDialogProps) {
-  // Handle Escape key globally
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onCancel();
-      }
-    };
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [onCancel]);
+  // Focus management: trap focus in modal and restore on unmount
+  useEffect(() => {
+    // Store previously focused element
+    previousFocusRef.current = document.activeElement as HTMLElement;
+
+    // Auto-focus Cancel button (safe default)
+    const cancelButton = dialogRef.current?.querySelector(
+      'button[data-action="cancel"]',
+    ) as HTMLElement;
+    cancelButton?.focus();
+
+    // Return focus on unmount
+    return () => {
+      previousFocusRef.current?.focus();
+    };
+  }, []);
+
+  // Keyboard handler for focus trap and escape key
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      onCancel();
+      return;
+    }
+
+    if (e.key === "Tab") {
+      // Trap focus within dialog
+      const focusableElements = dialogRef.current?.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusableElements || focusableElements.length === 0) return;
+
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[
+        focusableElements.length - 1
+      ] as HTMLElement;
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
+      }
+    }
+  };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-overlay)]"
       onClick={onCancel}
-      onKeyDown={(e) => e.key === "Enter" && onCancel()}
+      onKeyDown={handleKeyDown}
       role="dialog"
       aria-modal="true"
       aria-labelledby="delete-dialog-title"
-      tabIndex={-1}
+      aria-describedby="delete-dialog-description"
     >
       <div
-        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4"
+        ref={dialogRef}
+        className="bg-[var(--bg-surface)] border border-[var(--border-2)] rounded-lg shadow-xl p-6 max-w-md w-full mx-4"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
         role="document"
       >
         <h2
           id="delete-dialog-title"
-          className="text-lg font-semibold text-gray-900 dark:text-gray-100 !mb-2.5"
+          className="text-lg font-semibold text-fg-1 mb-3"
         >
           Delete Project
         </h2>
-        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-          Are you sure you want to delete{" "}
-          <strong className="text-gray-900 dark:text-gray-100">
-            {projectName}
-          </strong>
-          ?
-        </p>
-        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed !mb-2">
-          This action cannot be undone. All project data, including planning
-          state, interview answers, and artifacts will be permanently removed.
-        </p>
-        <div className="flex gap-3 justify-end mt-2">
+        <div id="delete-dialog-description">
+          <p className="text-sm text-fg-2 leading-relaxed mb-2">
+            Are you sure you want to delete{" "}
+            <strong className="text-fg-1">{projectName}</strong>?
+          </p>
+          <p className="text-sm text-fg-3 leading-relaxed mb-4">
+            This action cannot be undone. All project data, including planning
+            state, interview answers, and artifacts will be permanently removed.
+          </p>
+        </div>
+        <div className="flex gap-3 justify-end">
           <button
             type="button"
+            data-action="cancel"
             onClick={onCancel}
-            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+            className="px-4 py-2 text-sm text-fg-2 hover:text-fg-1 border border-[var(--border-2)] rounded hover:bg-sunken transition-colors"
           >
             Cancel
           </button>
           <button
             type="button"
+            data-action="delete"
             onClick={onConfirm}
-            className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded transition-colors cursor-pointer"
+            disabled={isDeleting}
+            className="px-4 py-2 text-sm text-[var(--fg-on-inverse)] bg-[var(--danger)] hover:bg-[var(--danger)]/90 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Delete
+            {isDeleting ? "Deleting..." : "Delete"}
           </button>
         </div>
       </div>
