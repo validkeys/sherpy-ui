@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   $createProject,
+  $deleteProject,
   $getProject,
   $healthCheck,
   $listProjects,
@@ -45,6 +46,20 @@ export function useUpdateProjectStatus() {
     onSuccess: () => qc.invalidateQueries({ queryKey: projectsQueryKey }),
     onError: (err) =>
       console.error("[useUpdateProjectStatus]", toErrorMessage(err)),
+  });
+}
+
+export function useDeleteProject(options?: {
+  onSuccess?: (deletedId: string) => void;
+}) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => $deleteProject({ data: { id } }),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: projectsQueryKey });
+      options?.onSuccess?.(id);
+    },
+    onError: (err) => console.error("[useDeleteProject]", toErrorMessage(err)),
   });
 }
 

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
   createProject,
+  deleteProject,
   getProject,
   initStore,
   listProjects,
@@ -61,6 +62,20 @@ export const $getProject = createServerFn({ method: "GET" })
     return { id: d.id };
   })
   .handler(({ data }) => getProject(data.id));
+
+export const $deleteProject = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => {
+    if (typeof data !== "object" || data === null)
+      throw new Error("invalid input: expected object");
+    const d = data as Record<string, unknown>;
+    if (typeof d.id !== "string" || !d.id) throw new Error("id is required");
+    return { id: d.id };
+  })
+  .handler(async ({ data }) => {
+    await initStore();
+    deleteProject(data.id);
+    return { success: true };
+  });
 
 export const $healthCheck = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => {

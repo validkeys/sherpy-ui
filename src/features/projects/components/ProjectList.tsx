@@ -1,6 +1,11 @@
-import { useState } from "react";
-import { useProjects, useUpdateProjectStatus } from "../hooks";
+import { useCallback, useState } from "react";
+import {
+  useDeleteProject,
+  useProjects,
+  useUpdateProjectStatus,
+} from "../hooks";
 import type { Project } from "../types";
+import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { ProjectCard } from "./ProjectCard";
 
 type Tab = "active" | "past";
@@ -11,8 +16,13 @@ interface ProjectListProps {
 
 export function ProjectList({ onProjectClick }: ProjectListProps) {
   const [activeTab, setActiveTab] = useState<Tab>("active");
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    projectId: string;
+    projectName: string;
+  } | null>(null);
   const { data: projects, isLoading, isError, refetch } = useProjects();
   const { mutate: updateStatus } = useUpdateProjectStatus();
+  const { mutate: deleteProject, isPending: isDeleting } = useDeleteProject();
 
   const activeProjects = projects?.filter((p) => p.status === "active") ?? [];
   const pastProjects =
@@ -22,8 +32,31 @@ export function ProjectList({ onProjectClick }: ProjectListProps) {
 
   const shown = activeTab === "active" ? activeProjects : pastProjects;
 
+  const handleDeleteClick = useCallback((project: Project) => {
+    setDeleteConfirm({ projectId: project.id, projectName: project.name });
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (!deleteConfirm) return;
+
+    deleteProject(deleteConfirm.projectId);
+    setDeleteConfirm(null);
+  }, [deleteConfirm, deleteProject]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteConfirm(null);
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
+      {deleteConfirm && (
+        <DeleteConfirmDialog
+          projectName={deleteConfirm.projectName}
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          isDeleting={isDeleting}
+        />
+      )}
       <div className="flex gap-4 px-6 py-4 border-b border-border-1">
         <TabButton
           label="Active"
@@ -58,6 +91,7 @@ export function ProjectList({ onProjectClick }: ProjectListProps) {
                 onComplete={() =>
                   updateStatus({ id: project.id, status: "complete" })
                 }
+                onDelete={() => handleDeleteClick(project)}
                 onClick={() => onProjectClick?.(project)}
               />
             ))}
